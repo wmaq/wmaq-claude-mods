@@ -450,7 +450,7 @@ export const register: Register = on => {
 
     return mode === 'idle' ? (
       <Box flexDirection="column">
-        <Box flexDirection="row" alignItems="center" columnGap={IDLE_GAP}>
+        <Box key="idle-row" flexDirection="row" alignItems="center" columnGap={IDLE_GAP} marginTop={1}>
           {raster}
           {bar}
         </Box>

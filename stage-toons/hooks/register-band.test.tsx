@@ -12,6 +12,8 @@ test('while Claude waits, the band shows the idle Clawd beside the bar', async (
   const idle = await ui.find({ key: 'idle' })
   expect(idle?.props).toMatchObject({ columns: 18, rows: 4 })
   expect((await ui.find({ key: 'stage-toons' }))?.text).toContain('Not tracked yet')
+  // A blank row keeps Clawd off the transcript's last line.
+  expect((await ui.find({ key: 'idle-row' }))?.props).toMatchObject({ marginTop: 1 })
   await clock.advance(1000)
   expect(blitsOf(world, 'idle').length).toBeGreaterThanOrEqual(4)
   expect(blitsOf(world, 'idle').length).toBeLessThanOrEqual(8)
