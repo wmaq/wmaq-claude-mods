@@ -23,10 +23,10 @@ export const COMPOSE = {
 // What a compaction leaves: at least one message.
 export const SUMMARY: SessionMessage = { role: 'user', text: 'Summary of the conversation so far.', toolUses: [] }
 
-export const bandProps = (bodyColumns = 100, extra: { hasSurvey?: boolean; agentId?: string; isWorking?: boolean } = {}) => ({
+export const bandProps = (bodyColumns = 100, extra: { hasSurvey?: boolean; agentId?: string; isWorking?: boolean; maxRows?: number } = {}) => ({
   hasSurvey: extra.hasSurvey ?? false,
   isWorking: extra.isWorking ?? false,
-  maxRows: 10,
+  maxRows: extra.maxRows ?? 10,
   bodyColumns,
   scroll: { offset: 0, bodyRows: 10 },
   view: extra.agentId === undefined ? {} : { agentId: extra.agentId },
@@ -40,6 +40,7 @@ export type World = {
   isBlitRefused: boolean
   blits: Blit[]
   invalidations: number
+  commands: { description: string; argumentHint: string }[]
   toasts: string[]
   agents: AgentRow[]
   spawnModel: string
@@ -47,7 +48,7 @@ export type World = {
 }
 
 export function engine(on: On, preset: { store?: Record<string, unknown> } = {}) {
-  const world: World = { store: { ...preset.store }, isStoreBroken: false, isBlitRefused: false, blits: [], invalidations: 0, toasts: [], agents: [], spawnModel: 'claude-sonnet-5-5', spawned: 0 }
+  const world: World = { store: { ...preset.store }, isStoreBroken: false, isBlitRefused: false, blits: [], invalidations: 0, commands: [], toasts: [], agents: [], spawnModel: 'claude-sonnet-5-5', spawned: 0 }
   const clock = mock.clock(on, { now: NOW })
   const guard = () => {
     if (world.isStoreBroken) throw new Error('store unavailable')
@@ -69,7 +70,11 @@ export function engine(on: On, preset: { store?: Record<string, unknown> } = {})
   on('prompt.compose', () => ({ sections: [{ id: 'intro', text: 'You are Claude Code.', scope: 'shared' as const }] }))
   on('session.compact', () => ({ messages: [SUMMARY] }))
   on('tool.register', ($, e) => ({ value: { tool: `mcp__stage-toons__${e.name}` } }))
-  on('command.register', ($, e) => ({ value: { command: e.name } }))
+  on('command.register', ($, e) => {
+    world.commands.push({ description: e.description, argumentHint: e.argumentHint ?? '' })
+
+    return { value: { command: e.name } }
+  })
   on('agent.list', () => ({ value: world.agents }))
   on('agent.spawn', () => {
     world.spawned += 1

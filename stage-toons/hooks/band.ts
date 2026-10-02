@@ -3,8 +3,9 @@
 // auditor runs, and the message. Sized to the band so nothing wraps.
 
 import type { Progress } from '../types'
-import { IDLE_COLS } from './idle'
+import { IDLE_COLS, IDLE_ROWS } from './idle'
 import { charCount, fitText, isTrack, position, rank, TRACK } from './stages'
+import { TOON_ROWS } from './toon'
 
 export type Tone = 'done' | 'current' | 'future' | 'label' | 'tag' | 'message'
 export type Span = { text: string; tone: Tone }
@@ -27,18 +28,25 @@ export type BandSite = {
   isAgentView: boolean
   isHidden: boolean
   columns: number
+  maxRows: number
   isDemo: boolean
 }
 
 // What the band draws: nothing of stage-toons' (yielding), the text bar,
 // the bar beside the idle Clawd while Claude waits, or the bar over the
-// demo. The cartoons are terminal only.
+// demo. The cartoons are terminal only, and show only where the band has
+// the rows to hold them whole: the idle Clawd a blank row and 4, the demo
+// the bar's lines and 7.
 export function bandMode(s: BandSite): BandMode {
   if (s.hasSurvey || s.isAgentView || s.isHidden) return 'none'
   if (s.surface !== 'terminal') return 'text'
-  if (s.isDemo) return s.columns >= TOON_MIN ? 'demo' : 'text'
+  if (s.isDemo) {
+    const rows = (s.columns < WIDE_MIN ? 1 : 2) + TOON_ROWS
 
-  return !s.isWorking && s.columns >= IDLE_MIN ? 'idle' : 'text'
+    return s.columns >= TOON_MIN && s.maxRows >= rows ? 'demo' : 'text'
+  }
+
+  return !s.isWorking && s.columns >= IDLE_MIN && s.maxRows >= 1 + IDLE_ROWS ? 'idle' : 'text'
 }
 
 // The track as it stands: done steps and the links between them, the

@@ -110,3 +110,56 @@ test('/stage demo plays nothing while hidden or off the terminal', async ($, on)
   await $.session.start({ ...START, surface: 'desktop' })
   expect(text(await runStage($, 'demo'))).toContain('terminal only')
 })
+
+test('a band whose blits keep being refused asks to be drawn again, and then animates', async ($, on) => {
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  const ui = await mountBand($)
+  await clock.advance(500)
+  world.isBlitRefused = true
+  const before = world.invalidations
+  await clock.advance(1500)
+  expect(world.invalidations).toBeGreaterThan(before)
+  world.isBlitRefused = false
+  await ui.redraw()
+  const after = blitsOf(world, 'idle').length
+  await clock.advance(1000)
+  expect(blitsOf(world, 'idle').length).toBeGreaterThan(after + 3)
+})
+
+test('the idle Clawd starts awake when the band stops working, before the turn is reported', async ($, on) => {
+  const { clock } = engine(on)
+  await $.session.start(START)
+  const ui = await mountBand($, 'terminal', bandProps(100, { isWorking: true }))
+  await clock.advance(70_000)
+  await ui.redraw(bandProps(100))
+  const cells = String((await ui.find({ key: 'idle' }))?.props.cells ?? '')
+  expect(cells).not.toBe('')
+  expect(colorInRows({ key: 'idle', cells, columns: 18, rows: 4 }, [0, 1, 2, 3], Z_COLOR)).toBe(false)
+})
+
+test('/stage demo says so when the band has no room for it', async ($, on) => {
+  engine(on)
+  await $.session.start(START)
+  const narrow = await mountBand($, 'terminal', bandProps(29))
+  expect(text(await runStage($, 'demo'))).toContain('no room')
+  await narrow.unmount()
+  const short = await mountBand($, 'terminal', bandProps(100, { maxRows: 8 }))
+  expect(text(await runStage($, 'demo'))).toContain('no room')
+  await short.unmount()
+})
+
+test('/stage demo while one plays starts it over, and says so', async ($, on) => {
+  engine(on)
+  await $.session.start(START)
+  await mountBand($)
+  await runStage($, 'demo')
+  expect(text(await runStage($, 'demo 5'))).toContain('Restarting the demo')
+})
+
+test('/stage lists demo where it is registered', async ($, on) => {
+  const { world } = engine(on)
+  await $.session.start(START)
+  expect(world.commands.at(-1)?.argumentHint).toContain('demo')
+  expect(world.commands.at(-1)?.description).toContain('demo')
+})

@@ -52,7 +52,7 @@ test('the demo line can stand in for the message', () => {
   expect(bandLayout(plan, false, 40, 'Demo 3/12: Spec').map(text)).toEqual(['5/10 Plan — Demo 3/12: Spec'])
 })
 
-const site = { surface: 'terminal', isWorking: false, hasSurvey: false, isAgentView: false, isHidden: false, columns: 100, isDemo: false }
+const site = { surface: 'terminal', isWorking: false, hasSurvey: false, isAgentView: false, isHidden: false, columns: 100, maxRows: 10, isDemo: false }
 
 test('the band shows the idle Clawd in a wide terminal while Claude waits', () => {
   expect(bandMode(site)).toBe('idle')
@@ -87,4 +87,13 @@ test('the band cuts its lines between characters, never through an emoji', () =>
       expect(Array.from(t).some(ch => ch.length === 1 && ch.charCodeAt(0) >= 0xd800 && ch.charCodeAt(0) <= 0xdfff)).toBe(false)
     }
   }
+})
+
+test('the idle Clawd and the demo need the rows to show whole', () => {
+  expect(bandMode({ ...site, maxRows: 5 })).toBe('idle')
+  expect(bandMode({ ...site, maxRows: 4 })).toBe('text')
+  expect(bandMode({ ...site, isDemo: true, maxRows: 9 })).toBe('demo')
+  expect(bandMode({ ...site, isDemo: true, maxRows: 8 })).toBe('text')
+  // Below 50 columns the bar is one line, so the demo takes a row less.
+  expect(bandMode({ ...site, isDemo: true, columns: 40, maxRows: 8 })).toBe('demo')
 })

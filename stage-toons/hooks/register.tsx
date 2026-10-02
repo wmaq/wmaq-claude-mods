@@ -11,7 +11,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { Progress } from '../types'
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
-import { bandLayout, bandMode, IDLE_GAP, type Tone, TOON_MIN } from './band'
+import { bandLayout, bandMode, type BandSite, IDLE_GAP, type Tone, TOON_MIN } from './band'
 import { moveFor, parseCommand, showText, USAGE } from './command'
 import { type Demo, DEMO_SCENES, demoAt, demoLine } from './demo'
 import { createDirector, type Director, react, shot, tick, withAuditing, withStage } from './director'
@@ -77,6 +77,10 @@ type Mod = {
   band: Site
   // When Claude last went idle: the session's start or the main turn's end.
   idleSince: number
+  // Whether the band was last drawn while Claude worked, and what it was
+  // last drawn in (null before it is first drawn).
+  isBandWorking: boolean
+  lastBand: BandSite | null
   demo: Demo | null
   broken: Set<SceneId>
 }
@@ -93,6 +97,8 @@ const createMod = (): Mod => ({
   toon: createSite('toon'),
   band: createSite('idle'),
   idleSince: 0,
+  isBandWorking: false,
+  lastBand: null,
   demo: null,
   broken: new Set(),
 })
@@ -198,6 +204,13 @@ function animate($: EngineInterface, mod: Mod, site: Site) {
         }
         await $.clock.sleep(FRAME_MS[kind])
       }
+      // Refused until it gave up, the band's Raster may be gone for good
+      // (the band collapsed) or for now: the hook decides again, and an
+      // expanded band repaints instead of standing still.
+      if (site.kind !== 'toon' && site.requestId !== undefined && !mod.isHidden) {
+        site.requestId = undefined
+        $.ui.invalidate('ui.render')
+      }
     } finally {
       site.isAnimating = false
     }
@@ -210,11 +223,16 @@ function animate($: EngineInterface, mod: Mod, site: Site) {
 function startDemo(mod: Mod, seconds: number, now: number, isHidden: boolean): string {
   if (isHidden) return 'stage-toons is hidden; /stage hide shows it.'
   if (mod.surface !== 'terminal') return 'The demo plays in the terminal only.'
+  const band = mod.lastBand
+  if (band && bandMode({ ...band, hasSurvey: false, isAgentView: false, isHidden: false, isDemo: true }) !== 'demo') {
+    return 'The band has no room for the demo: it needs 30 columns and 9 rows.'
+  }
+  const isRestart = mod.demo !== null && demoAt(mod.demo, now) !== null
   mod.demo = { at: now, seconds }
   const total = DEMO_SCENES.length * seconds
   const length = total < 60 ? 'under a minute' : `about ${Math.round(total / 60)} min`
 
-  return `Playing ${DEMO_SCENES.length} scenes, ${seconds} s each (${length}). /stage demo stop ends it.`
+  return `${isRestart ? 'Restarting the demo: p' : 'P'}laying ${DEMO_SCENES.length} scenes, ${seconds} s each (${length}). /stage demo stop ends it.`
 }
 
 export const register: Register = on => {
@@ -246,8 +264,8 @@ export const register: Register = on => {
       mod.commandName = (
         await $.command.register({
           name: COMMAND,
-          description: 'Show or move the workflow stage; /stage hide hides the bar and the cartoons',
-          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide]',
+          description: 'Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene',
+          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [seconds | stop]]',
           immediate: true,
         })
       ).command
@@ -392,15 +410,25 @@ export const register: Register = on => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const now = await $.clock.now()
     if (mod.demo && !demoAt(mod.demo, now)) mod.demo = null
-    const mode = bandMode({
+    // Claude has just stopped: the idle clock starts here if the band hears
+    // of it before the turn's end does.
+    if (e.props.isWorking) mod.isBandWorking = true
+    else if (mod.isBandWorking) {
+      mod.isBandWorking = false
+      mod.idleSince = now
+    }
+    const site: BandSite = {
       surface: e.surface,
       isWorking: e.props.isWorking,
       hasSurvey: e.props.hasSurvey,
       isAgentView: e.props.view.agentId !== undefined,
       isHidden: await read($, hiddenAtom),
       columns: e.props.bodyColumns,
+      maxRows: e.props.maxRows,
       isDemo: mod.demo !== null,
-    })
+    }
+    mod.lastBand = site
+    const mode = bandMode(site)
     const progress = await read($, progressAtom)
     const { band } = mod
     if (mode === 'none' || progress === null) {
