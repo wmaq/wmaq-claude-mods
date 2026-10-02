@@ -46,8 +46,20 @@ You can move it yourself with `/stage`:
 | `/stage feature <name>` | Name the feature (`/stage feature -` clears it) |
 | `/stage message <text>` | Set the message |
 | `/stage hide` | Hide or show the bar and the cartoons |
+| `/stage demo [seconds]` | Play every scene, 10 s each (2 to 60); `/stage demo stop` ends it |
 
 Claude is told about your moves.
+
+## While Claude waits for you
+
+When Claude isn't working, a small Clawd stands left of the bar. He blinks,
+glances at the prompt and the bar, taps a foot, and after a minute sits
+down and dozes off. He shows in a terminal at least 70 columns wide;
+otherwise the bar is text alone.
+
+`/stage demo` plays all 12 scenes in turn below the bar (the ten stages,
+Other and Fable's audit), so you can see them without waiting for the
+work to reach each stage. A new prompt ends the demo.
 
 ## Install
 
