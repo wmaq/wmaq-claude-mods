@@ -10,20 +10,31 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Progress } from '../types'
+import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { bandLayout, type Tone } from './band'
 import { moveFor, parseCommand, showText, USAGE } from './command'
-import { createDirector, type Director, react, withStage } from './director'
+import { createDirector, type Director, react, shot, tick, withAuditing, withStage } from './director'
+import { encodeCells } from './pixels'
 import { type KV, loadProgress, saveProgress, storeKey, validate } from './progress'
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, TOOL_SCHEMA, toolNameFor, workflowText } from './prompt'
+import { type SceneId, STAGE_W } from './scene'
+import { REACTIONS, SCENES } from './scenes'
 import { applyMove, describe, freshProgress, isAdvance, isStageId, STAGE_IDS } from './stages'
+import { type Cast, composeFrame, TOON_ROWS } from './toon'
 
 const PLUGIN = 'stage-toons'
 const HIDDEN_KEY = 'hidden'
 const UNSAVED = "stage-toons: couldn't save progress; it lasts for this session only"
+const FRAME_MS = 83
+// Refused blits in a row before the loop gives up: the spinner it painted is
+// gone, as when a background agent's row closes.
+const MAX_REFUSED = 3
+const MIN_VIEWPORT = 30
 
 // The engine reads each atom's plugin and key from the source, so they are
 // written out as literals.
 const progressAtom = atom({ plugin: 'stage-toons', key: 'progress' } as const, null)
+const auditingAtom = atom({ plugin: 'stage-toons', key: 'auditing' } as const, false)
 const hiddenAtom = atom({ plugin: 'stage-toons', key: 'hidden' } as const, false)
 const workflowAtom = atom({ plugin: 'stage-toons', key: 'workflowText' } as const, null)
 
@@ -44,6 +55,10 @@ type Mod = {
   commandName: string
   hasWarned: boolean
   director: Director
+  auditors: Set<string>
+  lastFailureAt: number | null
+  toon: { requestId: string | undefined; columns: number; isAnimating: boolean; isHidden: boolean }
+  broken: Set<SceneId>
 }
 
 const createMod = (): Mod => ({
@@ -52,6 +67,10 @@ const createMod = (): Mod => ({
   commandName: COMMAND,
   hasWarned: false,
   director: createDirector('other', false),
+  auditors: new Set(),
+  lastFailureAt: null,
+  toon: { requestId: undefined, columns: STAGE_W, isAnimating: false, isHidden: false },
+  broken: new Set(),
 })
 
 type ToolArgs = { agentId?: string } & Record<string, unknown>
@@ -93,6 +112,47 @@ async function setStage($: EngineInterface, mod: Mod, args: ToolArgs) {
   return { result: { content: [{ type: 'text' as const, text: `Stage ${describe(after)}` }] } }
 }
 
+async function setAuditing($: EngineInterface, mod: Mod, isAuditing: boolean) {
+  await update($, auditingAtom, () => isAuditing)
+  mod.director = withAuditing(mod.director, isAuditing, await $.clock.now())
+}
+
+function frameCells($: EngineInterface, mod: Mod, now: number, columns: number): string {
+  mod.director = tick(mod.director, now)
+  const cast: Cast = {
+    scenes: SCENES,
+    reactions: REACTIONS,
+    broken: mod.broken,
+    onBreak: (id, error) => $.ui.log(`stage-toons: scene ${id} failed and was replaced by idle: ${String(error)}`, { to: 'debug' }),
+  }
+
+  return encodeCells(composeFrame(shot(mod.director, now), now, columns, cast))
+}
+
+// Repaints the toon while the spinner shows, detached from the render that
+// started it: a sleep inside a dispatch would spend its time budget.
+function animate($: EngineInterface, mod: Mod) {
+  const { toon } = mod
+  if (toon.isAnimating) return
+  toon.isAnimating = true
+  void (async () => {
+    try {
+      let refused = 0
+      while (toon.requestId !== undefined && !toon.isHidden && refused < MAX_REFUSED) {
+        const { requestId, columns } = toon
+        const cells = frameCells($, mod, await $.clock.now(), columns)
+        const answer = await $.ui.blit({ requestId, key: 'toon', cells, columns, rows: TOON_ROWS }).catch(() => ({ deny: 'failed' }))
+        refused = answer.deny === undefined ? 0 : refused + 1
+        await $.clock.sleep(FRAME_MS)
+      }
+    } finally {
+      toon.isAnimating = false
+    }
+  })().catch(() => {
+    // The environment unloaded mid-frame (a reload, the session's end).
+  })
+}
+
 export const register: Register = on => {
   const mod = createMod()
 
@@ -108,8 +168,12 @@ export const register: Register = on => {
     } catch {
       // Shown, then.
     }
+    mod.toon.isHidden = isHidden
+    // A reload forgets which agents were Fable, so the auditor stands down.
+    mod.auditors.clear()
     await update($, progressAtom, () => loaded.progress)
     await update($, hiddenAtom, () => isHidden)
+    await update($, auditingAtom, () => false)
     mod.director = createDirector(loaded.progress.stage, false)
     try {
       mod.toolName = (await $.tool.register({ name: TOOL, description: TOOL_DESCRIPTION, inputSchema: TOOL_SCHEMA })).tool
@@ -147,7 +211,19 @@ export const register: Register = on => {
     return next(e)
   })
 
-  on('tool.call', async ($, e, next) => (e.tool === mod.toolName ? setStage($, mod, e as unknown as ToolArgs) : next(e)))
+  on('tool.call', async ($, e, next) => {
+    if (e.tool === mod.toolName) return setStage($, mod, e as unknown as ToolArgs)
+    const result = await next(e)
+    if (e.agentId === undefined && result.isError === true) {
+      const now = await $.clock.now()
+      if (isFailureDue(mod.lastFailureAt, now)) {
+        mod.lastFailureAt = now
+        mod.director = react(mod.director, 'failure', now)
+      }
+    }
+
+    return result
+  })
 
   on('command.run', async ($, e, next) => {
     if (e.command !== mod.commandName) return next(e)
@@ -158,6 +234,7 @@ export const register: Register = on => {
     if (cmd.kind === 'usage') return { text: USAGE }
     if (cmd.kind === 'hide') {
       const isHidden = !(await read($, hiddenAtom))
+      mod.toon.isHidden = isHidden
       await update($, hiddenAtom, () => isHidden)
       try {
         await $.store.set(HIDDEN_KEY, isHidden)
@@ -197,11 +274,44 @@ export const register: Register = on => {
     return result
   })
 
+  on('agent.spawn', async ($, e, next) => {
+    const result = await next(e)
+    if (result.deny === undefined && result.agentId !== undefined && isAuditorSpawn(e, result.model)) {
+      const wasIdle = mod.auditors.size === 0
+      mod.auditors.add(result.agentId)
+      if (wasIdle) await setAuditing($, mod, true)
+    }
+
+    return result
+  })
+
+  on('turn.complete', async ($, e, next) => {
+    if (e.agentId !== undefined) {
+      // A subagent's turn: the end of an auditor, perhaps, and of the
+      // spinner on its row, which carries the agent's id.
+      if (mod.toon.requestId === e.agentId) mod.toon.requestId = undefined
+      if (mod.auditors.delete(e.agentId) && mod.auditors.size === 0) await setAuditing($, mod, false)
+
+      return next(e)
+    }
+    mod.toon.requestId = undefined
+    if (mod.auditors.size > 0) {
+      try {
+        for (const id of staleAuditors(mod.auditors, await $.agent.list())) mod.auditors.delete(id)
+        if (mod.auditors.size === 0) await setAuditing($, mod, false)
+      } catch {
+        // Checked again at the next turn's end.
+      }
+    }
+
+    return next(e)
+  })
+
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey || e.props.view.agentId !== undefined || (await read($, hiddenAtom))) return next(e)
     const progress = await read($, progressAtom)
     if (progress === null) return next(e)
-    const lines = bandLayout(progress, false, e.props.bodyColumns)
+    const lines = bandLayout(progress, await read($, auditingAtom), e.props.bodyColumns)
     const { Box, Text } = $.ui.resolve(e)
 
     return (
@@ -215,6 +325,29 @@ export const register: Register = on => {
             ))}
           </Box>
         ))}
+      </Box>
+    )
+  })
+
+  on('ui.render', { component: 'Spinner' }, async ($, e, next) => {
+    if (e.surface !== 'terminal') return next(e)
+    const line = await next(e)
+    const viewport = e.viewport?.columns ?? 80
+    if ((await read($, hiddenAtom)) || viewport < MIN_VIEWPORT) {
+      mod.toon.requestId = undefined
+
+      return line
+    }
+    mod.toon.requestId = e.requestId
+    mod.toon.columns = Math.min(STAGE_W, viewport - 6)
+    const cells = frameCells($, mod, await $.clock.now(), mod.toon.columns)
+    animate($, mod)
+    const { Box, Raster } = $.ui.resolve(e)
+
+    return (
+      <Box flexDirection="column">
+        {line}
+        <Raster key="toon" columns={mod.toon.columns} rows={TOON_ROWS} cells={cells} />
       </Box>
     )
   })
