@@ -1,17 +1,12 @@
 import { expect, test } from 'claude-code/testing'
 
-import { CLAWD_ORANGE } from './clawd'
-import type { PixelBuffer } from './pixels'
-import { heroAt, renderFull, renderScene, type Scene, STAGE_H } from './scene'
-import { planAudit, specAudit } from './scenes/audit'
-import { brainstorm } from './scenes/brainstorm'
-import { idle } from './scenes/idle'
-import { other } from './scenes/other'
-import { plan } from './scenes/plan'
-import { roadmap } from './scenes/roadmap'
-import { spec } from './scenes/spec'
+import { CLAWD_ORANGE, FABLE_VIOLET } from './clawd'
+import { createBuffer, type PixelBuffer } from './pixels'
+import { CLAWD_TOP, heroAt, renderFull, renderScene, type Scene, STAGE_H, STAGE_W } from './scene'
+import { REACTIONS, SCENES } from './scenes'
+import { C } from './scenes/kit'
 
-const SCENE_LIST: Scene[] = [roadmap, brainstorm, spec, specAudit, plan, planAudit, other, idle]
+const SCENE_LIST: Scene[] = Object.values(SCENES)
 
 const count = (b: PixelBuffer, color: number) => [...b.px].filter(c => c === color).length
 
@@ -42,6 +37,43 @@ test('every loop is seamless: the hero ends where it began', () => {
   }
 })
 
-test('each stage scene is named for its stage', () => {
-  expect(SCENE_LIST.map(s => s.id)).toEqual(['roadmap', 'brainstorm', 'spec', 'spec-audit', 'plan', 'plan-audit', 'other', 'idle'])
+test('every scene is filed under its own id, one per stage plus the auditor and idle', () => {
+  for (const [id, scene] of Object.entries(SCENES)) expect(scene.id).toBe(id)
+  expect(Object.keys(SCENES).sort()).toEqual(
+    ['roadmap', 'brainstorm', 'spec', 'spec-audit', 'plan', 'plan-audit', 'develop', 'claude-test', 'user-test', 'cleanup', 'other', 'auditor', 'idle'].sort(),
+  )
+})
+
+test('in the auditor scene both Clawds are on stage', () => {
+  for (let t = 0.013; t < SCENES.auditor.loop; t += 0.1) {
+    const b = renderFull(SCENES.auditor, t)
+    expect(count(b, CLAWD_ORANGE)).toBeGreaterThan(40)
+    expect(count(b, FABLE_VIOLET)).toBeGreaterThan(40)
+  }
+})
+
+test('reactions draw without throwing and set the hero mood', () => {
+  const hero = { x: 24, y: CLAWD_TOP }
+  for (const reaction of Object.values(REACTIONS)) {
+    for (let t = 0; t < 3; t += 0.1) reaction.draw(createBuffer(STAGE_W, STAGE_H), t, hero)
+  }
+  const failure = createBuffer(STAGE_W, STAGE_H)
+  REACTIONS.failure.draw(failure, 0.7, hero)
+  expect(count(failure, C.red)).toBeGreaterThan(0)
+  expect(REACTIONS.failure.mood?.(0.1)).toBe('flinch')
+  expect(REACTIONS.advance.mood?.(0.1)).toBe('jump')
+  expect(REACTIONS.advance.mood?.(2)).toBeNull()
+})
+
+test('Fable walks in from off stage to its place, and back out', () => {
+  const fableAt = (id: 'fable-arrives' | 'fable-leaves', t: number) => {
+    const b = createBuffer(STAGE_W, STAGE_H)
+    REACTIONS[id].draw(b, t, { x: 24, y: CLAWD_TOP })
+
+    return count(b, FABLE_VIOLET)
+  }
+  expect(fableAt('fable-arrives', 0)).toBe(0)
+  expect(fableAt('fable-arrives', 1.99)).toBeGreaterThan(40)
+  expect(fableAt('fable-leaves', 0.01)).toBeGreaterThan(40)
+  expect(fableAt('fable-leaves', 2)).toBe(0)
 })
