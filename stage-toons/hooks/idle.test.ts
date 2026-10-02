@@ -50,9 +50,9 @@ test('after a minute Clawd dozes: sitting, eyes closed, z rising beside the head
   expect(where(b, Z_COLOR).every(p => p.x >= 15)).toBe(true)
 })
 
-test("the z's come one after another", () => {
-  expect(where(at(60.1), Z_COLOR)).toHaveLength(7)
-  expect(where(at(61.1), Z_COLOR)).toHaveLength(14)
+test('one z rises at a time, so two never run together', () => {
+  for (let t = 60; t < 70; t += 0.05) expect(where(at(t), Z_COLOR).length).toBeLessThanOrEqual(7)
+  expect(where(at(61.1), Z_COLOR)).toHaveLength(7)
 })
 
 test("the z's rise and are always drawn whole", () => {

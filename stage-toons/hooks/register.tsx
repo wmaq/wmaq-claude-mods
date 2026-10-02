@@ -82,6 +82,8 @@ type Mod = {
   isBandWorking: boolean
   lastBand: BandSite | null
   demo: Demo | null
+  // The demo scene the band's text line names.
+  demoLineIndex: number
   broken: Set<SceneId>
 }
 
@@ -100,6 +102,7 @@ const createMod = (): Mod => ({
   isBandWorking: false,
   lastBand: null,
   demo: null,
+  demoLineIndex: 0,
   broken: new Set(),
 })
 
@@ -187,13 +190,21 @@ function animate($: EngineInterface, mod: Mod, site: Site) {
       let refused = 0
       while (site.requestId !== undefined && !mod.isHidden && refused < (site.isSeen ? MAX_REFUSED : MAX_REFUSED_UNSEEN)) {
         const { requestId, kind, columns, rows } = site
-        const cells = siteCells($, mod, site, await $.clock.now())
+        const now = await $.clock.now()
+        const cells = siteCells($, mod, site, now)
         if (cells === null) {
           // The demo is over. Nothing is awaited from here to the loop's
           // end, so the redraw that brings the band back finds it finished.
           site.requestId = undefined
           endDemo($, mod)
           break
+        }
+        // A blit repaints the scene alone: the line naming it is text, so
+        // the band is drawn again when the demo moves on.
+        const index = kind === 'demo' && mod.demo ? demoAt(mod.demo, now)?.index : undefined
+        if (index !== undefined && index !== mod.demoLineIndex) {
+          mod.demoLineIndex = index
+          $.ui.invalidate('ui.render')
         }
         const answer = await $.ui.blit({ requestId, key: kind, cells, columns, rows }).catch(() => ({ deny: 'failed' }))
         if (answer.deny === undefined) {
@@ -438,6 +449,7 @@ export const register: Register = on => {
     }
     const columns = e.props.bodyColumns
     const frame = mode === 'demo' && mod.demo ? demoAt(mod.demo, now) : null
+    if (frame) mod.demoLineIndex = frame.index
     const barColumns = mode === 'idle' ? columns - IDLE_COLS - IDLE_GAP : columns
     const lines = bandLayout(progress, await read($, auditingAtom), barColumns, frame ? demoLine(frame) : undefined)
     // Other plugins' bands, and the engine's, still draw: below the bar.

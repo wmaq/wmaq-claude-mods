@@ -1,7 +1,7 @@
 // The idle Clawd beside the bar while Claude waits for you: 18 columns by
 // 4 rows. Awake, it blinks, glances down at the prompt and right at the
 // bar, and taps a foot; after a minute it sits, closes its eyes and dozes,
-// z's rising beside its head.
+// a z rising beside its head.
 
 import { type ClawdLook, drawClawd } from './clawd'
 import { createBuffer, type PixelBuffer } from './pixels'
@@ -15,8 +15,8 @@ export const Z_COLOR = C.smoke
 
 const AWAKE_LOOP = 8
 const Z: Sprite = { palette: { z: Z_COLOR }, frames: [['zzz', '.z.', 'zzz']] }
-// Each z rises from the bottom row to the top in Z_RISE seconds, the two
-// half a rise apart.
+// One z at a time rises from the bottom row to the top in Z_RISE seconds:
+// two in one column would run together into one shape.
 const Z_RISE = 2
 const Z_X = 15
 
@@ -36,11 +36,8 @@ export function idleFrame(idleMs: number): PixelBuffer {
   }
   drawClawd(b, 1, 0, { pose: 'sit', eyes: 'closed', arms: { left: 'down', right: 'down' } })
   const t = (idleMs - DOZE_MS) / 1000
-  for (const delay of [0, Z_RISE / 2]) {
-    if (t < delay) continue
-    const phase = ((t - delay) / Z_RISE) % 1
-    drawSprite(b, Z, 0, Z_X, 5 - Math.floor(phase * 6))
-  }
+  const phase = (t / Z_RISE) % 1
+  drawSprite(b, Z, 0, Z_X, 5 - Math.floor(phase * 6))
 
   return b
 }
