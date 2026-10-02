@@ -43,7 +43,7 @@ You can move it yourself with `/stage`:
 | `/stage` | Show the stage and the recent moves |
 | `/stage 5`, `/stage plan` | Move to a stage (`0` or `?` for Other) |
 | `/stage next`, `/stage back` | One step |
-| `/stage feature <name>` | Name the feature |
+| `/stage feature <name>` | Name the feature (`/stage feature -` clears it) |
 | `/stage message <text>` | Set the message |
 | `/stage hide` | Hide or show the bar and the cartoons |
 
@@ -53,17 +53,35 @@ Claude is told about your moves.
 
 Needs Claude Code 2.1.288 or later with plugin hook modules (early access).
 
-- For one session: `claude --plugin-dir C:\Dev\claude-mods\stage-toons`
-- For every session: add the folder to the `env` block of
-  `~/.claude/settings.json`, then restart Claude Code:
+1. Clone the repository wherever you keep your code:
 
-  ```json
-  {
-    "env": {
-      "CLAUDE_CODE_PLUGIN_DIRS": "C:\\Dev\\claude-mods\\stage-toons"
-    }
-  }
-  ```
+   ```sh
+   git clone https://github.com/wmaq/claude-mods.git
+   ```
+
+   The mod is the `stage-toons` folder inside it. Below, `<path>` stands for
+   that folder's full path, such as `/home/you/src/claude-mods/stage-toons`
+   or `C:\src\claude-mods\stage-toons`.
+
+2. Try it for one session:
+
+   ```sh
+   claude --plugin-dir <path>
+   ```
+
+3. To load it in every session, add the folder to the `env` block of
+   `~/.claude/settings.json` (on Windows, write each `\` in the path as
+   `\\`), then restart Claude Code:
+
+   ```json
+   {
+     "env": {
+       "CLAUDE_CODE_PLUGIN_DIRS": "<path>"
+     }
+   }
+   ```
+
+To update, run `git pull` in the clone.
 
 The cartoons draw only in the terminal; the desktop app shows the bar as
 text.
