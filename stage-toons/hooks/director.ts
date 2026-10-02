@@ -42,7 +42,8 @@ export function tick(d: Director, now: number): Director {
   if (n.reaction && now - n.reaction.at >= REACTION_MS[n.reaction.id]) {
     const ended = n.reaction.id
     n = { ...n, reaction: null }
-    if (ended === 'fable-arrives') n = { ...n, base: 'auditor' }
+    // A wipe begun under the walk ends with it: the auditor scene takes over whole.
+    if (ended === 'fable-arrives') n = { ...n, base: 'auditor', wipe: null }
   }
   if (n.wipe && now - n.wipe.at >= WIPE_MS) n = { ...n, wipe: null }
   const isWalking = n.reaction !== null && isFable(n.reaction.id)
@@ -58,8 +59,11 @@ export function withStage(d: Director, stage: StageId, now: number): Director {
   const n = tick(d, now)
   if (stage === n.stage) return n
   const isShowingStage = n.base !== 'auditor'
+  // A wipe still running goes on wiping out the scene it started from,
+  // into the newest stage.
+  const wipe = isShowingStage ? (n.wipe ?? { from: n.base, at: now }) : n.wipe
 
-  return { ...n, stage, base: isShowingStage ? stage : n.base, wipe: isShowingStage ? { from: n.base, at: now } : n.wipe }
+  return { ...n, stage, base: isShowingStage ? stage : n.base, wipe }
 }
 
 export const withAuditing = (d: Director, auditing: boolean, now: number): Director => tick({ ...d, auditing }, now)

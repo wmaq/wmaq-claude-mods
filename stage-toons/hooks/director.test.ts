@@ -58,3 +58,49 @@ test('auditing again while Fable walks out brings Fable back once the exit ends'
   d = tick(d, T + 4500)
   expect(shot(d, T + 4500).reaction).toEqual({ id: 'fable-arrives', t: 0 })
 })
+
+test("a stage change while Fable walks in wipes under the walk, and the walk-in's end clears the wipe", () => {
+  let d = withAuditing(createDirector('develop', false), true, T)
+  d = withStage(d, 'claude-test', T + 1900)
+  expect(shot(d, T + 1950)).toEqual({ base: 'claude-test', wipe: { from: 'develop', progress: 50 / 300 }, reaction: { id: 'fable-arrives', t: 1.95 } })
+  d = tick(d, T + 2000)
+  expect(shot(d, T + 2000)).toEqual({ base: 'auditor', wipe: null, reaction: null })
+  expect(d.stage).toBe('claude-test')
+})
+
+test('a stage change while Fable walks out wipes under the walk', () => {
+  let d = tick(withAuditing(createDirector('develop', false), true, T), T + 2000)
+  d = withAuditing(d, false, T + 3000)
+  d = withStage(d, 'claude-test', T + 3500)
+  expect(shot(d, T + 3650)).toEqual({ base: 'claude-test', wipe: { from: 'develop', progress: 0.5 }, reaction: { id: 'fable-leaves', t: 0.65 } })
+})
+
+test('auditing turning on or off cuts a failure or advance short', () => {
+  for (const id of ['failure', 'advance'] as const) {
+    const on = withAuditing(react(createDirector('develop', false), id, T), true, T + 500)
+    expect(shot(on, T + 500)).toEqual({ base: 'develop', wipe: null, reaction: { id: 'fable-arrives', t: 0 } })
+    let off = tick(withAuditing(createDirector('develop', false), true, T), T + 2000)
+    off = withAuditing(react(off, id, T + 2100), false, T + 2500)
+    expect(shot(off, T + 2500)).toEqual({ base: 'develop', wipe: null, reaction: { id: 'fable-leaves', t: 0 } })
+  }
+})
+
+test('a second stage change mid-wipe keeps wiping the first scene out', () => {
+  let d = withStage(createDirector('spec', false), 'plan', T)
+  d = withStage(d, 'develop', T + 150)
+  expect(shot(d, T + 225)).toEqual({ base: 'develop', wipe: { from: 'spec', progress: 0.75 }, reaction: null })
+  d = tick(d, T + 300)
+  expect(shot(d, T + 300)).toEqual({ base: 'develop', wipe: null, reaction: null })
+})
+
+test('a director made while auditing starts on the auditor scene, with no walk-in', () => {
+  const d = createDirector('spec', true)
+  expect(shot(d, T)).toEqual({ base: 'auditor', wipe: null, reaction: null })
+  expect(shot(tick(d, T + 5000), T + 5000)).toEqual({ base: 'auditor', wipe: null, reaction: null })
+})
+
+test('a failure alone plays for 2.5 s', () => {
+  const d = react(createDirector('plan', false), 'failure', T)
+  expect(tick(d, T + 2499).reaction?.id).toBe('failure')
+  expect(tick(d, T + 2500).reaction).toBeNull()
+})
