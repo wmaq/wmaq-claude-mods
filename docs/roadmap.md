@@ -52,3 +52,13 @@ Deferred minors from the final review of v0.1:
   never counts as newer).
 - `TOOL_DESCRIPTION` could say a subagent's `set_stage` call is refused, so
   subagents don't try.
+
+### Later (ideas, up for discussion)
+
+- **A debugging stage.** A stage, with its own scene, for hunting a bug
+  (superpowers:systematic-debugging). Open: where it sits in the workflow,
+  or whether it is a side stage any step can drop into and return from.
+- **Idle variants by the last finished step.** The idle Clawd's loops
+  depend on the stage just completed, for example celebrating after a
+  merge or holding the spec after the spec stage. Builds on v0.2's idle
+  Clawd.
