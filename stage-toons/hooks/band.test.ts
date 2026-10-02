@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { bandLayout, type Span, trackSpans } from './band'
+import { bandLayout, bandMode, IDLE_MIN, type Span, trackSpans } from './band'
 import { applyMove, freshProgress } from './stages'
 
 const text = (line: Span[] | undefined) => (line ?? []).map(s => s.text).join('')
@@ -45,4 +45,36 @@ test('a long feature is dropped before anything is cut, and the message is cut t
 test('a narrow band is one line', () => {
   expect(bandLayout(plan, true, 49).map(text)).toEqual(['5/10 Plan — Writing the implementation plan'])
   expect(bandLayout(plan, false, 20).map(text)).toEqual(['5/10 Plan — Writin…'])
+})
+
+test('the demo line can stand in for the message', () => {
+  expect(bandLayout(plan, false, 100, 'Demo 3/12: Spec').map(text)).toEqual([' ●━●━●━●━◉─○─○─○─○─○  5/10 Plan · stage-toons', ' Demo 3/12: Spec'])
+  expect(bandLayout(plan, false, 40, 'Demo 3/12: Spec').map(text)).toEqual(['5/10 Plan — Demo 3/12: Spec'])
+})
+
+const site = { surface: 'terminal', isWorking: false, hasSurvey: false, isAgentView: false, isHidden: false, columns: 100, isDemo: false }
+
+test('the band shows the idle Clawd in a wide terminal while Claude waits', () => {
+  expect(bandMode(site)).toBe('idle')
+  expect(bandMode({ ...site, columns: IDLE_MIN })).toBe('idle')
+  expect(IDLE_MIN).toBe(70)
+  expect(bandMode({ ...site, columns: IDLE_MIN - 1 })).toBe('text')
+  expect(bandMode({ ...site, isWorking: true })).toBe('text')
+  expect(bandMode({ ...site, surface: 'desktop' })).toBe('text')
+})
+
+test('the band plays the demo in a terminal of 30 columns or more, working or not', () => {
+  const demo = { ...site, isDemo: true }
+  expect(bandMode(demo)).toBe('demo')
+  expect(bandMode({ ...demo, isWorking: true })).toBe('demo')
+  expect(bandMode({ ...demo, columns: 30 })).toBe('demo')
+  expect(bandMode({ ...demo, columns: 29 })).toBe('text')
+  expect(bandMode({ ...demo, surface: 'desktop' })).toBe('text')
+})
+
+test('the band yields to a survey, an agent transcript, and /stage hide', () => {
+  for (const off of [{ hasSurvey: true }, { isAgentView: true }, { isHidden: true }]) {
+    expect(bandMode({ ...site, ...off })).toBe('none')
+    expect(bandMode({ ...site, ...off, isDemo: true })).toBe('none')
+  }
 })

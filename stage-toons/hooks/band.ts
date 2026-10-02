@@ -3,6 +3,7 @@
 // auditor runs, and the message. Sized to the band so nothing wraps.
 
 import type { Progress } from '../types'
+import { IDLE_COLS } from './idle'
 import { isTrack, position, rank, TRACK } from './stages'
 
 export type Tone = 'done' | 'current' | 'future' | 'label' | 'tag' | 'message'
@@ -11,6 +12,34 @@ export type Span = { text: string; tone: Tone }
 // Below this many columns the band is one line.
 export const WIDE_MIN = 50
 export const TAG = '⌕ Fable reviewing'
+// The fewest columns a toon is drawn in, cropped.
+export const TOON_MIN = 30
+// Columns between the idle Clawd and the bar.
+export const IDLE_GAP = 2
+// The idle Clawd shows only where the two-line bar still fits beside it.
+export const IDLE_MIN = IDLE_COLS + IDLE_GAP + WIDE_MIN
+
+export type BandMode = 'none' | 'text' | 'idle' | 'demo'
+export type BandSite = {
+  surface: string
+  isWorking: boolean
+  hasSurvey: boolean
+  isAgentView: boolean
+  isHidden: boolean
+  columns: number
+  isDemo: boolean
+}
+
+// What the band draws: nothing of stage-toons' (yielding), the text bar,
+// the bar beside the idle Clawd while Claude waits, or the bar over the
+// demo. The cartoons are terminal only.
+export function bandMode(s: BandSite): BandMode {
+  if (s.hasSurvey || s.isAgentView || s.isHidden) return 'none'
+  if (s.surface !== 'terminal') return 'text'
+  if (s.isDemo) return s.columns >= TOON_MIN ? 'demo' : 'text'
+
+  return !s.isWorking && s.columns >= IDLE_MIN ? 'idle' : 'text'
+}
 
 // The track as it stands: done steps and the links between them, the
 // current step, and the steps to come. In Other, the track as it stood at
@@ -31,10 +60,11 @@ export function trackSpans(p: Progress): Span[] {
 const fit = (text: string, width: number): string => (text.length <= width ? text : width < 1 ? '' : `${text.slice(0, width - 1)}…`)
 const lengthOf = (spans: Span[]) => spans.reduce((n, s) => n + s.text.length, 0)
 
-export function bandLayout(p: Progress, isAuditing: boolean, columns: number): Span[][] {
+// message, when given, stands in for the progress's own (the demo's line).
+export function bandLayout(p: Progress, isAuditing: boolean, columns: number, message = p.message): Span[][] {
   // One column spare, so a line never touches the edge.
   const width = Math.max(1, columns - 1)
-  if (columns < WIDE_MIN) return [[{ text: fit(`${position(p)} — ${p.message}`, width), tone: 'label' }]]
+  if (columns < WIDE_MIN) return [[{ text: fit(`${position(p)} — ${message}`, width), tone: 'label' }]]
   const track: Span[] = [{ text: ' ', tone: 'label' }, ...trackSpans(p)]
   const room = width - lengthOf(track)
   const withFeature = `  ${position(p)}${p.feature ? ` · ${p.feature}` : ''}`
@@ -44,5 +74,5 @@ export function bandLayout(p: Progress, isAuditing: boolean, columns: number): S
   const line1: Span[] = [...track, { text: fit(label, room), tone: 'label' }]
   if (tag && label.length + tag.length <= room) line1.push({ text: tag, tone: 'tag' })
 
-  return [line1, [{ text: fit(` ${p.message}`, width), tone: 'message' }]]
+  return [line1, [{ text: fit(` ${message}`, width), tone: 'message' }]]
 }

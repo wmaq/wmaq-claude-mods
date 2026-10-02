@@ -23,22 +23,23 @@ export const COMPOSE = {
 // What a compaction leaves: at least one message.
 export const SUMMARY: SessionMessage = { role: 'user', text: 'Summary of the conversation so far.', toolUses: [] }
 
-export const bandProps = (bodyColumns = 100, extra: { hasSurvey?: boolean; agentId?: string } = {}) => ({
+export const bandProps = (bodyColumns = 100, extra: { hasSurvey?: boolean; agentId?: string; isWorking?: boolean } = {}) => ({
   hasSurvey: extra.hasSurvey ?? false,
-  isWorking: false,
+  isWorking: extra.isWorking ?? false,
   maxRows: 10,
   bodyColumns,
   scroll: { offset: 0, bodyRows: 10 },
   view: extra.agentId === undefined ? {} : { agentId: extra.agentId },
 })
 
-export type Blit = { cells: string; columns: number }
+export type Blit = { key: string; cells: string; columns: number; rows: number }
 export type AgentRow = { id: string; description: string; type: string; status: string }
 export type World = {
   store: Record<string, unknown>
   isStoreBroken: boolean
   isBlitRefused: boolean
   blits: Blit[]
+  invalidations: number
   toasts: string[]
   agents: AgentRow[]
   spawnModel: string
@@ -46,7 +47,7 @@ export type World = {
 }
 
 export function engine(on: On, preset: { store?: Record<string, unknown> } = {}) {
-  const world: World = { store: { ...preset.store }, isStoreBroken: false, isBlitRefused: false, blits: [], toasts: [], agents: [], spawnModel: 'claude-sonnet-5-5', spawned: 0 }
+  const world: World = { store: { ...preset.store }, isStoreBroken: false, isBlitRefused: false, blits: [], invalidations: 0, toasts: [], agents: [], spawnModel: 'claude-sonnet-5-5', spawned: 0 }
   const clock = mock.clock(on, { now: NOW })
   const guard = () => {
     if (world.isStoreBroken) throw new Error('store unavailable')
@@ -81,9 +82,14 @@ export function engine(on: On, preset: { store?: Record<string, unknown> } = {})
     return { value: undefined }
   })
   on('ui.blit', ($, e) => {
-    if ('cells' in e) world.blits.push({ cells: e.cells, columns: e.columns ?? 0 })
+    if ('cells' in e) world.blits.push({ key: e.key, cells: e.cells, columns: e.columns ?? 0, rows: e.rows ?? 0 })
 
     return { value: world.isBlitRefused ? { deny: 'nothing of this plugin is mounted there' } : {} }
+  })
+  on('ui.invalidate', () => {
+    world.invalidations += 1
+
+    return { value: undefined }
   })
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
@@ -145,6 +151,13 @@ export async function bandText($: Engine, surface: 'terminal' | 'desktop' = 'ter
 
   return band?.text ?? (engineBand ? '(engine)' : '(nothing)')
 }
+
+// The band as the engine mounts it, to be redrawn and searched.
+export const mountBand = ($: Engine, surface: 'terminal' | 'desktop' = 'terminal', props = bandProps()) =>
+  $.ui.mount({ plugin: 'stage-toons', surface, component: 'AbovePrompt', props })
+
+// The blits of one Raster key.
+export const blitsOf = (world: World, key: string) => world.blits.filter(b => b.key === key)
 
 // The spinner under the main conversation, or, given a requestId, the one
 // on a background agent's row (its requestId is the agent's id).

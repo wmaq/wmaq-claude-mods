@@ -17,6 +17,16 @@ test('/stage arguments parse into commands', () => {
   for (const bad of ['11', 'feature', 'message', 'next please', 'plan now', 'deploy']) expect(parseCommand(bad)).toEqual({ kind: 'usage' })
 })
 
+test('/stage demo takes seconds per scene, 2 to 60, or stop', () => {
+  expect(parseCommand('demo')).toEqual({ kind: 'demo', seconds: 10 })
+  expect(parseCommand('Demo 4')).toEqual({ kind: 'demo', seconds: 4 })
+  expect(parseCommand('demo 2')).toEqual({ kind: 'demo', seconds: 2 })
+  expect(parseCommand('demo 60')).toEqual({ kind: 'demo', seconds: 60 })
+  expect(parseCommand('demo stop')).toEqual({ kind: 'demo-stop' })
+  for (const bad of ['demo 1', 'demo 61', 'demo 2.5', 'demo x', 'demo 5 6', 'demo -3']) expect(parseCommand(bad)).toEqual({ kind: 'usage' })
+  expect(USAGE).toContain('/stage demo [seconds]')
+})
+
 test('commands move the progress as the user', () => {
   const p = freshProgress(0)
   expect(moveFor(p, { kind: 'move', stage: 'spec' }, 5)).toMatchObject({ stage: 'spec', message: 'Writing the spec', history: [{ stage: 'spec', at: 5, by: 'user' }] })

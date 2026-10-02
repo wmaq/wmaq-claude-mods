@@ -11,9 +11,11 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { Progress } from '../types'
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
-import { bandLayout, type Tone } from './band'
+import { bandLayout, bandMode, IDLE_GAP, type Tone, TOON_MIN } from './band'
 import { moveFor, parseCommand, showText, USAGE } from './command'
+import { type Demo, DEMO_SCENES, demoAt, demoLine } from './demo'
 import { createDirector, type Director, react, shot, tick, withAuditing, withStage } from './director'
+import { IDLE_COLS, IDLE_ROWS, idleFrame } from './idle'
 import { encodeCells } from './pixels'
 import { type KV, loadProgress, saveProgress, storeKey, validate } from './progress'
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, TOOL_SCHEMA, toolNameFor, workflowText } from './prompt'
@@ -25,14 +27,12 @@ import { type Cast, composeFrame, TOON_ROWS } from './toon'
 const PLUGIN = 'stage-toons'
 const HIDDEN_KEY = 'hidden'
 const UNSAVED = "stage-toons: couldn't save progress; it lasts for this session only"
-const FRAME_MS = 83
 // Refused blits in a row before the loop gives up: the spinner it painted is
 // gone, as when a background agent's row closes. Until a blit since the last
 // render has been taken, refusals are expected for a moment (after a resize
 // the old Raster stays mounted until the new one paints), so it waits longer.
 const MAX_REFUSED = 3
 const MAX_REFUSED_UNSEEN = 24
-const MIN_VIEWPORT = 30
 
 // The engine reads each atom's plugin and key from the source, so they are
 // written out as literals.
@@ -50,6 +50,16 @@ const TONES: Record<Tone, { color?: string; bold?: boolean; dimColor?: boolean }
   message: { dimColor: true },
 }
 
+// A Raster the mod repaints: the toon under the spinner, or the band's
+// idle Clawd or demo. Its key is its kind.
+type SiteKind = 'toon' | 'idle' | 'demo'
+type Site = { requestId: string | undefined; kind: SiteKind; columns: number; rows: number; isAnimating: boolean; isSeen: boolean }
+
+// How often each kind repaints: the idle Clawd is calm.
+const FRAME_MS: Record<SiteKind, number> = { toon: 83, demo: 83, idle: 166 }
+
+const createSite = (kind: SiteKind): Site => ({ requestId: undefined, kind, columns: STAGE_W, rows: TOON_ROWS, isAnimating: false, isSeen: false })
+
 // The module's own state: made fresh by every load, so it starts over on a
 // reload. What must outlive a reload is in $.state.
 type Mod = {
@@ -60,7 +70,13 @@ type Mod = {
   director: Director
   auditors: Set<string>
   lastFailureAt: number | null
-  toon: { requestId: string | undefined; columns: number; isAnimating: boolean; isHidden: boolean; isSeen: boolean }
+  isHidden: boolean
+  surface: string | null
+  toon: Site
+  band: Site
+  // When Claude last went idle: the session's start or the main turn's end.
+  idleSince: number
+  demo: Demo | null
   broken: Set<SceneId>
 }
 
@@ -72,7 +88,12 @@ const createMod = (): Mod => ({
   director: createDirector('other', false),
   auditors: new Set(),
   lastFailureAt: null,
-  toon: { requestId: undefined, columns: STAGE_W, isAnimating: false, isHidden: false, isSeen: false },
+  isHidden: false,
+  surface: 'terminal',
+  toon: createSite('toon'),
+  band: createSite('idle'),
+  idleSince: 0,
+  demo: null,
   broken: new Set(),
 })
 
@@ -121,45 +142,79 @@ async function setAuditing($: EngineInterface, mod: Mod, isAuditing: boolean) {
   mod.director = withAuditing(mod.director, isAuditing, await $.clock.now())
 }
 
-function frameCells($: EngineInterface, mod: Mod, now: number, columns: number): string {
-  mod.director = tick(mod.director, now)
-  const cast: Cast = {
+function castOf($: EngineInterface, mod: Mod): Cast {
+  return {
     scenes: SCENES,
     reactions: REACTIONS,
     broken: mod.broken,
     onBreak: (id, error) => $.ui.log(`stage-toons: scene ${id} failed and was replaced by idle: ${String(error)}`, { to: 'debug' }),
   }
-
-  return encodeCells(composeFrame(shot(mod.director, now), now, columns, cast))
 }
 
-// Repaints the toon while the spinner shows, detached from the render that
-// started it: a sleep inside a dispatch would spend its time budget.
-function animate($: EngineInterface, mod: Mod) {
-  const { toon } = mod
-  if (toon.isAnimating) return
-  toon.isAnimating = true
+// A site's next frame, or null once the demo it plays is over.
+function siteCells($: EngineInterface, mod: Mod, site: Site, now: number): string | null {
+  if (site.kind === 'idle') return encodeCells(idleFrame(now - mod.idleSince))
+  if (site.kind === 'demo') {
+    const frame = mod.demo ? demoAt(mod.demo, now) : null
+
+    return frame ? encodeCells(composeFrame(frame.shot, frame.sceneMs, site.columns, castOf($, mod))) : null
+  }
+  mod.director = tick(mod.director, now)
+
+  return encodeCells(composeFrame(shot(mod.director, now), now, site.columns, castOf($, mod)))
+}
+
+// Ends the demo and has the band drawn again without it.
+function endDemo($: EngineInterface, mod: Mod) {
+  mod.demo = null
+  $.ui.invalidate('ui.render')
+}
+
+// Repaints a site while it is mounted, detached from the render that
+// started it: a sleep inside a dispatch would spend its time budget. The
+// site's kind and size may change under it, as the band's do.
+function animate($: EngineInterface, mod: Mod, site: Site) {
+  if (site.isAnimating) return
+  site.isAnimating = true
   void (async () => {
     try {
       let refused = 0
-      while (toon.requestId !== undefined && !toon.isHidden && refused < (toon.isSeen ? MAX_REFUSED : MAX_REFUSED_UNSEEN)) {
-        const { requestId, columns } = toon
-        const cells = frameCells($, mod, await $.clock.now(), columns)
-        const answer = await $.ui.blit({ requestId, key: 'toon', cells, columns, rows: TOON_ROWS }).catch(() => ({ deny: 'failed' }))
+      while (site.requestId !== undefined && !mod.isHidden && refused < (site.isSeen ? MAX_REFUSED : MAX_REFUSED_UNSEEN)) {
+        const { requestId, kind, columns, rows } = site
+        const cells = siteCells($, mod, site, await $.clock.now())
+        if (cells === null) {
+          // The demo is over. Nothing is awaited from here to the loop's
+          // end, so the redraw that brings the band back finds it finished.
+          site.requestId = undefined
+          endDemo($, mod)
+          break
+        }
+        const answer = await $.ui.blit({ requestId, key: kind, cells, columns, rows }).catch(() => ({ deny: 'failed' }))
         if (answer.deny === undefined) {
           refused = 0
-          toon.isSeen = true
+          site.isSeen = true
         } else {
           refused += 1
         }
-        await $.clock.sleep(FRAME_MS)
+        await $.clock.sleep(FRAME_MS[kind])
       }
     } finally {
-      toon.isAnimating = false
+      site.isAnimating = false
     }
   })().catch(() => {
     // The environment unloaded mid-frame (a reload, the session's end).
   })
+}
+
+// Starts the demo, or says why not.
+function startDemo(mod: Mod, seconds: number, now: number, isHidden: boolean): string {
+  if (isHidden) return 'stage-toons is hidden; /stage hide shows it.'
+  if (mod.surface !== 'terminal') return 'The demo plays in the terminal only.'
+  mod.demo = { at: now, seconds }
+  const total = DEMO_SCENES.length * seconds
+  const length = total < 60 ? 'under a minute' : `about ${Math.round(total / 60)} min`
+
+  return `Playing ${DEMO_SCENES.length} scenes, ${seconds} s each (${length}). /stage demo stop ends it.`
 }
 
 export const register: Register = on => {
@@ -177,7 +232,9 @@ export const register: Register = on => {
     } catch {
       // Shown, then.
     }
-    mod.toon.isHidden = isHidden
+    mod.isHidden = isHidden
+    mod.surface = e.surface
+    mod.idleSince = now
     // A reload forgets which agents were Fable, so the auditor stands down.
     mod.auditors.clear()
     await update($, progressAtom, () => loaded.progress)
@@ -206,6 +263,8 @@ export const register: Register = on => {
 
   // Another session on this project may have moved the stage.
   on('prompt.submit', async ($, e, next) => {
+    // A turn starts: the toon under the spinner takes over from the demo.
+    if (mod.demo) endDemo($, mod)
     try {
       const stored = validate(await $.store.get(mod.key))
       const mine = await read($, progressAtom)
@@ -241,9 +300,22 @@ export const register: Register = on => {
     const before = await current($, now)
     if (cmd.kind === 'show') return { text: showText(before, now) }
     if (cmd.kind === 'usage') return { text: USAGE }
+    if (cmd.kind === 'demo') {
+      const text = startDemo(mod, cmd.seconds, now, await read($, hiddenAtom))
+      // The band grows to hold it.
+      if (mod.demo) $.ui.invalidate('ui.render')
+
+      return { text }
+    }
+    if (cmd.kind === 'demo-stop') {
+      if (!mod.demo) return { text: 'No demo is playing.' }
+      endDemo($, mod)
+
+      return { text: 'Demo stopped.' }
+    }
     if (cmd.kind === 'hide') {
       const isHidden = !(await read($, hiddenAtom))
-      mod.toon.isHidden = isHidden
+      mod.isHidden = isHidden
       await update($, hiddenAtom, () => isHidden)
       try {
         await $.store.set(HIDDEN_KEY, isHidden)
@@ -304,6 +376,7 @@ export const register: Register = on => {
       return next(e)
     }
     mod.toon.requestId = undefined
+    mod.idleSince = await $.clock.now()
     if (mod.auditors.size > 0) {
       try {
         for (const id of staleAuditors(mod.auditors, await $.agent.list())) mod.auditors.delete(id)
@@ -317,27 +390,76 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (e.props.hasSurvey || e.props.view.agentId !== undefined || (await read($, hiddenAtom))) return next(e)
+    const now = await $.clock.now()
+    if (mod.demo && !demoAt(mod.demo, now)) mod.demo = null
+    const mode = bandMode({
+      surface: e.surface,
+      isWorking: e.props.isWorking,
+      hasSurvey: e.props.hasSurvey,
+      isAgentView: e.props.view.agentId !== undefined,
+      isHidden: await read($, hiddenAtom),
+      columns: e.props.bodyColumns,
+      isDemo: mod.demo !== null,
+    })
     const progress = await read($, progressAtom)
-    if (progress === null) return next(e)
-    const lines = bandLayout(progress, await read($, auditingAtom), e.props.bodyColumns)
+    const { band } = mod
+    if (mode === 'none' || progress === null) {
+      band.requestId = undefined
+
+      return next(e)
+    }
+    const columns = e.props.bodyColumns
+    const frame = mode === 'demo' && mod.demo ? demoAt(mod.demo, now) : null
+    const barColumns = mode === 'idle' ? columns - IDLE_COLS - IDLE_GAP : columns
+    const lines = bandLayout(progress, await read($, auditingAtom), barColumns, frame ? demoLine(frame) : undefined)
     // Other plugins' bands, and the engine's, still draw: below the bar.
     const below = await next(e)
     const { Box, Text } = $.ui.resolve(e)
+    const bar = (
+      <Box key="stage-toons" flexDirection="column">
+        {lines.map((spans, i) => (
+          <Box key={`line-${i}`} flexDirection="row">
+            {spans.map((span, j) => (
+              <Text key={`span-${i}-${j}`} wrap="truncate-end" {...TONES[span.tone]}>
+                {span.text}
+              </Text>
+            ))}
+          </Box>
+        ))}
+      </Box>
+    )
+    if (mode === 'text' || e.requestId === undefined || e.surface !== 'terminal') {
+      band.requestId = undefined
 
-    return (
-      <Box flexDirection="column">
-        <Box key="stage-toons" flexDirection="column">
-          {lines.map((spans, i) => (
-            <Box key={`line-${i}`} flexDirection="row">
-              {spans.map((span, j) => (
-                <Text key={`span-${i}-${j}`} wrap="truncate-end" {...TONES[span.tone]}>
-                  {span.text}
-                </Text>
-              ))}
-            </Box>
-          ))}
+      return (
+        <Box flexDirection="column">
+          {bar}
+          {below}
         </Box>
+      )
+    }
+    band.requestId = e.requestId
+    band.kind = mode
+    band.columns = mode === 'idle' ? IDLE_COLS : Math.min(STAGE_W, columns - 1)
+    band.rows = mode === 'idle' ? IDLE_ROWS : TOON_ROWS
+    band.isSeen = false
+    const cells = siteCells($, mod, band, now) ?? ''
+    animate($, mod, band)
+    const { Raster } = $.ui.resolve(e)
+    const raster = <Raster key={mode} columns={band.columns} rows={band.rows} cells={cells} />
+
+    return mode === 'idle' ? (
+      <Box flexDirection="column">
+        <Box flexDirection="row" alignItems="center" columnGap={IDLE_GAP}>
+          {raster}
+          {bar}
+        </Box>
+        {below}
+      </Box>
+    ) : (
+      <Box flexDirection="column">
+        {bar}
+        {raster}
         {below}
       </Box>
     )
@@ -347,7 +469,7 @@ export const register: Register = on => {
     if (e.surface !== 'terminal') return next(e)
     const line = await next(e)
     const viewport = e.viewport?.columns ?? 80
-    if ((await read($, hiddenAtom)) || viewport < MIN_VIEWPORT) {
+    if ((await read($, hiddenAtom)) || viewport < TOON_MIN) {
       mod.toon.requestId = undefined
 
       return line
@@ -355,8 +477,8 @@ export const register: Register = on => {
     mod.toon.requestId = e.requestId
     mod.toon.columns = Math.min(STAGE_W, viewport - 6)
     mod.toon.isSeen = false
-    const cells = frameCells($, mod, await $.clock.now(), mod.toon.columns)
-    animate($, mod)
+    const cells = siteCells($, mod, mod.toon, await $.clock.now()) ?? ''
+    animate($, mod, mod.toon)
     const { Box, Raster } = $.ui.resolve(e)
 
     return (
