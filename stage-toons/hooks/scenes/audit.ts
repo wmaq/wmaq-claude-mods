@@ -28,7 +28,7 @@ function waiting(id: 'spec-audit' | 'plan-audit', doc: Sprite): Scene {
     front: (b, t) => {
       drawSprite(b, doc, 0, 24 - Math.floor(docW / 2), CLAWD_TOP - docH)
       const dots = every(t, 0.5) % 4
-      for (let i = 0; i < dots; i++) setPixel(b, 33 + i * 2, 3, C.gray)
+      for (let i = 0; i < dots; i++) setPixel(b, 33 + i * 2, 5, C.gray)
     },
   }
 }

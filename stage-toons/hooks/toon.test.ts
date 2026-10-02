@@ -26,6 +26,7 @@ const castWith = (scenes: Partial<Record<SceneId, Scene>>, breaks: string[] = []
 test('a frame is the base scene cropped to the raster', () => {
   const frame = composeFrame({ base: 'spec', wipe: null, reaction: null }, 0, 30, castWith({ spec: solid('spec', 7) }))
   expect(frame.w).toBe(30)
+  expect(TOON_ROWS).toBe(7)
   expect(frame.h).toBe(TOON_ROWS * 2)
   expect([...frame.px].every(c => c === 7)).toBe(true)
 })

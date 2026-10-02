@@ -4,7 +4,7 @@ import { fillRect } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene } from '../scene'
 import { blinking, C, still, STONE } from './kit'
 
-const ROWS = [3, 6, 9]
+const ROWS = [5, 8, 11]
 const STONES = [18, 24, 30]
 
 export const plan: Scene = {
@@ -12,7 +12,7 @@ export const plan: Scene = {
   loop: 6,
   focusX: 24,
   backdrop: b => {
-    fillRect(b, 2, 1, 11, 10, C.paper)
+    fillRect(b, 2, 3, 11, 10, C.paper)
     for (const y of ROWS) {
       fillRect(b, 4, y - 1, 2, 2, C.paperShade)
       fillRect(b, 7, y, 5, 1, C.ink)
@@ -31,7 +31,7 @@ export const plan: Scene = {
       if (t >= 1 + i * 1.5) fillRect(b, 4, y - 1, 2, 2, C.green)
     })
     STONES.forEach((x, i) => {
-      if (t >= 0.5 + i * 1.5) drawSprite(b, STONE, 0, x, 10)
+      if (t >= 0.5 + i * 1.5) drawSprite(b, STONE, 0, x, 12)
     })
   },
 }

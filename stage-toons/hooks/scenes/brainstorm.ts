@@ -5,10 +5,10 @@ import { CLAWD_TOP, drawSprite, type Scene } from '../scene'
 import { blinking, BULB_OFF, BULB_ON, C, every, still, wave } from './kit'
 
 const SPOTS = [
-  { x: 6, y: 1 },
-  { x: 38, y: 2 },
-  { x: 10, y: 0 },
-  { x: 34, y: 0 },
+  { x: 6, y: 3 },
+  { x: 38, y: 4 },
+  { x: 10, y: 2 },
+  { x: 34, y: 2 },
 ]
 const EUREKA = 4.8
 
@@ -33,10 +33,10 @@ export const brainstorm: Scene = {
       if (age >= 0 && age < 0.9) drawSprite(b, age < 0.5 ? BULB_ON : BULB_OFF, 0, spot.x, spot.y)
     })
     if (t >= EUREKA) {
-      drawSprite(b, BULB_ON, 0, 23, 0)
+      drawSprite(b, BULB_ON, 0, 23, 2)
       if (every(t, 0.2) % 2 === 0) {
-        setPixel(b, 21, 1, C.gold)
-        setPixel(b, 27, 1, C.gold)
+        setPixel(b, 21, 3, C.gold)
+        setPixel(b, 27, 3, C.gold)
       }
     }
   },

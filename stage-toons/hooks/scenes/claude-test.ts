@@ -12,11 +12,11 @@ export const claudeTest: Scene = {
   focusX: 24,
   backdrop: (b, t) => {
     TUBES.forEach((x, i) => {
-      drawSprite(b, TUBE, 0, x, 5)
+      drawSprite(b, TUBE, 0, x, 7)
       for (let k = 0; k < 2; k++) {
         const phase = (t * 2 + i * 0.7 + k * 0.5) % 1.5
-        const y = 9 - Math.floor(phase * 3)
-        if (y >= 6) setPixel(b, x + 1, y, C.white)
+        const y = 11 - Math.floor(phase * 3)
+        if (y >= 8) setPixel(b, x + 1, y, C.white)
       }
     })
   },
@@ -30,7 +30,7 @@ export const claudeTest: Scene = {
   ],
   front: (b, t) => {
     TUBES.forEach((x, i) => {
-      if (t >= 1.5 + i * 1.2) drawSprite(b, TICK, 0, x, 0)
+      if (t >= 1.5 + i * 1.2) drawSprite(b, TICK, 0, x, 2)
     })
   },
 }

@@ -12,7 +12,7 @@ export const cleanup: Scene = {
   id: 'cleanup',
   loop: 8,
   focusX: 24,
-  backdrop: b => fillRect(b, 36, 5, 11, 1, C.woodDark),
+  backdrop: b => fillRect(b, 36, 7, 11, 1, C.woodDark),
   actors: [
     {
       kind: 'clawd',
@@ -23,12 +23,12 @@ export const cleanup: Scene = {
   ],
   front: (b, t) => {
     const x = Math.round(sweepX(t)) + (facing(t) > 0 ? 15 : -3)
-    drawSprite(b, BROOM, 0, x, 6)
+    drawSprite(b, BROOM, 0, x, 8)
     for (let k = 0; k < 4; k++) {
       const phase = (t * 3 + k * 0.25) % 1
-      setPixel(b, x + 1 - facing(t) * (2 + k * 2), 11 - Math.floor(phase * 3), C.dust)
+      setPixel(b, x + 1 - facing(t) * (2 + k * 2), 13 - Math.floor(phase * 3), C.dust)
     }
     const shelved = Math.min(8, every(t, 1) + 1)
-    for (let i = 0; i < shelved; i++) fillRect(b, 37 + i, 1, 1, 4, BOOKS[i % BOOKS.length]!)
+    for (let i = 0; i < shelved; i++) fillRect(b, 37 + i, 3, 1, 4, BOOKS[i % BOOKS.length]!)
   },
 }

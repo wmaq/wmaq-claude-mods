@@ -18,12 +18,12 @@ export const spec: Scene = {
   ],
   front: (b, t) => {
     // The desk in front of Clawd, the sheet on it, the pen moving.
-    fillRect(b, 10, 10, 22, 1, C.wood)
-    fillRect(b, 11, 11, 1, 1, C.woodDark)
-    fillRect(b, 30, 11, 1, 1, C.woodDark)
-    fillRect(b, 20, 9, 5, 1, C.paper)
-    setPixel(b, 20 + (every(t, 0.25) % 5), 9, C.ink)
+    fillRect(b, 10, 12, 22, 1, C.wood)
+    fillRect(b, 11, 13, 1, 1, C.woodDark)
+    fillRect(b, 30, 13, 1, 1, C.woodDark)
+    fillRect(b, 20, 11, 5, 1, C.paper)
+    setPixel(b, 20 + (every(t, 0.25) % 5), 11, C.ink)
     const pages = Math.min(6, every(t, 0.9) + 1)
-    for (let i = 0; i < pages; i++) fillRect(b, 36, 11 - i, 6, 1, i % 2 === 0 ? C.paper : C.paperShade)
+    for (let i = 0; i < pages; i++) fillRect(b, 36, 13 - i, 6, 1, i % 2 === 0 ? C.paper : C.paperShade)
   },
 }

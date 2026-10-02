@@ -29,6 +29,33 @@ test('Clawd is on stage throughout every scene', () => {
   }
 })
 
+test('Clawd stands on the bottom row of a 14-pixel stage, with six pixels of headroom', () => {
+  const b = renderFull(SCENES.idle, 0)
+  const rows = [...b.px].flatMap((c, i) => (c === CLAWD_ORANGE ? [Math.floor(i / b.w)] : []))
+  expect(STAGE_H).toBe(14)
+  expect(Math.min(...rows)).toBe(6)
+  expect(Math.max(...rows)).toBe(STAGE_H - 1)
+})
+
+// The gold pixels' columns and rows, and the box's outer columns.
+const goldOf = (b: PixelBuffer) => [...b.px].flatMap((c, i) => (c === C.gold ? [{ x: i % b.w, y: Math.floor(i / b.w) }] : []))
+
+test('the Other scene shows one question mark, whole and centred over the box', () => {
+  for (let t = 0.013; t < SCENES.other.loop; t += 0.05) {
+    const b = renderFull(SCENES.other, t)
+    const gold = goldOf(b)
+    expect(gold).toHaveLength(5)
+    const box = [...b.px].flatMap((c, i) => (c === C.woodDark ? [i % b.w] : []))
+    const centre = (Math.min(...box) + Math.max(...box)) / 2
+    const dot = gold.reduce((a, p) => (p.y > a.y ? p : a))
+    if (Math.min(...box) === 28) expect(dot.x).toBe(centre)
+  }
+})
+
+test("the auditor's question mark shows whole", () => {
+  expect(goldOf(renderFull(SCENES.auditor, 1))).toHaveLength(5)
+})
+
 test('every loop is seamless: the hero ends where it began', () => {
   for (const scene of SCENE_LIST) {
     const start = heroAt(scene, 0)

@@ -5,7 +5,7 @@ import { setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene } from '../scene'
 import { blinking, C, FLAG, lerp } from './kit'
 
-const roadY = (x: number) => 9 + Math.round(Math.sin((x - 18) / 5) * 1.5)
+const roadY = (x: number) => 11 + Math.round(Math.sin((x - 18) / 5) * 1.5)
 const FLAGS = [20, 27, 34, 41]
 // Seconds spent walking out; the rest of the loop is the walk back.
 const OUT = 6

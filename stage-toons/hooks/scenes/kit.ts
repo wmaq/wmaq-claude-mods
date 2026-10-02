@@ -56,6 +56,6 @@ export const TUBE: Sprite = { palette: { g: C.glass, l: C.liquid }, frames: [['g
 export const GIFT: Sprite = { palette: { r: C.red, y: C.gold }, frames: [['.y..y.', 'yyyyyy', 'rrryrr', 'rrryrr', 'rrryrr', 'rrryrr']] }
 export const BROOM: Sprite = { palette: { w: C.wood, b: C.gold }, frames: [['..w', '..w', '.w.', '.w.', 'bbb', 'bbb']] }
 export const BOX: Sprite = {
-  palette: { b: C.wood, d: C.woodDark, q: C.gold },
-  frames: [['ddddddddd', 'dbbbqqbbd', 'dbbbbbqbd', 'dbbbbqbbd', 'dbbbbbbbd', 'dbbbbqbbd', 'ddddddddd']],
+  palette: { b: C.wood, d: C.woodDark },
+  frames: [['ddddddddd', 'dbbbbbbbd', 'dbbbbbbbd', 'dbbbbbbbd', 'dbbbbbbbd', 'dbbbbbbbd', 'ddddddddd']],
 }

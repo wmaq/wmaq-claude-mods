@@ -17,12 +17,12 @@ export const REACTIONS: Record<ReactionId, ReactionSpec> = {
     id: 'failure',
     mood: t => (t < 0.8 ? 'flinch' : null),
     draw: (b, t, hero) => {
-      if (t < 2 && (t > 0.6 || every(t, 0.15) % 2 === 0)) drawSprite(b, BANG, 0, hero.x, 0)
+      if (t < 2 && (t > 0.6 || every(t, 0.15) % 2 === 0)) drawSprite(b, BANG, 0, hero.x, 2)
       if (t < 1.6) {
         const r = 1 + Math.min(5, Math.floor(t * 4))
         for (const side of [-1, 1]) {
-          setPixel(b, hero.x + side * r, 2, C.smoke)
-          setPixel(b, hero.x + side * (r - 1), 1, C.smoke)
+          setPixel(b, hero.x + side * r, 4, C.smoke)
+          setPixel(b, hero.x + side * (r - 1), 3, C.smoke)
         }
       }
     },

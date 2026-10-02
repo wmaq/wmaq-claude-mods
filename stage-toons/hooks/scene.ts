@@ -1,4 +1,4 @@
-// Scenes: props, sprites and Clawds moved by time on a 48x12 pixel stage,
+// Scenes: props, sprites and Clawds moved by time on a 48x14 pixel stage,
 // rendered whole and then cropped to the raster's width.
 
 import type { StageId } from '../types'
@@ -6,9 +6,9 @@ import { type ClawdLook, drawClawd } from './clawd'
 import { createBuffer, EMPTY, type PixelBuffer, type Point, setPixel } from './pixels'
 
 export const STAGE_W = 48
-export const STAGE_H = 12
+export const STAGE_H = 14
 // Clawd's top row when it stands on the stage's bottom row.
-export const CLAWD_TOP = 4
+export const CLAWD_TOP = 6
 
 export type SceneId = StageId | 'auditor' | 'idle'
 export type ReactionId = 'failure' | 'advance' | 'fable-arrives' | 'fable-leaves'

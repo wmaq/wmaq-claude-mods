@@ -25,17 +25,17 @@ export const auditor: Scene = {
         arms: { left: 'down', right: isNodding(t) ? 'up' : 'down' },
       }),
     },
-    { kind: 'sprite', sprite: SCROLL, frame: () => 0, at: still(21, 6) },
+    { kind: 'sprite', sprite: SCROLL, frame: () => 0, at: still(21, 8) },
     {
       kind: 'clawd',
       at: still(FABLE_X, CLAWD_TOP),
       look: t => ({ ...FABLE, facing: -1, isBlinking: blinking(t, 1.7), look: { x: -1, y: 1 }, arms: { left: 'out', right: 'down' } }),
     },
-    { kind: 'sprite', sprite: GLASS, frame: () => 0, at: t => ({ x: 21 + Math.round((wave(t, 2) + 1) * 1.5), y: 5 }) },
+    { kind: 'sprite', sprite: GLASS, frame: () => 0, at: t => ({ x: 21 + Math.round((wave(t, 2) + 1) * 1.5), y: 7 }) },
   ],
   front: (b, t) => {
     const beat = t % 3
-    if (beat >= 0.8 && beat < 1.6) drawSprite(b, QMARK, 0, 23, -1)
-    else if (beat >= 2 && beat < 2.8) drawSprite(b, TICK, 0, 22, 0)
+    if (beat >= 0.8 && beat < 1.6) drawSprite(b, QMARK, 0, 23, 1)
+    else if (beat >= 2 && beat < 2.8) drawSprite(b, TICK, 0, 22, 2)
   },
 }

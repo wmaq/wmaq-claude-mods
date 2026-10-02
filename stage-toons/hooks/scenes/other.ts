@@ -23,7 +23,7 @@ export const other: Scene = {
         arms: { left: 'down', right: isPoking(t) ? 'out' : 'down' },
       }),
     },
-    { kind: 'sprite', sprite: BOX, frame: () => 0, at: t => ({ x: 28 + (isPoking(t) ? 1 : 0), y: 5 }) },
-    { kind: 'sprite', sprite: QMARK, frame: () => 0, at: t => ({ x: 31, y: every(t, 0.5) % 2 === 0 ? -1 : 0 }) },
+    { kind: 'sprite', sprite: BOX, frame: () => 0, at: t => ({ x: 28 + (isPoking(t) ? 1 : 0), y: 7 }) },
+    { kind: 'sprite', sprite: QMARK, frame: () => 0, at: t => ({ x: 31, y: every(t, 0.5) % 2 === 0 ? 1 : 2 }) },
   ],
 }

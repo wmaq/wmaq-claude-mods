@@ -10,7 +10,7 @@ const CLAWD_X = 6
 const brickAt = (i: number) => {
   const row = Math.floor(i / 5)
 
-  return { x: WALL_X + (i % 5) * 4 + (row % 2 === 1 ? 2 : 0), y: 10 - row * 2 }
+  return { x: WALL_X + (i % 5) * 4 + (row % 2 === 1 ? 2 : 0), y: 12 - row * 2 }
 }
 const isStriking = (t: number) => every(t, 0.25) % 2 === 1
 

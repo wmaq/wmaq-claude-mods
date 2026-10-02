@@ -36,7 +36,7 @@ export const userTest: Scene = {
   front: (b, t) => {
     // The gift is yours from 5 s on: it is gone when Clawd walks back.
     if (t >= 5) return
-    drawSprite(b, GIFT, 0, Math.round(giftX(t)), 6)
-    if (t >= 2.5 && every(t, 0.3) % 2 === 0) setPixel(b, 40, 5, C.gold)
+    drawSprite(b, GIFT, 0, Math.round(giftX(t)), 8)
+    if (t >= 2.5 && every(t, 0.3) % 2 === 0) setPixel(b, 40, 7, C.gold)
   },
 }
