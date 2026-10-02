@@ -94,3 +94,12 @@ test('the state reads as one line', () => {
   )
   expect(describe(freshProgress(0))).toBe('? Other · no feature · "Not tracked yet"')
 })
+
+// Whether a string holds half of a surrogate pair, as a cut through an emoji leaves.
+const hasHalfPair = (s: string) => Array.from(s).some(ch => ch.length === 1 && ch.charCodeAt(0) >= 0xd800 && ch.charCodeAt(0) <= 0xdfff)
+
+test('text is cut between characters, never through an emoji', () => {
+  expect(cut('a😀bcd', 3)).toBe('a😀…')
+  expect(cut('ab😀', 3)).toBe('ab😀')
+  expect(hasHalfPair(cut('x😀'.repeat(50), 80))).toBe(false)
+})

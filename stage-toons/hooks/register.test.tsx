@@ -109,6 +109,17 @@ test('a broken store keeps progress in memory and warns once', async ($, on) => 
   expect(await bandText($)).toContain('7/10 Develop')
 })
 
+test('a warning given before a hot reload is not given again after it', async ($, on) => {
+  // The session's state outlives a reload; this stands for a warning given
+  // by the module's previous load.
+  on('state.get', ($, e, next) => (e.key === 'warned' ? { value: { value: true, version: 1 } } : next(e)))
+  const { world } = engine(on)
+  world.isStoreBroken = true
+  await $.session.start(START)
+  await setStage($, { stage: 'plan', message: 'Writing the plan' })
+  expect(world.toasts).toEqual([])
+})
+
 test('the band stacks above what the engine and other plugins draw there', async ($, on) => {
   engine(on)
   await $.session.start(START)

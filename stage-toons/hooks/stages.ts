@@ -44,7 +44,18 @@ export const rank = (s: TrackStageId | null): number => (s === null ? -1 : TRACK
 export function cut(text: string, max: number): string {
   const clean = text.replace(/\s+/g, ' ').trim()
 
-  return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean
+  return fitText(clean, max)
+}
+
+// Text measured and cut by characters (code points), so a cut never
+// splits an emoji's surrogate pair.
+export const charCount = (text: string): number => Array.from(text).length
+
+export function fitText(text: string, width: number): string {
+  const chars = Array.from(text)
+  if (chars.length <= width) return text
+
+  return width < 1 ? '' : `${chars.slice(0, width - 1).join('')}…`
 }
 
 // A stage as /stage takes it: its number on the track, its id, or 0 or ?

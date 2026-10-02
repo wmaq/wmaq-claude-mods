@@ -13,7 +13,8 @@ export const toolNameFor = (plugin: string): string => `mcp__${plugin}__${TOOL}`
 export const TOOL_DESCRIPTION =
   'Moves the workflow progress bar (stage-toons) to a stage and sets its short status message. ' +
   'Call it when the work moves to a different stage (forwards, backwards or skipping are all fine), ' +
-  'and when the focus within a stage changes notably, at most every few minutes.'
+  'and when the focus within a stage changes notably, at most every few minutes. ' +
+  "Only the main conversation moves the stage: a subagent's call is refused."
 
 export const TOOL_SCHEMA = {
   type: 'object',

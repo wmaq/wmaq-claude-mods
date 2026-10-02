@@ -40,6 +40,8 @@ const progressAtom = atom({ plugin: 'stage-toons', key: 'progress' } as const, n
 const auditingAtom = atom({ plugin: 'stage-toons', key: 'auditing' } as const, false)
 const hiddenAtom = atom({ plugin: 'stage-toons', key: 'hidden' } as const, false)
 const workflowAtom = atom({ plugin: 'stage-toons', key: 'workflowText' } as const, null)
+// Whether the store warning was given: kept across a reload, so it shows once a session.
+const warnedAtom = atom({ plugin: 'stage-toons', key: 'warned' } as const, false)
 
 const TONES: Record<Tone, { color?: string; bold?: boolean; dimColor?: boolean }> = {
   done: { color: '#D97757' },
@@ -66,7 +68,6 @@ type Mod = {
   key: string
   toolName: string
   commandName: string
-  hasWarned: boolean
   director: Director
   auditors: Set<string>
   lastFailureAt: number | null
@@ -84,7 +85,6 @@ const createMod = (): Mod => ({
   key: storeKey(''),
   toolName: toolNameFor(PLUGIN),
   commandName: COMMAND,
-  hasWarned: false,
   director: createDirector('other', false),
   auditors: new Set(),
   lastFailureAt: null,
@@ -105,9 +105,9 @@ const storeOf = ($: EngineInterface): KV => ({
   set: (key, value) => $.store.set(key, value),
 })
 
-function warnUnsaved($: EngineInterface, mod: Mod) {
-  if (mod.hasWarned) return
-  mod.hasWarned = true
+async function warnUnsaved($: EngineInterface) {
+  if (await read($, warnedAtom)) return
+  await update($, warnedAtom, () => true)
   $.ui.toast(UNSAVED)
 }
 
@@ -119,7 +119,7 @@ async function commit($: EngineInterface, mod: Mod, before: Progress, after: Pro
   await update($, progressAtom, () => after)
   mod.director = withStage(mod.director, after.stage, now)
   if (isAdvance(before, after)) mod.director = react(mod.director, 'advance', now)
-  if (!(await saveProgress(storeOf($), mod.key, after))) warnUnsaved($, mod)
+  if (!(await saveProgress(storeOf($), mod.key, after))) await warnUnsaved($)
 }
 
 async function setStage($: EngineInterface, mod: Mod, args: ToolArgs) {
@@ -225,7 +225,7 @@ export const register: Register = on => {
     const now = await $.clock.now()
     mod.key = storeKey(e.cwd)
     const loaded = await loadProgress(storeOf($), mod.key, now)
-    if (!loaded.isAvailable) warnUnsaved($, mod)
+    if (!loaded.isAvailable) await warnUnsaved($)
     let isHidden = false
     try {
       isHidden = (await $.store.get(HIDDEN_KEY)) === true

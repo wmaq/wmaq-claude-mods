@@ -24,7 +24,7 @@ const isEntry = (h: unknown): h is HistoryEntry => {
   if (typeof h !== 'object' || h === null) return false
   const e = h as Record<string, unknown>
 
-  return isStageId(e.stage) && typeof e.at === 'number' && (e.by === 'claude' || e.by === 'user')
+  return isStageId(e.stage) && Number.isFinite(e.at) && (e.by === 'claude' || e.by === 'user')
 }
 
 export function validate(x: unknown): Progress | null {
@@ -33,7 +33,7 @@ export function validate(x: unknown): Progress | null {
   if (p.v !== 1 || !isStageId(p.stage)) return null
   const last = p.lastTrackStage
   if (last !== null && !(isStageId(last) && isTrack(last))) return null
-  if (typeof p.message !== 'string' || typeof p.updatedAt !== 'number') return null
+  if (typeof p.message !== 'string' || typeof p.updatedAt !== 'number' || !Number.isFinite(p.updatedAt)) return null
   if (p.feature !== null && typeof p.feature !== 'string') return null
   if (!Array.isArray(p.history)) return null
 

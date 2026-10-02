@@ -78,3 +78,13 @@ test('the band yields to a survey, an agent transcript, and /stage hide', () => 
     expect(bandMode({ ...site, ...off, isDemo: true })).toBe('none')
   }
 })
+
+test('the band cuts its lines between characters, never through an emoji', () => {
+  const p = applyMove(freshProgress(0), { stage: 'plan', message: '🚀'.repeat(40), by: 'claude', at: 1 })
+  for (const columns of [30, 41, 60, 61]) {
+    for (const line of bandLayout(p, false, columns)) {
+      const t = text(line)
+      expect(Array.from(t).some(ch => ch.length === 1 && ch.charCodeAt(0) >= 0xd800 && ch.charCodeAt(0) <= 0xdfff)).toBe(false)
+    }
+  }
+})

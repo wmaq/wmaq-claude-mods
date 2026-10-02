@@ -55,3 +55,11 @@ test('saving reports failure instead of throwing', async () => {
   expect(entries.k).toEqual(freshProgress(1))
   expect(await saveProgress(memory({}, true), 'k', freshProgress(1))).toBe(false)
 })
+
+test('a timestamp that is not a finite number is refused', () => {
+  const good = applyMove(freshProgress(0), { stage: 'plan', by: 'user', at: 1 })
+  for (const at of [NaN, Infinity, -Infinity]) {
+    expect(validate({ ...good, updatedAt: at })).toBeNull()
+    expect(validate({ ...good, history: [{ stage: 'plan', at, by: 'user' }] })?.history).toEqual([])
+  }
+})

@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { TOOL_SCHEMA, toolNameFor, workflowText } from './prompt'
+import { TOOL_DESCRIPTION, TOOL_SCHEMA, toolNameFor, workflowText } from './prompt'
 import { applyMove, freshProgress, STAGE_IDS } from './stages'
 
 test('the workflow section lists every stage, the tool, and the state at session start', () => {
@@ -16,4 +16,8 @@ test('the tool schema offers exactly the stage ids', () => {
   expect(TOOL_SCHEMA.properties.stage.enum).toEqual([...STAGE_IDS])
   expect(TOOL_SCHEMA.required).toEqual(['stage', 'message'])
   expect(toolNameFor('stage-toons')).toBe('mcp__stage-toons__set_stage')
+})
+
+test("the tool's description says only the main conversation may call it", () => {
+  expect(TOOL_DESCRIPTION).toContain('subagent')
 })

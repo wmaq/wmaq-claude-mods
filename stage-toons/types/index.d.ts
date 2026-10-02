@@ -31,6 +31,7 @@ declare module 'claude-code' {
       auditing: boolean
       hidden: boolean
       workflowText: string | null
+      warned: boolean
     }
   }
 }
