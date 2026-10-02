@@ -5,7 +5,7 @@ by wmaq with Claude. Each mod is a folder at the repository root.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below, above the prompt, with pixel-art Clawd scenes under the spinner | v0.1 merged; v0.2 planned in `docs/roadmap.md` |
+| `stage-toons/` | A progress bar of the workflow below, above the prompt, with pixel-art Clawd scenes under the spinner and an idle Clawd beside the bar | v0.2 merged; later ideas in `docs/roadmap.md` |
 
 ## The workflow
 
@@ -85,6 +85,14 @@ Learned building stage-toons on 2.1.287 and 2.1.288:
 - `$.ui.blit` answers `{ deny }` when nothing of the plugin is mounted there,
   and refuses another width (a resize is a redraw, not a blit).
 - Only a `Box` keeps its `key` in a drawing; `Text` keys are dropped.
+- A `ui.render` hook runs once per props change, plugin load or
+  `$.ui.invalidate('ui.render')`; a repaint reuses its answer. A blit
+  repaints only the Raster, so text drawn beside it changes only when the
+  mod invalidates. A paint loop that stops on refused blits must
+  invalidate too, or the site can stay frozen when it shows again (the
+  person can collapse and expand the band).
+- `AbovePrompt` has `isWorking` and `maxRows`; a tree taller than `maxRows`
+  scrolls instead of showing whole.
 - `ui.toast` and `ui.log` return nothing, not a promise.
 
 ### The test kit (`claude-code/testing`)
@@ -108,6 +116,12 @@ Learned building stage-toons on 2.1.287 and 2.1.288:
 - An MCP tool's arguments sit directly on the `tool.call` event, beside a
   required `tool_use_id`.
 - A hook that throws shows up only as "no implementation for <event>".
+- The kit cannot reload a module. For state an earlier load left, answer
+  that one key and pass the rest:
+  `on('state.get', ($, e, next) => (e.key === 'warned' ? { value: { value: true, version: 1 } } : next(e)))`.
+- `ui.redraw()` redraws whether or not the mod asked to be: count
+  `ui.invalidate` in a test hook (answer `{ value: undefined }`) to prove
+  the mod asks, or a missing redraw passes the test.
 - Build backslashes in test strings with `String.fromCharCode(92)`; a
   `'\\'` literal broke the kit's parser.
 - `stage-toons/hooks/harness.tsx` is a working set of engine stand-ins to

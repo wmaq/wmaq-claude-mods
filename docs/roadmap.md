@@ -9,49 +9,30 @@ The progress bar, `set_stage` and `/stage`, saved progress per project, the
 Spec: `docs/superpowers/specs/2026-10-02-stage-toons-design.md`. Plan:
 `docs/superpowers/plans/2026-10-02-stage-toons.md`.
 
-### v0.2 (next)
+### v0.2 (2026-10-03, merged)
 
-It builds on existing code, so a short in-chat design is enough; no full
-spec and plan.
+Designed in chat (no spec or plan), from the user's testing of v0.1 and the
+reviews' leftovers:
+- **Idle Clawd** left of the bar while Claude waits: blinks, glances at the
+  prompt and the bar, taps a foot, dozes after a minute with a rising z.
+  The band takes 5 rows (a blank one above him); terminal only, 70 columns
+  and 5 rows at least.
+- **`/stage demo [seconds]`** plays the 12 scenes below the bar (9 rows);
+  `/stage demo stop` or a new prompt ends it.
+- **The toon is 7 rows (14 pixels)**, every scene moved down 2 pixels; the
+  Other scene has one `?`, centred and whole, and the auditor's is whole.
+- **Director:** a wipe ends with Fable's walk-in; a second stage change
+  mid-wipe keeps wiping the first scene out; the edge transitions Fable
+  listed are tested.
+- **v0.1's minors:** text cut by code points; the store warning kept in
+  `$.state` across a reload; non-finite timestamps refused; `set_stage`'s
+  description says a subagent's call is refused.
 
-From the user's testing of v0.1:
-- **Idle Clawd while Claude waits for you.** A small Clawd, 4 rows tall,
-  beside the bar while Claude isn't working. The band grows from 2 rows to 4
-  while idle and goes back to 2 while the toon plays under the spinner.
-  Calm loops: sitting, blinking, glancing at the prompt, tapping a foot,
-  dozing off with "z z" after about a minute, awake again when a turn
-  starts. Repaint at about 6 fps; not on narrow terminals, while hidden, or
-  under a survey. The desktop app keeps the text bar.
-- **One more row of canvas.** A `?` or a tick drawn above Clawd sometimes
-  gets cut off at the top: go from 6 rows (12 pixels) to 7 (14 pixels).
-- **Other scene.** It draws two question marks: the one on the box is well
-  right of the box's centre, and the one above the box is half cut off.
-  Keep one, centred, fully in view.
-- **`/stage demo [seconds]`.** Plays every scene in turn (default 10 s
-  each), so new users can see them all. The scenes play under the spinner,
-  so the demo needs a way to show them while Claude is idle (the idle Clawd
-  site above is the natural place).
-
-From Fable's review of the director (`hooks/director.ts`), untested
-transitions a real session can hit:
-- A stage change while Fable is still walking in or out: a wipe starts under
-  the walk, and the walk-in later switches the base to `auditor` over it.
-- Auditing turning on or off while a failure or advance reaction plays:
-  the reaction is cut short (by design, Fable's walks win), but untested.
-- Two stage changes within 300 ms: the second wipe starts from the first
-  one's target, so the original scene vanishes mid-wipe.
-- `createDirector(stage, true)` starts on the auditor scene with no walk-in;
-  and a lone failure reaction's 2.5 s expiry is never asserted.
-
-Deferred minors from the final review of v0.1:
-- `cut()` and `fit()` slice UTF-16 code units, so cutting at an emoji can
-  leave half of it.
-- The "couldn't save progress" toast repeats after a hot reload
-  (`hasWarned` is module state).
-- `validate()` accepts `NaN` or `Infinity` timestamps (harmless: such a value
-  never counts as newer).
-- `TOOL_DESCRIPTION` could say a subagent's `set_stage` call is refused, so
-  subagents don't try.
+Left as they are (from Fable's v0.2 review):
+- During the demo's 300 ms wipe the outgoing scene is drawn at its own
+  start, a small jump back: `composeFrame` takes one clock for both scenes.
+- Text is measured in code points, not terminal cells: a wide emoji takes
+  two columns, and `truncate-end` cuts what overflows.
 
 ### Later (ideas, up for discussion)
 
