@@ -103,8 +103,12 @@ export function setStage($: Engine, args: Record<string, unknown>) {
   return $.tool.call({ tool: TOOL_NAME, tool_use_id: `tu-${calls}`, ...args } as never)
 }
 
+// A registered tool's result reaches core as given, and core takes only a
+// string, an array or nothing there: set_stage answers a string.
 export function answerText(answer: unknown): string | undefined {
-  return (answer as { result?: { content?: { text?: string }[] } }).result?.content?.[0]?.text
+  const result = (answer as { result?: unknown }).result
+
+  return typeof result === 'string' ? result : undefined
 }
 
 // A subagent spawn as the Agent tool raises it. The test's agent.spawn hook

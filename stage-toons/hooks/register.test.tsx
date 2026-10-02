@@ -109,6 +109,15 @@ test('a broken store keeps progress in memory and warns once', async ($, on) => 
   expect(await bandText($)).toContain('7/10 Develop')
 })
 
+test('the band stacks above what the engine and other plugins draw there', async ($, on) => {
+  engine(on)
+  await $.session.start(START)
+  const ui = await $.ui.mount({ plugin: 'stage-toons', surface: 'terminal', component: 'AbovePrompt', props: bandProps() })
+  expect(await ui.find({ key: 'stage-toons' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'engine' })).toBeDefined()
+  await ui.unmount()
+})
+
 test('the band yields to surveys and agent views, and shrinks when narrow', async ($, on) => {
   engine(on)
   await $.session.start(START)

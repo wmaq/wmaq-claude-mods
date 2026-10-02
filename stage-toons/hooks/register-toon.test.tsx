@@ -49,6 +49,23 @@ test('the toon follows the terminal width and skips narrow terminals', async ($,
   expect(await narrow.find({ key: 'toon' })).toBeUndefined()
 })
 
+test('a resize while the old raster still refuses blits does not stop the toon', async ($, on) => {
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  await mountSpinner($, 80)
+  await clock.advance(200)
+  // The terminal narrows: the hook draws at the new width while the old
+  // Raster is still mounted, so the engine refuses blits for a moment.
+  world.isBlitRefused = true
+  await mountSpinner($, 40)
+  await clock.advance(500)
+  world.isBlitRefused = false
+  const before = world.blits.length
+  await clock.advance(500)
+  expect(world.blits.length).toBeGreaterThan(before)
+  expect(world.blits.at(-1)?.columns).toBe(34)
+})
+
 test('/stage hide stops the toon', async ($, on) => {
   const { world, clock } = engine(on)
   await $.session.start(START)

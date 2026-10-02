@@ -27,8 +27,11 @@ const HIDDEN_KEY = 'hidden'
 const UNSAVED = "stage-toons: couldn't save progress; it lasts for this session only"
 const FRAME_MS = 83
 // Refused blits in a row before the loop gives up: the spinner it painted is
-// gone, as when a background agent's row closes.
+// gone, as when a background agent's row closes. Until a blit since the last
+// render has been taken, refusals are expected for a moment (after a resize
+// the old Raster stays mounted until the new one paints), so it waits longer.
 const MAX_REFUSED = 3
+const MAX_REFUSED_UNSEEN = 24
 const MIN_VIEWPORT = 30
 
 // The engine reads each atom's plugin and key from the source, so they are
@@ -57,7 +60,7 @@ type Mod = {
   director: Director
   auditors: Set<string>
   lastFailureAt: number | null
-  toon: { requestId: string | undefined; columns: number; isAnimating: boolean; isHidden: boolean }
+  toon: { requestId: string | undefined; columns: number; isAnimating: boolean; isHidden: boolean; isSeen: boolean }
   broken: Set<SceneId>
 }
 
@@ -69,7 +72,7 @@ const createMod = (): Mod => ({
   director: createDirector('other', false),
   auditors: new Set(),
   lastFailureAt: null,
-  toon: { requestId: undefined, columns: STAGE_W, isAnimating: false, isHidden: false },
+  toon: { requestId: undefined, columns: STAGE_W, isAnimating: false, isHidden: false, isSeen: false },
   broken: new Set(),
 })
 
@@ -109,7 +112,8 @@ async function setStage($: EngineInterface, mod: Mod, args: ToolArgs) {
   const after = applyMove(before, { stage, message, feature: typeof feature === 'string' ? feature : undefined, by: 'claude', at: now })
   await commit($, mod, before, after, now)
 
-  return { result: { content: [{ type: 'text' as const, text: `Stage ${describe(after)}` }] } }
+  // Core takes a registered tool's result as a string, an array or nothing.
+  return { result: `Stage ${describe(after)}` }
 }
 
 async function setAuditing($: EngineInterface, mod: Mod, isAuditing: boolean) {
@@ -138,11 +142,16 @@ function animate($: EngineInterface, mod: Mod) {
   void (async () => {
     try {
       let refused = 0
-      while (toon.requestId !== undefined && !toon.isHidden && refused < MAX_REFUSED) {
+      while (toon.requestId !== undefined && !toon.isHidden && refused < (toon.isSeen ? MAX_REFUSED : MAX_REFUSED_UNSEEN)) {
         const { requestId, columns } = toon
         const cells = frameCells($, mod, await $.clock.now(), columns)
         const answer = await $.ui.blit({ requestId, key: 'toon', cells, columns, rows: TOON_ROWS }).catch(() => ({ deny: 'failed' }))
-        refused = answer.deny === undefined ? 0 : refused + 1
+        if (answer.deny === undefined) {
+          refused = 0
+          toon.isSeen = true
+        } else {
+          refused += 1
+        }
         await $.clock.sleep(FRAME_MS)
       }
     } finally {
@@ -312,19 +321,24 @@ export const register: Register = on => {
     const progress = await read($, progressAtom)
     if (progress === null) return next(e)
     const lines = bandLayout(progress, await read($, auditingAtom), e.props.bodyColumns)
+    // Other plugins' bands, and the engine's, still draw: below the bar.
+    const below = await next(e)
     const { Box, Text } = $.ui.resolve(e)
 
     return (
-      <Box key="stage-toons" flexDirection="column">
-        {lines.map((spans, i) => (
-          <Box key={`line-${i}`} flexDirection="row">
-            {spans.map((span, j) => (
-              <Text key={`span-${i}-${j}`} wrap="truncate-end" {...TONES[span.tone]}>
-                {span.text}
-              </Text>
-            ))}
-          </Box>
-        ))}
+      <Box flexDirection="column">
+        <Box key="stage-toons" flexDirection="column">
+          {lines.map((spans, i) => (
+            <Box key={`line-${i}`} flexDirection="row">
+              {spans.map((span, j) => (
+                <Text key={`span-${i}-${j}`} wrap="truncate-end" {...TONES[span.tone]}>
+                  {span.text}
+                </Text>
+              ))}
+            </Box>
+          ))}
+        </Box>
+        {below}
       </Box>
     )
   })
@@ -340,6 +354,7 @@ export const register: Register = on => {
     }
     mod.toon.requestId = e.requestId
     mod.toon.columns = Math.min(STAGE_W, viewport - 6)
+    mod.toon.isSeen = false
     const cells = frameCells($, mod, await $.clock.now(), mod.toon.columns)
     animate($, mod)
     const { Box, Raster } = $.ui.resolve(e)
