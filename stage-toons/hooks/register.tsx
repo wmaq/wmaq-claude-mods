@@ -9,13 +9,14 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Progress, SessionWorkflow, Workflow } from '../types'
+import type { Progress, ScenePick, SessionWorkflow, StageId, Workflow } from '../types'
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { bandLayout, bandMode, type BandSite, IDLE_GAP, type Tone, TOON_MIN } from './band'
 import { moveFor, parseCommand, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { type Demo, DEMO_SCENES, demoAt, demoLine } from './demo'
 import { createDirector, type Director, react, shot, tick, withAuditing, withScene } from './director'
 import { IDLE_COLS, IDLE_ROWS, idleFrame } from './idle'
+import { pickOne } from './pick'
 import { encodeCells } from './pixels'
 import { type KV, loadProgress, saveProgress, storeKey, validate } from './progress'
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolNameFor, toolSchema, workflowText } from './prompt'
@@ -23,7 +24,7 @@ import { type SceneId, STAGE_W } from './scene'
 import { REACTIONS, SCENES, STAGE_SCENES } from './scenes'
 import { applyMove, describe, freshProgress, isAdvance, reconcile } from './stages'
 import { type Cast, composeFrame, TOON_ROWS } from './toon'
-import { DEFAULT_WORKFLOW, parseWorkflow, sameWorkflow, sceneOf, stageIds, stageList, withScenes, workflowJson } from './workflow'
+import { DEFAULT_WORKFLOW, parseWorkflow, sameWorkflow, stageIds, stageList, stageOf, UNTRACKED_SCENE, withScenes, workflowJson } from './workflow'
 
 const PLUGIN = 'stage-toons'
 const HIDDEN_KEY = 'hidden'
@@ -47,6 +48,9 @@ const sectionAtom = atom({ plugin: 'stage-toons', key: 'workflowText' } as const
 const workflowAtom = atom({ plugin: 'stage-toons', key: 'workflow' } as const, null)
 // Whether the store warning was given: kept across a reload, so it shows once a session.
 const warnedAtom = atom({ plugin: 'stage-toons', key: 'warned' } as const, false)
+// The scene the stage shows: kept across a hot reload, so the toon does not
+// change under the person when the module reloads.
+const sceneAtom = atom({ plugin: 'stage-toons', key: 'scene' } as const, null)
 
 const TONES: Record<Tone, { color?: string; bold?: boolean; dimColor?: boolean }> = {
   done: { color: '#D97757' },
@@ -135,9 +139,25 @@ async function current($: EngineInterface, now: number): Promise<Progress> {
   return (await read($, progressAtom)) ?? freshProgress(now)
 }
 
+// The scene for the stage the work is in: the one already picked while the
+// stage stays and still lists it, else a new pick that leaves out the scene
+// the stage showed last. Untracked shows the Other scene and picks nothing.
+// Never called while a ui.render hook draws: it writes $.state.
+async function sceneFor($: EngineInterface, mod: Mod, stage: StageId | null): Promise<SceneId> {
+  if (stage === null) return UNTRACKED_SCENE
+  const held = await read($, sceneAtom)
+  const scenes = stageOf(mod.workflow, stage)?.scenes ?? [UNTRACKED_SCENE]
+  if (held && held.stage === stage && scenes.includes(held.scene)) return held.scene
+  const scene = pickOne(scenes, held?.lastByStage[stage], Math.random())
+  const next: ScenePick = { stage, scene, lastByStage: { ...held?.lastByStage, [stage]: scene } }
+  await update($, sceneAtom, () => next)
+
+  return scene
+}
+
 async function commit($: EngineInterface, mod: Mod, before: Progress, after: Progress, now: number) {
   await update($, progressAtom, () => after)
-  mod.director = withScene(mod.director, sceneOf(mod.workflow, after.stage), now)
+  mod.director = withScene(mod.director, await sceneFor($, mod, after.stage), now)
   if (isAdvance(mod.workflow, before, after)) mod.director = react(mod.director, 'advance', now)
   if (!(await saveProgress(storeOf($), mod.key, after))) await warnUnsaved($)
 }
@@ -301,7 +321,7 @@ async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promis
   await update($, workflowAtom, () => next)
   const { progress, moved } = reconcile(mod.workflow, await current($, now))
   await update($, progressAtom, () => progress)
-  mod.director = withScene(mod.director, sceneOf(mod.workflow, progress.stage), now)
+  mod.director = withScene(mod.director, await sceneFor($, mod, progress.stage), now)
   await registerTool($, mod)
   await update($, sectionAtom, () => workflowText(mod.workflow, progress, mod.toolName))
   // The band's lines name stages: draw it again.
@@ -363,7 +383,7 @@ export const register: Register = on => {
     await update($, progressAtom, () => progress)
     await update($, hiddenAtom, () => isHidden)
     await update($, auditingAtom, () => false)
-    mod.director = createDirector(sceneOf(mod.workflow, progress.stage), false)
+    mod.director = createDirector(await sceneFor($, mod, progress.stage), false)
     await registerTool($, mod)
     try {
       mod.commandName = (
@@ -395,7 +415,7 @@ export const register: Register = on => {
         // Fitted to this session's workflow in memory only: never saved back.
         const fitted = reconcile(mod.workflow, stored).progress
         await update($, progressAtom, () => fitted)
-        mod.director = withScene(mod.director, sceneOf(mod.workflow, fitted.stage), await $.clock.now())
+        mod.director = withScene(mod.director, await sceneFor($, mod, fitted.stage), await $.clock.now())
       }
     } catch {
       // The store is unreadable: keep what this session has.

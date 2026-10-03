@@ -27,6 +27,10 @@ export type Workflow = { track: readonly StageDef[]; side: readonly StageDef[] }
 // The session's workflow and where it came from.
 export type SessionWorkflow = { workflow: Workflow; source: 'file' | 'default' }
 
+// The scene the work's stage shows, picked when the stage changed, and the
+// scene each stage showed last in this session (never pruned).
+export type ScenePick = { stage: StageId | null; scene: string; lastByStage: Record<StageId, string> }
+
 declare module 'claude-code' {
   interface PluginState {
     'stage-toons': {
@@ -36,6 +40,7 @@ declare module 'claude-code' {
       workflowText: string | null
       workflow: SessionWorkflow | null
       warned: boolean
+      scene: ScenePick | null
     }
   }
 }

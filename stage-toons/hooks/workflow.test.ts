@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { STAGE_SCENES } from './scenes'
-import { DEFAULT_WORKFLOW as W, isTrack, parseWorkflow, rank, sameWorkflow, sceneOf, stageIds, stageList, stageOf, type Workflow, withScenes, workflowJson, zeroStage } from './workflow'
+import { DEFAULT_WORKFLOW as W, isTrack, parseWorkflow, rank, sameWorkflow, stageIds, stageList, stageOf, type Workflow, withScenes, workflowJson, zeroStage } from './workflow'
 
 const SMALL: Workflow = {
   track: [
@@ -69,9 +69,6 @@ test('lookups answer for any workflow', () => {
   expect(rank(SMALL, 'debugging')).toBe(-1)
   expect(rank(SMALL, null)).toBe(-1)
   expect(stageOf(SMALL, 'qa')).toBeUndefined()
-  expect(sceneOf(SMALL, 'build')).toBe('bricklaying')
-  expect(sceneOf(SMALL, 'qa')).toBe('mystery-box')
-  expect(sceneOf(SMALL, null)).toBe('mystery-box')
 })
 
 test('/stage 0 goes to Other when there is one, else to the first side stage', () => {

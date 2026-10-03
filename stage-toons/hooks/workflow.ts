@@ -41,8 +41,6 @@ export const rank = (w: Workflow, id: string | null): number => (id === null ? -
 // Where /stage 0 and /stage ? go: Other, else the first side stage.
 export const zeroStage = (w: Workflow): StageDef | undefined => w.side.find(s => s.id === 'other') ?? w.side[0]
 
-export const sceneOf = (w: Workflow, id: string | null): string => stageOf(w, id)?.scenes[0] ?? UNTRACKED_SCENE
-
 export function stageList(w: Workflow): string {
   const track = `track: ${w.track.map(s => s.id).join(', ')}`
 
