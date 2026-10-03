@@ -119,35 +119,49 @@ is, and the session keeps a working workflow.
 
 Needs Claude Code 2.1.288 or later with plugin hook modules (early access).
 
-1. Clone the repository wherever you keep your code:
+The repository is a plugin marketplace. Add it once, install the mod, and
+restart Claude Code; it then loads in every session:
 
-   ```sh
-   git clone https://github.com/wmaq/claude-mods.git
-   ```
+```sh
+claude plugin marketplace add wmaq/claude-mods
+claude plugin install stage-toons@claude-mods
+```
 
-   The mod is the `stage-toons` folder inside it. Below, `<path>` stands for
-   that folder's full path, such as `/home/you/src/claude-mods/stage-toons`
-   or `C:\src\claude-mods\stage-toons`.
+To update:
 
-2. Try it for one session:
+```sh
+claude plugin marketplace update claude-mods
+claude plugin update stage-toons@claude-mods
+```
 
-   ```sh
-   claude --plugin-dir <path>
-   ```
+### From a clone
 
-3. To load it in every session, add the folder to the `env` block of
-   `~/.claude/settings.json` (on Windows, write each `\` in the path as
-   `\\`), then restart Claude Code:
+To run the mod from your own copy instead, clone the repository wherever
+you keep your code:
 
-   ```json
-   {
-     "env": {
-       "CLAUDE_CODE_PLUGIN_DIRS": "<path>"
-     }
-   }
-   ```
+```sh
+git clone https://github.com/wmaq/claude-mods.git
+```
 
-To update, run `git pull` in the clone.
+The mod is the `stage-toons` folder inside it. Below, `<path>` stands for
+that folder's full path, such as `/home/you/src/claude-mods/stage-toons` or
+`C:\src\claude-mods\stage-toons`.
+
+- For one session: `claude --plugin-dir <path>`.
+- For every session, add the folder to the `env` block of
+  `~/.claude/settings.json` (on Windows, write each `\` in the path as
+  `\\`), then restart Claude Code:
+
+  ```json
+  {
+    "env": {
+      "CLAUDE_CODE_PLUGIN_DIRS": "<path>"
+    }
+  }
+  ```
+
+To update, run `git pull` in the clone. Don't load it this way while the
+marketplace copy is enabled: two stage-toons would load.
 
 The cartoons draw only in the terminal; the desktop app shows the bar as
 text.

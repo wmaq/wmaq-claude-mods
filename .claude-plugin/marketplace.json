@@ -1,0 +1,12 @@
+{
+  "name": "claude-mods",
+  "owner": { "name": "wmaq" },
+  "description": "Claude Code mods built by wmaq with Claude",
+  "plugins": [
+    {
+      "name": "stage-toons",
+      "source": "./stage-toons",
+      "description": "A stepped progress bar of your workflow above the prompt, with pixel-art Clawd scenes while Claude works"
+    }
+  ]
+}

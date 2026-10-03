@@ -68,6 +68,13 @@ Left as they are (from Fable's v0.3 review):
 - A v0.2 and a v0.3 session on one project disagree on progress v1/v2
   until both run v0.3.
 
+**Installable (2026-10-03).** The repository is a plugin marketplace
+(`.claude-plugin/marketplace.json`): `claude plugin marketplace add
+wmaq/claude-mods`, then `claude plugin install stage-toons@claude-mods`.
+A probe showed hooks modules load from an installed plugin like from a
+`--plugin-dir`. The mod's version (`plugin.json`, 0.3.0) goes up with every
+release.
+
 Possibly later: sharing stage-toons with the community, the way
 claude-toons was shared.
 

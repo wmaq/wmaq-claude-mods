@@ -1,7 +1,8 @@
 # claude-mods
 
 Claude Code mods (plugins of function hooks, an early-access feature) built
-by wmaq with Claude. Each mod is a folder at the repository root.
+by wmaq with Claude. Each mod is a folder at the repository root, listed in
+the marketplace manifest `.claude-plugin/marketplace.json`.
 
 | Mod | What it is | Status |
 |---|---|---|
@@ -24,7 +25,9 @@ before the next one starts:
    TDD), then a final whole-branch review by a Fable subagent
 8. Claude testing, live in the session
 9. The user's testing
-10. Cleanup: leftovers, chores, docs; then merge to `main`
+10. Cleanup: leftovers, chores, docs; bump the mod's version in
+    `<mod>/.claude-plugin/plugin.json` (installed copies update only when it
+    changes); then merge to `main`
 
 A change that builds on existing code can skip the full spec and plan: a
 short design in chat, approved by the user, is enough.
@@ -43,6 +46,11 @@ Load the `plugin-authoring` skill before writing or debugging a hooks module.
 It names this session's hot-reload folder,
 `~/.claude/dev-mods/<session id>/`, and starts the engine's watch on it.
 
+- **Disable the installed copy while developing.** With a mod installed from
+  the marketplace (`claude plugin install <mod>@claude-mods`), a hot-reload
+  copy loads a second one. `claude plugin disable <mod>@claude-mods` before,
+  `claude plugin enable <mod>@claude-mods` after.
+
 - **Hot reload uses a copy, not a link.** On Windows a directory junction
   into the hot-reload folder loads the mod once, but saves through it never
   trigger a reload. Copy the mod in and refresh the copy after every change:
@@ -51,6 +59,7 @@ It names this session's hot-reload folder,
 - **Checks**, from the repository root:
   ```sh
   claude plugin validate <mod>
+  claude plugin validate .        # the marketplace manifest
   claude plugin test <mod>
   npx -y -p typescript@5 tsc -p <mod>
   ```
