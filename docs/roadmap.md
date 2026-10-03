@@ -103,6 +103,11 @@ claude-toons was shared.
   the idle Clawd's box and the demo have fixed sizes; they could grow with
   the terminal, or be set in `.claude/stage-toons.json`, so scenes on a
   wide screen get more room.
+- **A toon while Claude waits on subagents.** When the main Claude is
+  idle but background subagents are still working, the band shows the idle
+  Clawd, who dozes off after a minute. A "waiting on agents" toon would fit
+  better (Clawd watching the agents work). The mod already sees spawns
+  (`agent.spawn`) and can list running agents (`$.agent.list`).
 - **Stage history.** Time spent per stage and per feature, and
   `/stage log` for a timeline. Progress is already saved per project, with
   its recent moves.
