@@ -9,16 +9,16 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Progress } from '../types'
+import type { Progress, Workflow } from '../types'
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { bandLayout, bandMode, type BandSite, IDLE_GAP, type Tone, TOON_MIN } from './band'
-import { moveFor, parseCommand, showText, USAGE } from './command'
+import { moveFor, parseCommand, showText, usage } from './command'
 import { type Demo, DEMO_SCENES, demoAt, demoLine } from './demo'
 import { createDirector, type Director, react, shot, tick, withAuditing, withScene } from './director'
 import { IDLE_COLS, IDLE_ROWS, idleFrame } from './idle'
 import { encodeCells } from './pixels'
 import { type KV, loadProgress, saveProgress, storeKey, validate } from './progress'
-import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, TOOL_SCHEMA, toolNameFor, workflowText } from './prompt'
+import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolNameFor, toolSchema, workflowText } from './prompt'
 import { type SceneId, STAGE_W } from './scene'
 import { REACTIONS, SCENES } from './scenes'
 import { applyMove, describe, freshProgress, isAdvance } from './stages'
@@ -67,6 +67,8 @@ const createSite = (kind: SiteKind): Site => ({ requestId: undefined, kind, colu
 // reload. What must outlive a reload is in $.state.
 type Mod = {
   key: string
+  // The session's workflow.
+  workflow: Workflow
   toolName: string
   commandName: string
   director: Director
@@ -90,6 +92,7 @@ type Mod = {
 
 const createMod = (): Mod => ({
   key: storeKey(''),
+  workflow: DEFAULT_WORKFLOW,
   toolName: toolNameFor(PLUGIN),
   commandName: COMMAND,
   director: createDirector('mystery-box', false),
@@ -127,24 +130,24 @@ async function current($: EngineInterface, now: number): Promise<Progress> {
 
 async function commit($: EngineInterface, mod: Mod, before: Progress, after: Progress, now: number) {
   await update($, progressAtom, () => after)
-  mod.director = withScene(mod.director, sceneOf(DEFAULT_WORKFLOW, after.stage), now)
-  if (isAdvance(DEFAULT_WORKFLOW, before, after)) mod.director = react(mod.director, 'advance', now)
+  mod.director = withScene(mod.director, sceneOf(mod.workflow, after.stage), now)
+  if (isAdvance(mod.workflow, before, after)) mod.director = react(mod.director, 'advance', now)
   if (!(await saveProgress(storeOf($), mod.key, after))) await warnUnsaved($)
 }
 
 async function setStage($: EngineInterface, mod: Mod, args: ToolArgs) {
   if (args.agentId !== undefined) return { deny: 'stage-toons: only the main conversation moves the workflow stage.' }
   const { stage, message, feature } = args
-  if (typeof stage !== 'string' || !stageIds(DEFAULT_WORKFLOW).includes(stage) || typeof message !== 'string' || message.trim() === '') {
-    return { deny: `stage-toons: set_stage needs "stage" (one of ${stageIds(DEFAULT_WORKFLOW).join(', ')}) and a non-empty "message".` }
+  if (typeof stage !== 'string' || !stageIds(mod.workflow).includes(stage) || typeof message !== 'string' || message.trim() === '') {
+    return { deny: `stage-toons: set_stage needs "stage" (one of ${stageIds(mod.workflow).join(', ')}) and a non-empty "message".` }
   }
   const now = await $.clock.now()
   const before = await current($, now)
-  const after = applyMove(DEFAULT_WORKFLOW, before, { stage, message, feature: typeof feature === 'string' ? feature : undefined, by: 'claude', at: now })
+  const after = applyMove(mod.workflow, before, { stage, message, feature: typeof feature === 'string' ? feature : undefined, by: 'claude', at: now })
   await commit($, mod, before, after, now)
 
   // Core takes a registered tool's result as a string, an array or nothing.
-  return { result: `Stage ${describe(DEFAULT_WORKFLOW, after)}` }
+  return { result: `Stage ${describe(mod.workflow, after)}` }
 }
 
 async function setAuditing($: EngineInterface, mod: Mod, isAuditing: boolean) {
@@ -270,9 +273,9 @@ export const register: Register = on => {
     await update($, progressAtom, () => loaded.progress)
     await update($, hiddenAtom, () => isHidden)
     await update($, auditingAtom, () => false)
-    mod.director = createDirector(sceneOf(DEFAULT_WORKFLOW, loaded.progress.stage), false)
+    mod.director = createDirector(sceneOf(mod.workflow, loaded.progress.stage), false)
     try {
-      mod.toolName = (await $.tool.register({ name: TOOL, description: TOOL_DESCRIPTION, inputSchema: TOOL_SCHEMA })).tool
+      mod.toolName = (await $.tool.register({ name: TOOL, description: TOOL_DESCRIPTION, inputSchema: toolSchema(mod.workflow) })).tool
       mod.commandName = (
         await $.command.register({
           name: COMMAND,
@@ -286,7 +289,7 @@ export const register: Register = on => {
     }
     // Computed once per session and kept across reloads: the section sits
     // in the cached part of the prompt.
-    if ((await read($, workflowAtom)) === null) await update($, workflowAtom, () => workflowText(loaded.progress, mod.toolName))
+    if ((await read($, workflowAtom)) === null) await update($, workflowAtom, () => workflowText(mod.workflow, loaded.progress, mod.toolName))
 
     return result
   })
@@ -300,7 +303,7 @@ export const register: Register = on => {
       const mine = await read($, progressAtom)
       if (stored && (!mine || stored.updatedAt > mine.updatedAt)) {
         await update($, progressAtom, () => stored)
-        mod.director = withScene(mod.director, sceneOf(DEFAULT_WORKFLOW, stored.stage), await $.clock.now())
+        mod.director = withScene(mod.director, sceneOf(mod.workflow, stored.stage), await $.clock.now())
       }
     } catch {
       // The store is unreadable: keep what this session has.
@@ -325,11 +328,11 @@ export const register: Register = on => {
 
   on('command.run', async ($, e, next) => {
     if (e.command !== mod.commandName) return next(e)
-    const cmd = parseCommand(e.args)
+    const cmd = parseCommand(mod.workflow, e.args)
     const now = await $.clock.now()
     const before = await current($, now)
-    if (cmd.kind === 'show') return { text: showText(before, now) }
-    if (cmd.kind === 'usage') return { text: USAGE }
+    if (cmd.kind === 'show') return { text: showText(mod.workflow, before, now) }
+    if (cmd.kind === 'usage') return { text: usage(mod.workflow) }
     if (cmd.kind === 'demo') {
       const text = startDemo(mod, cmd.seconds, now, await read($, hiddenAtom))
       // The band grows to hold it.
@@ -355,17 +358,17 @@ export const register: Register = on => {
 
       return { text: isHidden ? 'stage-toons is hidden. /stage hide shows it again.' : 'stage-toons is shown.' }
     }
-    const after = moveFor(before, cmd, now)
+    const after = moveFor(mod.workflow, before, cmd, now)
     await commit($, mod, before, after, now)
 
-    return { text: `Stage ${describe(DEFAULT_WORKFLOW, after)}`, context: [`[stage-toons] The user set the stage: ${describe(DEFAULT_WORKFLOW, after)}`] }
+    return { text: `Stage ${describe(mod.workflow, after)}`, context: [`[stage-toons] The user set the stage: ${describe(mod.workflow, after)}`] }
   })
 
   on('prompt.compose', async ($, e, next) => {
     const result = await next(e)
     let text = await read($, workflowAtom)
     if (text === null) {
-      const fresh = workflowText(await current($, await $.clock.now()), mod.toolName)
+      const fresh = workflowText(mod.workflow, await current($, await $.clock.now()), mod.toolName)
       await update($, workflowAtom, () => fresh)
       text = fresh
     }
@@ -379,7 +382,7 @@ export const register: Register = on => {
     const result = await next(e)
     if (e.agentId === undefined && e.trigger !== 'precompute' && result.messages !== undefined) {
       const p = await current($, await $.clock.now())
-      await update($, workflowAtom, () => workflowText(p, mod.toolName))
+      await update($, workflowAtom, () => workflowText(mod.workflow, p, mod.toolName))
     }
 
     return result
@@ -452,7 +455,7 @@ export const register: Register = on => {
     const frame = mode === 'demo' && mod.demo ? demoAt(mod.demo, now) : null
     if (frame) mod.demoLineIndex = frame.index
     const barColumns = mode === 'idle' ? columns - IDLE_COLS - IDLE_GAP : columns
-    const lines = bandLayout(progress, await read($, auditingAtom), barColumns, frame ? demoLine(frame, DEFAULT_WORKFLOW) : undefined)
+    const lines = bandLayout(mod.workflow, progress, await read($, auditingAtom), barColumns, frame ? demoLine(frame, mod.workflow) : undefined)
     // Other plugins' bands, and the engine's, still draw: below the bar.
     const below = await next(e)
     const { Box, Text } = $.ui.resolve(e)

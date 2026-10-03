@@ -1,9 +1,9 @@
 // What the model is told: the set_stage tool and the system-prompt section
 // that lists the stages.
 
-import type { Progress } from '../types'
+import type { Progress, StageDef, Workflow } from '../types'
 import { describe } from './stages'
-import { DEFAULT_WORKFLOW, stageIds } from './workflow'
+import { stageIds } from './workflow'
 
 export const TOOL = 'set_stage'
 export const COMMAND = 'stage'
@@ -17,32 +17,33 @@ export const TOOL_DESCRIPTION =
   'and when the focus within a stage changes notably, at most every few minutes. ' +
   "Only the main conversation moves the stage: a subagent's call is refused."
 
-export const TOOL_SCHEMA = {
-  type: 'object',
-  properties: {
-    stage: { type: 'string', enum: stageIds(DEFAULT_WORKFLOW) },
-    message: { type: 'string', description: 'What is happening now, present tense, under 80 characters' },
-    feature: { type: 'string', description: "The feature's short name, when it is known or changes" },
-  },
-  required: ['stage', 'message'],
+export function toolSchema(w: Workflow) {
+  return {
+    type: 'object',
+    properties: {
+      stage: { type: 'string', enum: stageIds(w) },
+      message: { type: 'string', description: 'What is happening now, present tense, under 80 characters' },
+      feature: { type: 'string', description: "The feature's short name, when it is known or changes" },
+    },
+    required: ['stage', 'message'],
+  }
 }
 
-// The same text for the same progress and tool name, byte for byte: the
-// section sits in the cached part of the prompt.
-export function workflowText(p: Progress, toolName: string): string {
-  return [
-    "Workflow tracker (stage-toons). This project's work moves through these",
-    'stages: roadmap (roadmap discussion, new features brainstorming),',
-    "brainstorm (one feature's brainstorming), spec (writing the spec),",
-    'spec-audit (a Fable subagent audits the spec), plan (writing the',
-    'implementation plan), plan-audit (a Fable subagent audits the plan),',
-    'develop, claude-test (Claude verifies the work), user-test (the user',
-    'tests it), cleanup (leftovers, chores, docs), and other (work that fits',
-    'none of them). When the work moves to a different stage, forwards,',
-    `backwards or skipping, call ${toolName} with the stage`,
-    'and a short present-tense message. Also call it when the focus within a',
-    'stage changes notably, but not more than every few minutes. Its result',
-    'and any "[stage-toons]" note are the current state.',
-    `At session start: ${describe(DEFAULT_WORKFLOW, p)}.`,
-  ].join('\n')
+const listed = (stages: readonly StageDef[]): string => stages.map(s => `${s.id} (${s.when})`).join(', ')
+
+// The same text for the same workflow, progress and tool name, byte for
+// byte: the section sits in the cached part of the prompt.
+export function workflowText(w: Workflow, p: Progress, toolName: string): string {
+  const lines = ["Workflow tracker (stage-toons). This project's work moves through these", `stages, in order: ${listed(w.track)}.`]
+  if (w.side.length > 0) lines.push(`Side stages, entered from any point and left again: ${listed(w.side)}.`)
+  lines.push(
+    'When the work moves to a different stage, forwards, backwards or',
+    `skipping, call ${toolName} with the stage and a short present-tense`,
+    'message. Also call it when the focus within a stage changes notably, but',
+    'not more than every few minutes. Its result and any "[stage-toons]" note',
+    'are the current state.',
+    `At session start: ${describe(w, p)}.`,
+  )
+
+  return lines.join('\n')
 }

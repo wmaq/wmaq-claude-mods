@@ -2,11 +2,11 @@
 // track, where the work stands and the feature, the Fable tag while an
 // auditor runs, and the message. Sized to the band so nothing wraps.
 
-import type { Progress } from '../types'
+import type { Progress, Workflow } from '../types'
 import { IDLE_COLS, IDLE_ROWS } from './idle'
 import { charCount, fitText, position } from './stages'
 import { TOON_ROWS } from './toon'
-import { DEFAULT_WORKFLOW, isTrack, rank } from './workflow'
+import { isTrack, rank } from './workflow'
 
 export type Tone = 'done' | 'current' | 'future' | 'label' | 'tag' | 'message'
 export type Span = { text: string; tone: Tone }
@@ -53,12 +53,12 @@ export function bandMode(s: BandSite): BandMode {
 // The track as it stands: done steps and the links between them, the
 // current step, and the steps to come. In Other, the track as it stood at
 // the last track stage, all dim.
-export function trackSpans(p: Progress): Span[] {
-  const isOff = !isTrack(DEFAULT_WORKFLOW, p.stage)
-  const at = isTrack(DEFAULT_WORKFLOW, p.stage) ? rank(DEFAULT_WORKFLOW, p.stage) : rank(DEFAULT_WORKFLOW, p.lastTrackStage)
+export function trackSpans(w: Workflow, p: Progress): Span[] {
+  const isOff = !isTrack(w, p.stage)
+  const at = isTrack(w, p.stage) ? rank(w, p.stage) : rank(w, p.lastTrackStage)
   const lit = (tone: Tone): Tone => (isOff ? 'future' : tone)
   const spans: Span[] = []
-  DEFAULT_WORKFLOW.track.forEach((_, i) => {
+  w.track.forEach((_, i) => {
     if (i > 0) spans.push(i <= at ? { text: '━', tone: lit('done') } : { text: '─', tone: 'future' })
     spans.push(i < at ? { text: '●', tone: lit('done') } : i === at ? { text: '◉', tone: lit('current') } : { text: '○', tone: 'future' })
   })
@@ -69,16 +69,16 @@ export function trackSpans(p: Progress): Span[] {
 const lengthOf = (spans: Span[]) => spans.reduce((n, s) => n + charCount(s.text), 0)
 
 // message, when given, stands in for the progress's own (the demo's line).
-export function bandLayout(p: Progress, isAuditing: boolean, columns: number, message = p.message): Span[][] {
+export function bandLayout(w: Workflow, p: Progress, isAuditing: boolean, columns: number, message = p.message): Span[][] {
   // One column spare, so a line never touches the edge.
   const width = Math.max(1, columns - 1)
-  if (columns < WIDE_MIN) return [[{ text: fitText(`${position(DEFAULT_WORKFLOW, p)} — ${message}`, width), tone: 'label' }]]
-  const track: Span[] = [{ text: ' ', tone: 'label' }, ...trackSpans(p)]
+  if (columns < WIDE_MIN) return [[{ text: fitText(`${position(w, p)} — ${message}`, width), tone: 'label' }]]
+  const track: Span[] = [{ text: ' ', tone: 'label' }, ...trackSpans(w, p)]
   const room = width - lengthOf(track)
-  const withFeature = `  ${position(DEFAULT_WORKFLOW, p)}${p.feature ? ` · ${p.feature}` : ''}`
+  const withFeature = `  ${position(w, p)}${p.feature ? ` · ${p.feature}` : ''}`
   const tag = isAuditing ? `  ${TAG}` : ''
   // The tag goes first, then the feature; what still overflows is cut.
-  const label = charCount(withFeature) <= room ? withFeature : `  ${position(DEFAULT_WORKFLOW, p)}`
+  const label = charCount(withFeature) <= room ? withFeature : `  ${position(w, p)}`
   const line1: Span[] = [...track, { text: fitText(label, room), tone: 'label' }]
   if (tag && charCount(label) + charCount(tag) <= room) line1.push({ text: tag, tone: 'tag' })
 
