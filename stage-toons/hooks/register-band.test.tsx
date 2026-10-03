@@ -63,6 +63,22 @@ test('the idle Clawd dozes after a minute and is awake again after the next turn
   expect(colorInRows(blitsOf(world, 'idle').at(-1), [0, 1, 2, 3], Z_COLOR)).toBe(false)
 })
 
+test('the idle routine is picked at the prompt that starts a turn, not at one typed during it', async ($, on) => {
+  let writes = 0
+  on('state.set', ($, e, next) => {
+    if ((e as unknown as { key: string }).key === 'idle') writes += 1
+
+    return next(e)
+  })
+  engine(on)
+  await $.session.start(START)
+  const atStart = writes
+  await $.prompt.submit({ text: 'hi', wait: false, origin: { kind: 'composer' } } as never)
+  expect(writes).toBe(atStart + 1)
+  await $.prompt.submit({ text: 'more', wait: false, origin: { kind: 'composer' }, turnId: 't1' } as never)
+  expect(writes).toBe(atStart + 1)
+})
+
 test('/stage demo plays every scene below the bar, then gives the band back', async ($, on) => {
   const { world, clock } = engine(on)
   await $.session.start(START)

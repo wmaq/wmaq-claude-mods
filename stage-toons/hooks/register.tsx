@@ -426,14 +426,18 @@ export const register: Register = on => {
     return result
   })
 
-  // Another session on this project may have moved the stage.
   on('prompt.submit', async ($, e, next) => {
-    // The routine for the idle period after this turn, left out the one just shown.
-    const routine = pickIdle(mod.idle, Math.random())
-    mod.idle = routine
-    await update($, idleAtom, () => routine)
+    // The routine for the idle period after this turn, leaving out the one
+    // just shown. A prompt typed while a turn runs (turnId set) starts no
+    // idle period of its own, so it picks nothing.
+    if (e.turnId === undefined) {
+      const routine = pickIdle(mod.idle, Math.random())
+      mod.idle = routine
+      await update($, idleAtom, () => routine)
+    }
     // A turn starts: the toon under the spinner takes over from the demo.
     if (mod.demo) endDemo($, mod)
+    // Another session on this project may have moved the stage.
     try {
       const stored = validate(await $.store.get(mod.key))
       const mine = await read($, progressAtom)
