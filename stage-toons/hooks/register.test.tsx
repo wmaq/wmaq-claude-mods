@@ -153,6 +153,6 @@ test('/stage message waits for a stage while untracked', async ($, on) => {
   engine(on)
   await $.session.start(START)
   const answer = (await runStage($, 'message Poking around')) as { text?: string }
-  expect(answer.text).toBe('stage-toons: a message belongs to a stage; set one first (/stage next, or /stage <id>).')
+  expect(answer.text).toBe('a message belongs to a stage; set one first (/stage next, or /stage <id>).')
   expect(await bandText($)).toContain('Not tracked yet')
 })

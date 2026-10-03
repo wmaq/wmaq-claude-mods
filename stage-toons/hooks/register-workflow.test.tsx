@@ -46,16 +46,16 @@ test('a broken file at session start: the default workflow and one toast', async
 test('init writes the default workflow, and refuses when the file exists', async ($, on) => {
   const { world } = engine(on)
   await $.session.start(START)
-  expect(text(await runStage($, 'workflow init'))).toContain('Wrote the default workflow to .claude/stage-toons.json')
+  expect(text(await runStage($, 'workflow init'))).toBe('Wrote the default workflow to .claude/stage-toons.json: edit it, then /stage workflow reload.')
   expect(world.files[FILE]).toContain('"id": "roadmap"')
-  expect(text(await runStage($, 'workflow init'))).toBe('stage-toons: .claude/stage-toons.json exists; edit it, then /stage workflow reload')
+  expect(text(await runStage($, 'workflow init'))).toBe('.claude/stage-toons.json exists; edit it, then /stage workflow reload')
 })
 
 test('init says so when the write fails', async ($, on) => {
   const { world } = engine(on)
   await $.session.start(START)
   world.isFsBroken = true
-  expect(text(await runStage($, 'workflow init'))).toContain("stage-toons: couldn't write .claude/stage-toons.json")
+  expect(text(await runStage($, 'workflow init'))).toContain("couldn't write .claude/stage-toons.json")
 })
 
 test('reload switches: set_stage, the section and Claude learn the new stages', async ($, on) => {
@@ -64,7 +64,7 @@ test('reload switches: set_stage, the section and Claude learn the new stages', 
   const before = await sectionText($)
   world.files[FILE] = json(CUSTOM)
   const answer = (await runStage($, 'workflow reload')) as { text?: string; context?: string[] }
-  expect(answer.text).toContain('stage-toons: workflow from .claude/stage-toons.json: 3 track stages, 1 side stages.')
+  expect(answer.text).toContain('workflow from .claude/stage-toons.json: 3 track stages, 1 side stages.')
   expect(answer.context?.[0]).toContain('[stage-toons] The workflow changed: track: plan, build, ship; side: debugging.')
   expect(enumOf(world.schemas.at(-1))).toEqual(['plan', 'build', 'ship', 'debugging'])
   expect(await sectionText($)).not.toBe(before)
@@ -78,7 +78,7 @@ test('reload of an unchanged workflow registers nothing', async ($, on) => {
   world.files[FILE] = json(CUSTOM)
   await $.session.start(START)
   const registered = world.schemas.length
-  expect(text(await runStage($, 'workflow reload'))).toBe('stage-toons: workflow unchanged.')
+  expect(text(await runStage($, 'workflow reload'))).toBe('workflow unchanged.')
   expect(world.schemas.length).toBe(registered)
 })
 
@@ -88,7 +88,7 @@ test('reload with errors keeps the workflow and lists every error', async ($, on
   await $.session.start(START)
   world.files[FILE] = json({ track: [{ ...CUSTOM.track[0], scene: 'bug-hnt', lable: 'x' }] })
   const answer = text(await runStage($, 'workflow reload'))
-  expect(answer).toContain('stage-toons: .claude/stage-toons.json has errors; kept the current workflow:')
+  expect(answer).toContain('.claude/stage-toons.json has errors; kept the current workflow:')
   expect(answer).toContain('  track[0].lable: not a field (id, label, message, when, scene)')
   expect(answer).toContain('  track[0].scene "bug-hnt" is not a scene (')
   expect(answer.split(String.fromCharCode(10)).filter(l => l.startsWith('  track[0]'))).toHaveLength(2)
@@ -100,7 +100,7 @@ test('reload with the file gone switches to the default and says so', async ($, 
   world.files[FILE] = json(CUSTOM)
   await $.session.start(START)
   delete world.files[FILE]
-  expect(text(await runStage($, 'workflow reload'))).toContain('stage-toons: workflow the default (no .claude/stage-toons.json)')
+  expect(text(await runStage($, 'workflow reload'))).toContain('workflow the default (no .claude/stage-toons.json)')
 })
 
 test('reload moves a stage the workflow lost back to the last track stage, without saving', async ($, on) => {
@@ -139,7 +139,7 @@ test('reload of the same stages from another source says unchanged and tells Cla
   await runStage($, 'workflow init')
   const registered = world.schemas.length
   const answer = (await runStage($, 'workflow reload')) as { text?: string; context?: string[] }
-  expect(answer.text).toBe('stage-toons: workflow unchanged (now from .claude/stage-toons.json).')
+  expect(answer.text).toBe('workflow unchanged (now from .claude/stage-toons.json).')
   expect(answer.context).toBeUndefined()
   expect(world.schemas.length).toBe(registered)
   expect(text(await runStage($, 'workflow'))).toContain('Workflow: from .claude/stage-toons.json')

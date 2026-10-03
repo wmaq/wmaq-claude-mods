@@ -268,27 +268,27 @@ async function registerTool($: EngineInterface, mod: Mod) {
 }
 
 async function initWorkflow($: EngineInterface): Promise<string> {
-  if (await $.fs.exists(WORKFLOW_FILE)) return `stage-toons: ${WORKFLOW_FILE} exists; edit it, then /stage workflow reload`
+  if (await $.fs.exists(WORKFLOW_FILE)) return `${WORKFLOW_FILE} exists; edit it, then /stage workflow reload`
   try {
     await $.fs.write(WORKFLOW_FILE, workflowJson(DEFAULT_WORKFLOW))
   } catch (error) {
-    return `stage-toons: couldn't write ${WORKFLOW_FILE}: ${String(error)}`
+    return `couldn't write ${WORKFLOW_FILE}: ${String(error)}`
   }
 
-  return `stage-toons: Wrote the default workflow to ${WORKFLOW_FILE}: edit it, then /stage workflow reload.`
+  return `Wrote the default workflow to ${WORKFLOW_FILE}: edit it, then /stage workflow reload.`
 }
 
 async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promise<{ text: string; context?: string[] }> {
   const file = await readWorkflowFile($)
-  if (file.kind === 'bad') return { text: [`stage-toons: ${WORKFLOW_FILE} has errors; kept the current workflow:`, ...file.errors.map(e => `  ${e}`)].join('\n') }
+  if (file.kind === 'bad') return { text: [`${WORKFLOW_FILE} has errors; kept the current workflow:`, ...file.errors.map(e => `  ${e}`)].join('\n') }
   const next = sessionWorkflowOf(file)
   if (sameWorkflow(next.workflow, mod.workflow)) {
-    if (next.source === mod.workflowSource) return { text: 'stage-toons: workflow unchanged.' }
+    if (next.source === mod.workflowSource) return { text: 'workflow unchanged.' }
     // The same stages from another source: nothing for Claude or the cache.
     mod.workflowSource = next.source
     await update($, workflowAtom, () => next)
 
-    return { text: `stage-toons: workflow unchanged (now ${next.source === 'file' ? `from ${WORKFLOW_FILE}` : 'the default'}).` }
+    return { text: `workflow unchanged (now ${next.source === 'file' ? `from ${WORKFLOW_FILE}` : 'the default'}).` }
   }
   mod.workflow = next.workflow
   mod.workflowSource = next.source
@@ -301,7 +301,7 @@ async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promis
   // The band's lines name stages: draw it again.
   $.ui.invalidate('ui.render')
   const from = next.source === 'file' ? `from ${WORKFLOW_FILE}` : `the default (no ${WORKFLOW_FILE})`
-  const lines = [`stage-toons: workflow ${from}: ${mod.workflow.track.length} track stages, ${mod.workflow.side.length} side stages.`]
+  const lines = [`workflow ${from}: ${mod.workflow.track.length} track stages, ${mod.workflow.side.length} side stages.`]
   if (moved) lines.push(moved)
 
   return { text: lines.join('\n'), context: [`[stage-toons] The workflow changed: ${stageList(mod.workflow)}. Now: ${describe(mod.workflow, progress)}`] }
@@ -448,7 +448,7 @@ export const register: Register = on => {
       return { text: isHidden ? 'stage-toons is hidden. /stage hide shows it again.' : 'stage-toons is shown.' }
     }
     // Untracked, a message would be shown nowhere and lost at the first stage.
-    if (cmd.kind === 'message' && before.stage === null) return { text: 'stage-toons: a message belongs to a stage; set one first (/stage next, or /stage <id>).' }
+    if (cmd.kind === 'message' && before.stage === null) return { text: 'a message belongs to a stage; set one first (/stage next, or /stage <id>).' }
     const after = moveFor(mod.workflow, before, cmd, now)
     await commit($, mod, before, after, now)
 
