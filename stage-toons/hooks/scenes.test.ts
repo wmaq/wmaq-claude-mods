@@ -7,6 +7,12 @@ import { REACTIONS, SCENES, STAGE_SCENES } from './scenes'
 import { DEFAULT_WORKFLOW } from './workflow'
 import { C } from './scenes/kit'
 
+const LIBRARY = [
+  'road-trip', 'light-bulbs', 'writing-desk', 'proofread-page', 'stepping-stones', 'proofread-checklist', 'bricklaying', 'test-tubes', 'gift',
+  'sweeping', 'bug-hunt', 'mystery-box', 'fable-audit', 'standing',
+  'stargazing', 'sticky-notes', 'blueprint', 'red-pen',
+]
+
 const SCENE_LIST: Scene[] = Object.values(SCENES)
 
 const count = (b: PixelBuffer, color: number) => [...b.px].filter(c => c === color).length
@@ -67,9 +73,7 @@ test('every loop is seamless: the hero ends where it began', () => {
 
 test('every scene is filed under its own name: the library', () => {
   for (const [id, scene] of Object.entries(SCENES)) expect(scene.id).toBe(id)
-  expect(Object.keys(SCENES).sort()).toEqual(
-    ['road-trip', 'light-bulbs', 'writing-desk', 'proofread-page', 'stepping-stones', 'proofread-checklist', 'bricklaying', 'test-tubes', 'gift', 'sweeping', 'bug-hunt', 'mystery-box', 'fable-audit', 'standing'].sort(),
-  )
+  expect(Object.keys(SCENES).sort()).toEqual([...LIBRARY].sort())
   expect(STAGE_SCENES).toEqual(Object.keys(SCENES).filter(n => n !== 'fable-audit' && n !== 'standing'))
   for (const s of [...DEFAULT_WORKFLOW.track, ...DEFAULT_WORKFLOW.side]) for (const id of s.scenes) expect(STAGE_SCENES).toContain(id)
 })
@@ -114,4 +118,26 @@ test('bug-hunt: the bug and the magnifying glass are on stage throughout', () =>
     expect(count(b, C.red)).toBeGreaterThan(1)
     expect(count(b, C.glass)).toBeGreaterThan(2)
   }
+})
+
+const has = (id: string, color: number, t: number) => count(renderFull(SCENES[id]!, t), color)
+
+test('batch 1, part 1: each new scene shows what it is about', () => {
+  // Stars come out one by one; a shooting star crosses at 4.2 s.
+  expect(has('stargazing', C.white, 0.1) + has('stargazing', C.gold, 0.1)).toBeLessThan(has('stargazing', C.white, 3.1) + has('stargazing', C.gold, 3.1))
+  // The telescope alone is 5 gray pixels.
+  expect(has('stargazing', C.gray, 1)).toBeGreaterThan(4)
+  // Notes go up on the board, five by the end.
+  expect(has('sticky-notes', C.blue, 1.5)).toBe(0)
+  expect(has('sticky-notes', C.blue, 2.5)).toBe(9)
+  // The plan's lines are drawn out on the blue board.
+  expect(has('blueprint', C.white, 0.5)).toBeLessThan(has('blueprint', C.white, 4.9))
+  // Mistakes are circled in red, then ticked in green.
+  expect(has('red-pen', C.red, 0.5)).toBe(8)
+  expect(has('red-pen', C.green, 5)).toBe(12)
+})
+
+test('every default stage lists its batch-1 scene second', () => {
+  const second = (id: string) => [...DEFAULT_WORKFLOW.track, ...DEFAULT_WORKFLOW.side].find(s => s.id === id)?.scenes[1]
+  expect([second('roadmap'), second('brainstorm'), second('spec'), second('spec-audit')]).toEqual(['stargazing', 'sticky-notes', 'blueprint', 'red-pen'])
 })

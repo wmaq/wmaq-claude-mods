@@ -1,0 +1,46 @@
+// Sticky notes: Clawd sticks notes on a board one after another, and the
+// last one gets a gold star.
+
+import { fillRect } from '../pixels'
+import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
+import { blinking, C, every, still } from './kit'
+
+const STAR: Sprite = { palette: { y: C.gold }, frames: [['.y.', 'yyy', '.y.']] }
+const NOTES = [
+  { x: 27, y: 3, color: C.gold },
+  { x: 33, y: 2, color: C.green },
+  { x: 39, y: 4, color: C.blue },
+  { x: 29, y: 8, color: C.paper },
+  { x: 36, y: 8, color: C.red },
+]
+const PER_NOTE = 1
+const LOOP = 7
+const STARRED = NOTES.length * PER_NOTE + 0.3
+
+export const stickyNotes: Scene = {
+  id: 'sticky-notes',
+  loop: LOOP,
+  focusX: 30,
+  backdrop: b => {
+    fillRect(b, 24, 1, 21, 12, C.woodDark)
+    fillRect(b, 25, 2, 19, 10, C.wood)
+  },
+  actors: [
+    {
+      kind: 'clawd',
+      isHero: true,
+      at: still(9, CLAWD_TOP),
+      look: t => ({
+        isBlinking: blinking(t, 1.1),
+        look: { x: 1, y: -1 },
+        arms: { left: 'down', right: t < NOTES.length * PER_NOTE && t % PER_NOTE < 0.3 ? 'out' : 'down' },
+      }),
+    },
+  ],
+  front: (b, t) => {
+    const stuck = Math.min(NOTES.length, every(t, PER_NOTE) + 1)
+    for (const note of NOTES.slice(0, stuck)) fillRect(b, note.x, note.y, 3, 3, note.color)
+    // The star sits just above the last note.
+    if (t >= STARRED && every(t, 0.3) % 2 === 0) drawSprite(b, STAR, 0, 36, 5)
+  },
+}

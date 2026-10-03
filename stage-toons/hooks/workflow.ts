@@ -11,10 +11,10 @@ export const UNTRACKED_SCENE = 'mystery-box'
 
 export const DEFAULT_WORKFLOW: Workflow = {
   track: [
-    { id: 'roadmap', label: 'Roadmap', message: 'Discussing the roadmap and new features', when: 'roadmap discussion, new features brainstorming', scenes: ['road-trip'] },
-    { id: 'brainstorm', label: 'Brainstorm', message: 'Brainstorming the feature', when: "one feature's brainstorming", scenes: ['light-bulbs'] },
-    { id: 'spec', label: 'Spec', message: 'Writing the spec', when: 'writing the spec', scenes: ['writing-desk'] },
-    { id: 'spec-audit', label: 'Spec audit', message: 'Fable is auditing the spec', when: 'a Fable subagent audits the spec', scenes: ['proofread-page'] },
+    { id: 'roadmap', label: 'Roadmap', message: 'Discussing the roadmap and new features', when: 'roadmap discussion, new features brainstorming', scenes: ['road-trip', 'stargazing'] },
+    { id: 'brainstorm', label: 'Brainstorm', message: 'Brainstorming the feature', when: "one feature's brainstorming", scenes: ['light-bulbs', 'sticky-notes'] },
+    { id: 'spec', label: 'Spec', message: 'Writing the spec', when: 'writing the spec', scenes: ['writing-desk', 'blueprint'] },
+    { id: 'spec-audit', label: 'Spec audit', message: 'Fable is auditing the spec', when: 'a Fable subagent audits the spec', scenes: ['proofread-page', 'red-pen'] },
     { id: 'plan', label: 'Plan', message: 'Writing the implementation plan', when: 'writing the implementation plan', scenes: ['stepping-stones'] },
     { id: 'plan-audit', label: 'Plan audit', message: 'Fable is auditing the plan', when: 'a Fable subagent audits the plan', scenes: ['proofread-checklist'] },
     { id: 'develop', label: 'Develop', message: 'Building it', when: 'building it', scenes: ['bricklaying'] },
