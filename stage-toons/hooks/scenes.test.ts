@@ -5,7 +5,7 @@ import { createBuffer, type PixelBuffer } from './pixels'
 import { CLAWD_TOP, heroAt, renderFull, renderScene, type Scene, STAGE_H, STAGE_W } from './scene'
 import { REACTIONS, SCENES, STAGE_SCENES } from './scenes'
 import { DEFAULT_WORKFLOW } from './workflow'
-import { C } from './scenes/kit'
+import { C, line } from './scenes/kit'
 
 const LIBRARY = [
   'road-trip', 'light-bulbs', 'writing-desk', 'proofread-page', 'stepping-stones', 'proofread-checklist', 'bricklaying', 'test-tubes', 'gift',
@@ -15,6 +15,7 @@ const LIBRARY = [
   'waiting-bench', 'dishes', 'flashlight', 'fishing',
   'treasure-map', 'thought-clouds', 'scroll', 'stamp',
   'ladder', 'scales', 'workbench', 'crash-test',
+  'cake', 'recycling', 'bug-net', 'dice',
 ]
 
 const SCENE_LIST: Scene[] = Object.values(SCENES)
@@ -207,7 +208,10 @@ const at = (id: string, color: number, t: number) => {
   return [...b.px].flatMap((c, i) => (c === color ? [{ x: i % b.w, y: Math.floor(i / b.w) }] : []))
 }
 
-const BATCH_2 = ['treasure-map', 'thought-clouds', 'scroll', 'stamp', 'ladder', 'scales', 'workbench', 'crash-test']
+const BATCH_2 = [
+  'treasure-map', 'thought-clouds', 'scroll', 'stamp', 'ladder', 'scales',
+  'workbench', 'crash-test', 'cake', 'recycling', 'bug-net', 'dice',
+]
 
 test('batch 2: at 30 columns, the narrowest the demo plays at, the crop still shows most of Clawd', () => {
   for (const id of BATCH_2) {
@@ -281,4 +285,34 @@ test('batch 2, part 2: each new scene shows what it is about', () => {
   expect(cartX(3)).toBeLessThan(cartX(1.5))
   expect(has('crash-test', C.gold, 1)).toBe(0)
   expect(has('crash-test', C.gold, 1.7)).toBeGreaterThan(0)
+})
+
+test('batch 2, part 3: each new scene shows what it is about', () => {
+  // The cake is carried beside Clawd, then sits on the table.
+  const cakeX = (t: number) => Math.min(...at('cake', C.red, t).filter(p => p.y > 4).map(p => p.x))
+  expect(cakeX(0.1)).toBeLessThan(25)
+  expect(cakeX(3)).toBe(32)
+  expect(cakeX(7.9)).toBe(cakeX(0))
+  // The third ball misses the bin: it lies on the floor past it.
+  expect(at('recycling', C.white, 4.5).every(p => p.x >= 44 && p.y >= 11)).toBe(true)
+  expect(has('recycling', C.white, 4.5)).toBe(2)
+  // The bug is caught inside the net's hoop.
+  expect(at('bug-net', C.red, 4.5).every(p => p.x >= 32 && p.x <= 36 && p.y >= 3 && p.y <= 6)).toBe(true)
+  expect(has('bug-net', C.red, 4.5)).toBe(2)
+  // It stays caught: the net comes back up with it as the next bug flies in.
+  const red = at('bug-net', C.red, 5.7)
+  expect(red.filter(p => p.x >= 17 && p.x <= 21 && p.y <= 3)).toHaveLength(2)
+  expect(red.filter(p => p.x >= 38)).toHaveLength(2)
+  // The dice land on a double six: twelve pips (Clawd's eyes are ink too).
+  expect(at('dice', C.ink, 3).filter(p => p.x >= 26)).toHaveLength(12)
+  expect([...renderFull(SCENES.dice!, 1).px]).not.toEqual([...renderFull(SCENES.dice!, 1.15).px])
+})
+
+test('the kit draws a line with both ends and every pixel between', () => {
+  const b = createBuffer(8, 8)
+  line(b, 1, 1, 5, 3, C.gray)
+  const px = [...b.px].flatMap((c, i) => (c === C.gray ? [[i % 8, Math.floor(i / 8)]] : []))
+  expect(px).toContainEqual([1, 1])
+  expect(px).toContainEqual([5, 3])
+  expect(px).toHaveLength(5)
 })

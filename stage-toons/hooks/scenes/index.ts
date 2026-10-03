@@ -7,9 +7,12 @@ import { DEFAULT_WORKFLOW } from '../workflow'
 import { blueprint } from './blueprint'
 import { bricklaying } from './bricklaying'
 import { bugHunt } from './bug-hunt'
+import { bugNet } from './bug-net'
+import { cake } from './cake'
 import { clipboard } from './clipboard'
 import { controlPanel } from './control-panel'
 import { crashTest } from './crash-test'
+import { dice } from './dice'
 import { dishes } from './dishes'
 import { dominoes } from './dominoes'
 import { fableAudit } from './fable-audit'
@@ -20,6 +23,7 @@ import { ladder } from './ladder'
 import { lightBulbs } from './light-bulbs'
 import { mysteryBox } from './mystery-box'
 import { proofreadChecklist, proofreadPage } from './proofread'
+import { recycling } from './recycling'
 import { redPen } from './red-pen'
 import { roadTrip } from './road-trip'
 import { scales } from './scales'
@@ -73,6 +77,10 @@ export const SCENES: Record<SceneId, Scene> = {
   scales,
   workbench,
   'crash-test': crashTest,
+  cake,
+  recycling,
+  'bug-net': bugNet,
+  dice,
 }
 
 // What a stage may play: not Fable's scene (it plays while a Fable subagent
