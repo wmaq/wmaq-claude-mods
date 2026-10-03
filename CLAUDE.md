@@ -67,9 +67,8 @@ It names this session's hot-reload folder,
 Learned building stage-toons on 2.1.287 and 2.1.288:
 
 - The engine prefixes a command's answer with the plugin's name
-  (`stage-toons: …`); an answer that starts with it shows it twice.
-  Toasts and tool refusals are not prefixed.
-
+  (`stage-toons: …`); an answer that starts with it shows it twice. A
+  tool's refusal (`{ deny }`) is shown as given.
 - The engine reads a hooks module's source before loading it, and refuses
   it ("hooks module did not load: … compiled line N") when:
   - `$` is passed to anything but a function declared at the top of the
