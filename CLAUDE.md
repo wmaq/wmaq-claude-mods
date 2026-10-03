@@ -5,7 +5,7 @@ by wmaq with Claude. Each mod is a folder at the repository root.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below, above the prompt, with pixel-art Clawd scenes under the spinner and an idle Clawd beside the bar | v0.2 merged; later ideas in `docs/roadmap.md` |
+| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner and an idle Clawd beside the bar | v0.3 merged; later ideas in `docs/roadmap.md` |
 
 ## The workflow
 
@@ -66,6 +66,10 @@ It names this session's hot-reload folder,
 
 Learned building stage-toons on 2.1.287 and 2.1.288:
 
+- The engine prefixes a command's answer with the plugin's name
+  (`stage-toons: …`); an answer that starts with it shows it twice.
+  Toasts and tool refusals are not prefixed.
+
 - The engine reads a hooks module's source before loading it, and refuses
   it ("hooks module did not load: … compiled line N") when:
   - `$` is passed to anything but a function declared at the top of the
@@ -119,6 +123,8 @@ Learned building stage-toons on 2.1.287 and 2.1.288:
 - The kit cannot reload a module. For state an earlier load left, answer
   that one key and pass the rest:
   `on('state.get', ($, e, next) => (e.key === 'warned' ? { value: { value: true, version: 1 } } : next(e)))`.
+- `fs.*` test hooks receive resolved absolute paths, not the relative path
+  the mod passed; match files by the part the test names.
 - `ui.redraw()` redraws whether or not the mod asked to be: count
   `ui.invalidate` in a test hook (answer `{ value: undefined }`) to prove
   the mod asks, or a missing redraw passes the test.
