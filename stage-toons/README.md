@@ -78,9 +78,9 @@ When Claude isn't working, a small Clawd stands left of the bar, in a box
 26 columns wide. He has five routines: the classic one (he blinks, glances
 at the prompt and the bar, taps a foot), Nyan Clawd, coffee (he sips from a
 steaming mug), reading (he turns the pages of a book) and yo-yo. One is
-picked each time a turn starts. Whichever it is, after a minute he sits down and dozes off.
-He shows in a terminal at least 78 columns wide; otherwise the bar is text
-alone.
+picked each time a turn starts. Whichever it is, after a minute he sits
+down and dozes off. He shows in a terminal at least 78 columns wide;
+otherwise the bar is text alone.
 
 `/stage demo` plays all 37 scenes of the library in turn below the bar,
 each named with the stage that plays it, so you can see them without

@@ -109,7 +109,7 @@ Left as they are (from the reviews):
 Possibly later: sharing stage-toons with the community, the way
 claude-toons was shared.
 
-### v0.4 step 2 (in progress)
+### v0.4 step 2 (2026-10-04, merged)
 
 Plan: `docs/superpowers/plans/2026-10-03-stage-toons-scene-variety-step2.md`.
 - **12 more scenes**, each the third scene of a default stage:
@@ -121,6 +121,16 @@ Plan: `docs/superpowers/plans/2026-10-03-stage-toons-scene-variety-step2.md`.
 - **Approved changes to the spec's concepts**: the cake is picked back up
   and carried off, so the loop needs no jump; the bug-net bug stays caught
   in the net as the next bug flies in; the dice always land on a double six.
+
+Left as they are (from Fable's final review, minor; the user's live test
+passed):
+- Below 54 terminal columns crash-test's wall and bang are cropped out
+  (its focus keeps Clawd in view), so the cart seems to bounce off the edge.
+- In stamp, the desk top sits on Clawd's foot row (his feet draw through
+  it) and the raised stamp floats a row above his claw.
+- Thought-clouds' big cloud pops to a small puff in one frame instead of
+  thinning away.
+- Scroll's quill tip sits a column or two right of the claw.
 
 ### Later (ideas, up for discussion)
 
