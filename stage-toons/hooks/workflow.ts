@@ -11,20 +11,20 @@ export const UNTRACKED_SCENE = 'mystery-box'
 
 export const DEFAULT_WORKFLOW: Workflow = {
   track: [
-    { id: 'roadmap', label: 'Roadmap', message: 'Discussing the roadmap and new features', when: 'roadmap discussion, new features brainstorming', scenes: ['road-trip', 'stargazing'] },
-    { id: 'brainstorm', label: 'Brainstorm', message: 'Brainstorming the feature', when: "one feature's brainstorming", scenes: ['light-bulbs', 'sticky-notes'] },
-    { id: 'spec', label: 'Spec', message: 'Writing the spec', when: 'writing the spec', scenes: ['writing-desk', 'blueprint'] },
-    { id: 'spec-audit', label: 'Spec audit', message: 'Fable is auditing the spec', when: 'a Fable subagent audits the spec', scenes: ['proofread-page', 'red-pen'] },
-    { id: 'plan', label: 'Plan', message: 'Writing the implementation plan', when: 'writing the implementation plan', scenes: ['stepping-stones', 'dominoes'] },
-    { id: 'plan-audit', label: 'Plan audit', message: 'Fable is auditing the plan', when: 'a Fable subagent audits the plan', scenes: ['proofread-checklist', 'clipboard'] },
-    { id: 'develop', label: 'Develop', message: 'Building it', when: 'building it', scenes: ['bricklaying', 'terminal'] },
-    { id: 'claude-test', label: 'Claude testing', message: 'Claude is testing the work', when: 'Claude verifies the work', scenes: ['test-tubes', 'control-panel'] },
-    { id: 'user-test', label: 'Your testing', message: 'Over to you for testing', when: 'the user tests it', scenes: ['gift', 'waiting-bench'] },
-    { id: 'cleanup', label: 'Cleanup', message: 'Cleaning up leftovers, chores and docs', when: 'leftovers, chores, docs', scenes: ['sweeping', 'dishes'] },
+    { id: 'roadmap', label: 'Roadmap', message: 'Discussing the roadmap and new features', when: 'roadmap discussion, new features brainstorming', scenes: ['road-trip', 'stargazing', 'treasure-map'] },
+    { id: 'brainstorm', label: 'Brainstorm', message: 'Brainstorming the feature', when: "one feature's brainstorming", scenes: ['light-bulbs', 'sticky-notes', 'thought-clouds'] },
+    { id: 'spec', label: 'Spec', message: 'Writing the spec', when: 'writing the spec', scenes: ['writing-desk', 'blueprint', 'scroll'] },
+    { id: 'spec-audit', label: 'Spec audit', message: 'Fable is auditing the spec', when: 'a Fable subagent audits the spec', scenes: ['proofread-page', 'red-pen', 'stamp'] },
+    { id: 'plan', label: 'Plan', message: 'Writing the implementation plan', when: 'writing the implementation plan', scenes: ['stepping-stones', 'dominoes', 'ladder'] },
+    { id: 'plan-audit', label: 'Plan audit', message: 'Fable is auditing the plan', when: 'a Fable subagent audits the plan', scenes: ['proofread-checklist', 'clipboard', 'scales'] },
+    { id: 'develop', label: 'Develop', message: 'Building it', when: 'building it', scenes: ['bricklaying', 'terminal', 'workbench'] },
+    { id: 'claude-test', label: 'Claude testing', message: 'Claude is testing the work', when: 'Claude verifies the work', scenes: ['test-tubes', 'control-panel', 'crash-test'] },
+    { id: 'user-test', label: 'Your testing', message: 'Over to you for testing', when: 'the user tests it', scenes: ['gift', 'waiting-bench', 'cake'] },
+    { id: 'cleanup', label: 'Cleanup', message: 'Cleaning up leftovers, chores and docs', when: 'leftovers, chores, docs', scenes: ['sweeping', 'dishes', 'recycling'] },
   ],
   side: [
-    { id: 'debugging', label: 'Debugging', message: 'Hunting a bug', when: 'finding and fixing a bug, at any point', scenes: ['bug-hunt', 'flashlight'] },
-    { id: 'other', label: 'Other', message: 'Work outside the usual stages', when: 'work that fits none of the stages', scenes: ['mystery-box', 'fishing'] },
+    { id: 'debugging', label: 'Debugging', message: 'Hunting a bug', when: 'finding and fixing a bug, at any point', scenes: ['bug-hunt', 'flashlight', 'bug-net'] },
+    { id: 'other', label: 'Other', message: 'Work outside the usual stages', when: 'work that fits none of the stages', scenes: ['mystery-box', 'fishing', 'dice'] },
   ],
 }
 

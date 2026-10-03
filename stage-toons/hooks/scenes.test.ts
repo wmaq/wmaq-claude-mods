@@ -197,8 +197,15 @@ test('the kit never uses Clawd orange or Fable violet', () => {
   for (const color of Object.values(C)) expect([CLAWD_ORANGE, FABLE_VIOLET]).not.toContain(color)
 })
 
-test('every default stage has two scenes after batch 1', () => {
-  for (const s of [...DEFAULT_WORKFLOW.track, ...DEFAULT_WORKFLOW.side]) expect(s.scenes).toHaveLength(2)
+test('every default stage has three scenes after batch 2', () => {
+  for (const s of [...DEFAULT_WORKFLOW.track, ...DEFAULT_WORKFLOW.side]) expect(s.scenes).toHaveLength(3)
+})
+
+test('every default stage lists its batch-2 scene third', () => {
+  expect([...DEFAULT_WORKFLOW.track, ...DEFAULT_WORKFLOW.side].map(s => s.scenes[2])).toEqual([
+    'treasure-map', 'thought-clouds', 'scroll', 'stamp', 'ladder', 'scales',
+    'workbench', 'crash-test', 'cake', 'recycling', 'bug-net', 'dice',
+  ])
 })
 
 // Where a colour is at a moment of a scene.

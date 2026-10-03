@@ -8,10 +8,12 @@ test("/stage demo develop plays Develop's scenes", async ($, on) => {
   const { clock } = engine(on)
   await $.session.start(START)
   await mountBand($)
-  expect(text(await runStage($, 'demo develop 5'))).toBe('Playing 2 scenes of Develop, 5 s each (under a minute). /stage demo stop ends it.')
-  expect(await bandText($)).toContain('Demo 1/2: bricklaying (Develop)')
+  expect(text(await runStage($, 'demo develop 5'))).toBe('Playing 3 scenes of Develop, 5 s each (under a minute). /stage demo stop ends it.')
+  expect(await bandText($)).toContain('Demo 1/3: bricklaying (Develop)')
   await clock.advance(5_000)
-  expect(await bandText($)).toContain('Demo 2/2: terminal (Develop)')
+  expect(await bandText($)).toContain('Demo 2/3: terminal (Develop)')
+  await clock.advance(5_000)
+  expect(await bandText($)).toContain('Demo 3/3: workbench (Develop)')
 })
 
 test('/stage demo idle plays the routines in the idle box, then the doze, then ends', async ($, on) => {
@@ -66,5 +68,5 @@ test('/stage demo plays the whole library', async ($, on) => {
   engine(on)
   await $.session.start(START)
   await mountBand($)
-  expect(text(await runStage($, 'demo'))).toBe('Playing 25 scenes, 10 s each (about 4 min). /stage demo stop ends it.')
+  expect(text(await runStage($, 'demo'))).toBe('Playing 37 scenes, 10 s each (about 6 min). /stage demo stop ends it.')
 })
