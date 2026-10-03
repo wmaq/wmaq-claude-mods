@@ -20,6 +20,8 @@ import { mysteryBox } from './mystery-box'
 import { proofreadChecklist, proofreadPage } from './proofread'
 import { redPen } from './red-pen'
 import { roadTrip } from './road-trip'
+import { scroll } from './scroll'
+import { stamp } from './stamp'
 import { standing } from './standing'
 import { stargazing } from './stargazing'
 import { steppingStones } from './stepping-stones'
@@ -27,6 +29,8 @@ import { stickyNotes } from './sticky-notes'
 import { sweeping } from './sweeping'
 import { terminal } from './terminal'
 import { testTubes } from './test-tubes'
+import { thoughtClouds } from './thought-clouds'
+import { treasureMap } from './treasure-map'
 import { waitingBench } from './waiting-bench'
 import { writingDesk } from './writing-desk'
 
@@ -57,6 +61,10 @@ export const SCENES: Record<SceneId, Scene> = {
   dishes,
   flashlight,
   fishing,
+  'treasure-map': treasureMap,
+  'thought-clouds': thoughtClouds,
+  scroll,
+  stamp,
 }
 
 // What a stage may play: not Fable's scene (it plays while a Fable subagent

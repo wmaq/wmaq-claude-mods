@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { CLAWD_ORANGE, FABLE_VIOLET } from './clawd'
+import { CLAWD_ORANGE, EYE_DARK, FABLE_VIOLET } from './clawd'
 import { createBuffer, type PixelBuffer } from './pixels'
 import { CLAWD_TOP, heroAt, renderFull, renderScene, type Scene, STAGE_H, STAGE_W } from './scene'
 import { REACTIONS, SCENES, STAGE_SCENES } from './scenes'
@@ -13,6 +13,7 @@ const LIBRARY = [
   'stargazing', 'sticky-notes', 'blueprint', 'red-pen',
   'dominoes', 'clipboard', 'terminal', 'control-panel',
   'waiting-bench', 'dishes', 'flashlight', 'fishing',
+  'treasure-map', 'thought-clouds', 'scroll', 'stamp',
 ]
 
 const SCENE_LIST: Scene[] = Object.values(SCENES)
@@ -196,4 +197,61 @@ test('the kit never uses Clawd orange or Fable violet', () => {
 
 test('every default stage has two scenes after batch 1', () => {
   for (const s of [...DEFAULT_WORKFLOW.track, ...DEFAULT_WORKFLOW.side]) expect(s.scenes).toHaveLength(2)
+})
+
+// Where a colour is at a moment of a scene.
+const at = (id: string, color: number, t: number) => {
+  const b = renderFull(SCENES[id]!, t)
+
+  return [...b.px].flatMap((c, i) => (c === color ? [{ x: i % b.w, y: Math.floor(i / b.w) }] : []))
+}
+
+const BATCH_2 = ['treasure-map', 'thought-clouds', 'scroll', 'stamp']
+
+test('batch 2: at 30 columns, the narrowest the demo plays at, the crop still shows most of Clawd', () => {
+  for (const id of BATCH_2) {
+    const scene = SCENES[id]!
+    for (let t = 0.013; t < scene.loop; t += 0.1) expect(count(renderScene(scene, t, 30), CLAWD_ORANGE)).toBeGreaterThan(40)
+  }
+})
+
+test('batch 2: no scene jumps at its loop point', () => {
+  const changed = (a: PixelBuffer, b: PixelBuffer) => [...a.px].filter((c, i) => c !== b.px[i]).length
+  for (const id of BATCH_2) {
+    const scene = SCENES[id]!
+    expect(changed(renderFull(scene, scene.loop - 0.02), renderFull(scene, 0.02))).toBeLessThan(30)
+  }
+})
+
+test("batch 2: no prop covers Clawd's eyes", () => {
+  for (const id of BATCH_2) {
+    const scene = SCENES[id]!
+    for (let t = 0.013; t < scene.loop; t += 0.1) {
+      const b = renderFull(scene, t)
+      const head = heroAt(scene, t)
+      // His eyes sit in the 14 x 8 box below his head's top row.
+      const eyes = [...b.px].filter((c, i) => c === EYE_DARK && Math.abs((i % b.w) - head.x) <= 7 && Math.floor(i / b.w) >= head.y && Math.floor(i / b.w) < head.y + 8)
+      expect(eyes.length).toBeGreaterThanOrEqual(4)
+    }
+  }
+})
+
+test('batch 2, part 1: each new scene shows what it is about', () => {
+  // The map unrolls, then the path's pins and the red X show up on it.
+  expect(has('treasure-map', C.paper, 0.2)).toBeLessThan(has('treasure-map', C.paper, 2))
+  expect(has('treasure-map', C.red, 1)).toBe(0)
+  expect(has('treasure-map', C.red, 3.6)).toBe(2)
+  expect(has('treasure-map', C.red, 5)).toBe(7)
+  // No cloud at first; three puffs; then one big cloud.
+  expect(has('thought-clouds', C.white, 0.2)).toBe(0)
+  expect(has('thought-clouds', C.white, 2.2)).toBeGreaterThan(20)
+  expect(has('thought-clouds', C.white, 4)).toBeGreaterThan(has('thought-clouds', C.white, 2.2))
+  // The scroll unrolls along the floor, written as it goes.
+  expect(has('scroll', C.paper, 0.5)).toBeLessThan(has('scroll', C.paper, 5))
+  expect(has('scroll', C.ink, 0.5)).toBeLessThan(has('scroll', C.ink, 5))
+  // The page under the stamp has its line before the stamp comes down, and
+  // a green tick after.
+  expect(has('stamp', C.green, 1.1)).toBe(0)
+  expect(at('stamp', C.red, 1.2).every(p => p.y === 7)).toBe(true)
+  expect(has('stamp', C.green, 1.4)).toBe(5)
 })
