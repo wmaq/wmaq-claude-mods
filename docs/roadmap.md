@@ -99,6 +99,10 @@ claude-toons was shared.
   to `main` → cleanup done. Claude would still call `set_stage` for the
   message. The triggers could live in `.claude/stage-toons.json`, so a
   custom workflow has its own.
+- **Configurable or dynamic canvas sizes.** The toon (under the spinner),
+  the idle Clawd's box and the demo have fixed sizes; they could grow with
+  the terminal, or be set in `.claude/stage-toons.json`, so scenes on a
+  wide screen get more room.
 - **Stage history.** Time spent per stage and per feature, and
   `/stage log` for a timeline. Progress is already saved per project, with
   its recent moves.
