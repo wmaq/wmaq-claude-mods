@@ -13,15 +13,15 @@ import type { IdleId, Progress, ScenePick, SessionWorkflow, StageId, Workflow } 
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { bandLayout, bandMode, type BandSite, IDLE_GAP, type Tone, TOON_MIN } from './band'
 import { moveFor, parseCommand, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
-import { type Demo, DEMO_SCENES, demoAt, demoLine } from './demo'
+import { type Demo, demoAt, demoLength, demoLine, demoStep, idleDemoAt, idleDemoLine } from './demo'
 import { createDirector, type Director, react, shot, tick, withAuditing, withScene } from './director'
-import { IDLE_COLS, IDLE_ROWS, idleFrame, pickIdle } from './idle'
+import { DOZE_MS, FALLBACK_ROUTINE, IDLE_COLS, IDLE_IDS, IDLE_ROWS, idleFrame, pickIdle } from './idle'
 import { pickOne } from './pick'
 import { encodeCells } from './pixels'
 import { type KV, loadProgress, saveProgress, storeKey, validate } from './progress'
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolNameFor, toolSchema, workflowText } from './prompt'
 import { type SceneId, STAGE_W } from './scene'
-import { REACTIONS, SCENES, STAGE_SCENES } from './scenes'
+import { DEMO_ORDER, REACTIONS, SCENES, STAGE_SCENES } from './scenes'
 import { applyMove, describe, freshProgress, isAdvance, reconcile } from './stages'
 import { type Cast, composeFrame, TOON_ROWS } from './toon'
 import { DEFAULT_WORKFLOW, parseWorkflow, sameWorkflow, stageIds, stageList, stageOf, UNTRACKED_SCENE, withScenes, workflowJson } from './workflow'
@@ -203,11 +203,15 @@ function castOf($: EngineInterface, mod: Mod): Cast {
 // A site's next frame, or null once the demo it plays is over.
 function siteCells($: EngineInterface, mod: Mod, site: Site, now: number): string | null {
   if (site.kind === 'idle') {
-    return encodeCells(
-      idleFrame(mod.idle, now - mod.idleSince, mod.brokenIdle, (id, error) =>
-        $.ui.log(`stage-toons: idle routine ${id} failed and was replaced by classic: ${String(error)}`, { to: 'debug' }),
-      ),
-    )
+    const onBreak = (id: string, error: unknown) => $.ui.log(`stage-toons: idle routine ${id} failed and was replaced by classic: ${String(error)}`, { to: 'debug' })
+    if (mod.demo?.kind === 'idle') {
+      const f = idleDemoAt(mod.demo, now)
+      if (!f) return null
+
+      return encodeCells(f.routine === null ? idleFrame(FALLBACK_ROUTINE, DOZE_MS + f.ms) : idleFrame(f.routine, f.ms, mod.brokenIdle, onBreak))
+    }
+
+    return encodeCells(idleFrame(mod.idle, now - mod.idleSince, mod.brokenIdle, onBreak))
   }
   if (site.kind === 'demo') {
     const frame = mod.demo ? demoAt(mod.demo, now) : null
@@ -247,9 +251,9 @@ function animate($: EngineInterface, mod: Mod, site: Site) {
         }
         // A blit repaints the scene alone: the line naming it is text, so
         // the band is drawn again when the demo moves on.
-        const index = kind === 'demo' && mod.demo ? demoAt(mod.demo, now)?.index : undefined
-        if (index !== undefined && index !== mod.demoLineIndex) {
-          mod.demoLineIndex = index
+        const step = kind !== 'toon' && mod.demo ? demoStep(mod.demo, now) : null
+        if (step && step.index !== mod.demoLineIndex) {
+          mod.demoLineIndex = step.index
           $.ui.invalidate('ui.render')
         }
         const answer = await $.ui.blit({ requestId, key: kind, cells, columns, rows }).catch(() => ({ deny: 'failed' }))
@@ -348,20 +352,24 @@ async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promis
   return { text: lines.join('\n'), context: [`[stage-toons] The workflow changed: ${stageList(mod.workflow)}. Now: ${describe(mod.workflow, progress)}`] }
 }
 
-// Starts the demo, or says why not.
-function startDemo(mod: Mod, seconds: number, now: number, isHidden: boolean): string {
+const IDLE_ROOM = 'The idle demo needs a terminal at least 78 columns wide and 5 rows of band.'
+
+// Whether the band last drawn has room for a demo of this kind.
+const hasRoom = (mod: Mod, kind: 'scenes' | 'idle'): boolean =>
+  !mod.lastBand || bandMode({ ...mod.lastBand, hasSurvey: false, isAgentView: false, isHidden: false, demo: kind }) === (kind === 'scenes' ? 'demo' : 'idle')
+
+// Starts the demo, or says why not. label names what plays.
+function startDemo(mod: Mod, demo: Demo, label: string, now: number, isHidden: boolean): string {
   if (isHidden) return 'stage-toons is hidden; /stage hide shows it.'
+  if (demo.kind === 'idle' && (mod.surface !== 'terminal' || !hasRoom(mod, 'idle'))) return IDLE_ROOM
   if (mod.surface !== 'terminal') return 'The demo plays in the terminal only.'
-  const band = mod.lastBand
-  if (band && bandMode({ ...band, hasSurvey: false, isAgentView: false, isHidden: false, isDemo: true }) !== 'demo') {
-    return 'The band has no room for the demo: it needs 30 columns and 9 rows.'
-  }
-  const isRestart = mod.demo !== null && demoAt(mod.demo, now) !== null
-  mod.demo = { at: now, seconds }
-  const total = DEMO_SCENES.length * seconds
+  if (demo.kind === 'scenes' && !hasRoom(mod, 'scenes')) return 'The band has no room for the demo: it needs 30 columns and 9 rows.'
+  const isRestart = mod.demo !== null && demoStep(mod.demo, now) !== null
+  mod.demo = demo
+  const total = demoLength(demo) * demo.seconds
   const length = total < 60 ? 'under a minute' : `about ${Math.round(total / 60)} min`
 
-  return `${isRestart ? 'Restarting the demo: p' : 'P'}laying ${DEMO_SCENES.length} scenes, ${seconds} s each (${length}). /stage demo stop ends it.`
+  return `${isRestart ? 'Restarting the demo: p' : 'P'}laying ${label}, ${demo.seconds} s each (${length}). /stage demo stop ends it.`
 }
 
 export const register: Register = on => {
@@ -411,8 +419,8 @@ export const register: Register = on => {
       mod.commandName = (
         await $.command.register({
           name: COMMAND,
-          description: 'Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene; /stage workflow shows or reloads the workflow',
-          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [seconds | stop] | workflow [init | reload]]',
+          description: 'Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene, a stage\'s scenes or the idle routines; /stage workflow shows or reloads the workflow',
+          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo stop | workflow [init | reload]]',
           immediate: true,
         })
       ).command
@@ -475,8 +483,12 @@ export const register: Register = on => {
     const before = await current($, now)
     if (cmd.kind === 'show') return { text: showText(mod.workflow, before, now) }
     if (cmd.kind === 'usage') return { text: usage(mod.workflow) }
-    if (cmd.kind === 'demo') {
-      const text = startDemo(mod, cmd.seconds, now, await read($, hiddenAtom))
+    if (cmd.kind === 'demo' || cmd.kind === 'demo-idle') {
+      const stage = cmd.kind === 'demo' && cmd.stage !== null ? stageOf(mod.workflow, cmd.stage) : undefined
+      const demo: Demo = cmd.kind === 'demo-idle' ? { kind: 'idle', at: now, seconds: cmd.seconds } : { kind: 'scenes', at: now, seconds: cmd.seconds, scenes: stage?.scenes ?? DEMO_ORDER }
+      const n = demoLength(demo)
+      const label = cmd.kind === 'demo-idle' ? `${IDLE_IDS.length} idle routines and the doze` : stage ? `${n} scene${n === 1 ? '' : 's'} of ${stage.label}` : `${n} scenes`
+      const text = startDemo(mod, demo, label, now, await read($, hiddenAtom))
       // The band grows to hold it.
       if (mod.demo) $.ui.invalidate('ui.render')
 
@@ -571,7 +583,7 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const now = await $.clock.now()
-    if (mod.demo && !demoAt(mod.demo, now)) mod.demo = null
+    if (mod.demo && !demoStep(mod.demo, now)) mod.demo = null
     // Claude has just stopped: the idle clock starts here if the band hears
     // of it before the turn's end does.
     if (e.props.isWorking) mod.isBandWorking = true
@@ -587,7 +599,7 @@ export const register: Register = on => {
       isHidden: await read($, hiddenAtom),
       columns: e.props.bodyColumns,
       maxRows: e.props.maxRows,
-      isDemo: mod.demo !== null,
+      demo: mod.demo?.kind ?? 'none',
     }
     mod.lastBand = site
     const mode = bandMode(site)
@@ -599,10 +611,13 @@ export const register: Register = on => {
       return next(e)
     }
     const columns = e.props.bodyColumns
-    const frame = mode === 'demo' && mod.demo ? demoAt(mod.demo, now) : null
-    if (frame) mod.demoLineIndex = frame.index
+    const sceneFrame = mode === 'demo' && mod.demo ? demoAt(mod.demo, now) : null
+    const idleFrameOfDemo = mode === 'idle' && mod.demo ? idleDemoAt(mod.demo, now) : null
+    if (sceneFrame) mod.demoLineIndex = sceneFrame.index
+    if (idleFrameOfDemo) mod.demoLineIndex = idleFrameOfDemo.index
+    const demoText = sceneFrame && mod.demo ? demoLine(sceneFrame, mod.demo, mod.workflow) : idleFrameOfDemo ? idleDemoLine(idleFrameOfDemo) : undefined
     const barColumns = mode === 'idle' ? columns - IDLE_COLS - IDLE_GAP : columns
-    const lines = bandLayout(mod.workflow, progress, await read($, auditingAtom), barColumns, frame ? demoLine(frame, mod.workflow) : undefined)
+    const lines = bandLayout(mod.workflow, progress, await read($, auditingAtom), barColumns, demoText)
     // Other plugins' bands, and the engine's, still draw: below the bar.
     const below = await next(e)
     const { Box, Text } = $.ui.resolve(e)

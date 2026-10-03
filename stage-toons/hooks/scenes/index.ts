@@ -2,7 +2,8 @@
 // scene from it (hooks/workflow.ts); a new scene is a file here and an
 // entry below.
 
-import type { Scene, SceneId } from '../scene'
+import { FABLE_SCENE, type Scene, type SceneId } from '../scene'
+import { DEFAULT_WORKFLOW } from '../workflow'
 import { blueprint } from './blueprint'
 import { bricklaying } from './bricklaying'
 import { bugHunt } from './bug-hunt'
@@ -62,22 +63,8 @@ export const SCENES: Record<SceneId, Scene> = {
 // runs, whatever the stage) nor the fallback.
 export const STAGE_SCENES: readonly SceneId[] = Object.keys(SCENES).filter(n => n !== 'fable-audit' && n !== 'standing')
 
-// /stage demo's order: the default track's scenes, then the side scenes,
-// then Fable.
-export const DEMO_ORDER: readonly SceneId[] = [
-  'road-trip',
-  'light-bulbs',
-  'writing-desk',
-  'proofread-page',
-  'stepping-stones',
-  'proofread-checklist',
-  'bricklaying',
-  'test-tubes',
-  'gift',
-  'sweeping',
-  'bug-hunt',
-  'mystery-box',
-  'fable-audit',
-]
+// /stage demo's order: the default workflow's scenes stage by stage (track,
+// then side), then Fable's.
+export const DEMO_ORDER: readonly SceneId[] = [...new Set([...DEFAULT_WORKFLOW.track, ...DEFAULT_WORKFLOW.side].flatMap(s => s.scenes)), FABLE_SCENE]
 
 export { REACTIONS } from './reactions'

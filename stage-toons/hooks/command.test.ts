@@ -20,14 +20,19 @@ test('/stage arguments parse into commands', () => {
   for (const bad of ['11', 'feature', 'message', 'next please', 'plan now', 'deploy']) expect(parseCommand(DEFAULT_WORKFLOW, bad)).toEqual({ kind: 'usage' })
 })
 
-test('/stage demo takes seconds per scene, 2 to 60, or stop', () => {
-  expect(parseCommand(DEFAULT_WORKFLOW, 'demo')).toEqual({ kind: 'demo', seconds: 10 })
-  expect(parseCommand(DEFAULT_WORKFLOW, 'Demo 4')).toEqual({ kind: 'demo', seconds: 4 })
-  expect(parseCommand(DEFAULT_WORKFLOW, 'demo 2')).toEqual({ kind: 'demo', seconds: 2 })
-  expect(parseCommand(DEFAULT_WORKFLOW, 'demo 60')).toEqual({ kind: 'demo', seconds: 60 })
-  expect(parseCommand(DEFAULT_WORKFLOW, 'demo stop')).toEqual({ kind: 'demo-stop' })
-  for (const bad of ['demo 1', 'demo 61', 'demo 2.5', 'demo x', 'demo 5 6', 'demo -3']) expect(parseCommand(DEFAULT_WORKFLOW, bad)).toEqual({ kind: 'usage' })
-  expect(usage(DEFAULT_WORKFLOW)).toContain('/stage demo [seconds]')
+test('/stage demo takes the library, a stage by id, or idle, with seconds per item, or stop', () => {
+  expect(parseCommand(W, 'demo')).toEqual({ kind: 'demo', seconds: 10, stage: null })
+  expect(parseCommand(W, 'Demo 4')).toEqual({ kind: 'demo', seconds: 4, stage: null })
+  expect(parseCommand(W, 'demo 60')).toEqual({ kind: 'demo', seconds: 60, stage: null })
+  expect(parseCommand(W, 'demo develop')).toEqual({ kind: 'demo', seconds: 10, stage: 'develop' })
+  expect(parseCommand(W, 'demo develop 5')).toEqual({ kind: 'demo', seconds: 5, stage: 'develop' })
+  expect(parseCommand(W, 'demo idle')).toEqual({ kind: 'demo-idle', seconds: 10 })
+  expect(parseCommand(W, 'demo idle 5')).toEqual({ kind: 'demo-idle', seconds: 5 })
+  expect(parseCommand(W, 'demo stop')).toEqual({ kind: 'demo-stop' })
+  for (const bad of ['demo 1', 'demo 61', 'demo 2.5', 'demo x', 'demo 5 6', 'demo -3', 'demo nope', 'demo develop 1', 'demo idle x', 'demo stop now', 'demo develop 5 6']) {
+    expect(parseCommand(W, bad)).toEqual({ kind: 'usage' })
+  }
+  expect(usage(W)).toContain('/stage demo [<stage> | idle] [seconds]')
 })
 
 test('commands move the progress as the user', () => {

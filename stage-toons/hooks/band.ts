@@ -30,7 +30,7 @@ export type BandSite = {
   isHidden: boolean
   columns: number
   maxRows: number
-  isDemo: boolean
+  demo: 'none' | 'scenes' | 'idle'
 }
 
 // What the band draws: nothing of stage-toons' (yielding), the text bar,
@@ -41,13 +41,16 @@ export type BandSite = {
 export function bandMode(s: BandSite): BandMode {
   if (s.hasSurvey || s.isAgentView || s.isHidden) return 'none'
   if (s.surface !== 'terminal') return 'text'
-  if (s.isDemo) {
+  if (s.demo === 'scenes') {
     const rows = (s.columns < WIDE_MIN ? 1 : 2) + TOON_ROWS
 
     return s.columns >= TOON_MIN && s.maxRows >= rows ? 'demo' : 'text'
   }
+  const hasIdleRoom = s.columns >= IDLE_MIN && s.maxRows >= 1 + IDLE_ROWS
+  // The idle demo shows the idle box whether or not Claude works.
+  if (s.demo === 'idle') return hasIdleRoom ? 'idle' : 'text'
 
-  return !s.isWorking && s.columns >= IDLE_MIN && s.maxRows >= 1 + IDLE_ROWS ? 'idle' : 'text'
+  return !s.isWorking && hasIdleRoom ? 'idle' : 'text'
 }
 
 // The track as it stands: done steps and the links between them, the

@@ -3,7 +3,7 @@
 import type { Progress, StageId, Workflow } from '../types'
 import { DEMO_MAX, DEMO_MIN, DEMO_SECONDS } from './demo'
 import { applyMove, backStage, describe, nextStage, parseStage, stageLabel } from './stages'
-import { zeroStage } from './workflow'
+import { stageIds, zeroStage } from './workflow'
 
 export type Command =
   | { kind: 'show' }
@@ -13,7 +13,8 @@ export type Command =
   | { kind: 'feature'; name: string }
   | { kind: 'message'; text: string }
   | { kind: 'hide' }
-  | { kind: 'demo'; seconds: number }
+  | { kind: 'demo'; seconds: number; stage: StageId | null }
+  | { kind: 'demo-idle'; seconds: number }
   | { kind: 'demo-stop' }
   | { kind: 'workflow' }
   | { kind: 'workflow-init' }
@@ -27,14 +28,14 @@ export function usage(w: Workflow): string {
   const stages = [...w.track.map((s, i) => `${i + 1} ${s.id}`), ...w.side.map(s => (s === zero ? `0 ${s.id}` : s.id))]
 
   return [
-    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [seconds] | workflow [init | reload]]',
+    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | workflow [init | reload]]',
     '  /stage                  show the current stage and the recent moves',
     `  /stage 5, /stage plan   move to a stage${zero ? ` (0 or ? for ${zero.label})` : ''}`,
     '  /stage next, /stage back',
     '  /stage feature <name>   name the feature (/stage feature - clears it)',
     '  /stage message <text>   set the status message',
     '  /stage hide             hide or show the bar and the cartoons',
-    `  /stage demo [seconds]   play every scene, ${DEMO_SECONDS} s each (${DEMO_MIN} to ${DEMO_MAX}); /stage demo stop ends it`,
+    `  /stage demo [<stage> | idle] [seconds]  play every scene, one stage's scenes, or the idle routines, ${DEMO_SECONDS} s each (${DEMO_MIN} to ${DEMO_MAX}); /stage demo stop ends it`,
     '  /stage workflow [init | reload]  show the workflow; write the default to .claude/stage-toons.json; read the file again',
     `Stages: ${stages.join(', ')}`,
   ].join('\n')
@@ -48,7 +49,7 @@ export function parseCommand(w: Workflow, args: string): Command {
   const word = head.toLowerCase()
   if (word === 'feature') return tail ? { kind: 'feature', name: tail } : { kind: 'usage' }
   if (word === 'message') return tail ? { kind: 'message', text: tail } : { kind: 'usage' }
-  if (word === 'demo') return parseDemo(tail.toLowerCase())
+  if (word === 'demo') return parseDemo(w, tail.toLowerCase())
   if (word === 'workflow') {
     const sub = tail.toLowerCase()
     if (sub === '') return { kind: 'workflow' }
@@ -64,12 +65,30 @@ export function parseCommand(w: Workflow, args: string): Command {
   return stage ? { kind: 'move', stage } : { kind: 'usage' }
 }
 
-function parseDemo(arg: string): Command {
-  if (arg === '') return { kind: 'demo', seconds: DEMO_SECONDS }
-  if (arg === 'stop') return { kind: 'demo-stop' }
-  const seconds = /^\d+$/.test(arg) ? Number(arg) : NaN
+// Seconds as /stage demo takes them: none for the default, else 2 to 60.
+function secondsOf(word: string | undefined): number | null {
+  if (word === undefined) return DEMO_SECONDS
+  const seconds = /^\d+$/.test(word) ? Number(word) : NaN
 
-  return seconds >= DEMO_MIN && seconds <= DEMO_MAX ? { kind: 'demo', seconds } : { kind: 'usage' }
+  return seconds >= DEMO_MIN && seconds <= DEMO_MAX ? seconds : null
+}
+
+// demo [<stage id> | idle] [seconds], or demo stop. A bare number is the
+// seconds: stages are named by id only.
+function parseDemo(w: Workflow, arg: string): Command {
+  const [first, second, ...rest] = arg === '' ? [] : arg.split(/\s+/)
+  if (rest.length > 0) return { kind: 'usage' }
+  if (first === 'stop') return second === undefined ? { kind: 'demo-stop' } : { kind: 'usage' }
+  if (first === undefined || /^\d+$/.test(first)) {
+    const seconds = second === undefined ? secondsOf(first) : null
+
+    return seconds === null ? { kind: 'usage' } : { kind: 'demo', seconds, stage: null }
+  }
+  const seconds = secondsOf(second)
+  if (seconds === null) return { kind: 'usage' }
+  if (first === 'idle') return { kind: 'demo-idle', seconds }
+
+  return stageIds(w).includes(first) ? { kind: 'demo', seconds, stage: first } : { kind: 'usage' }
 }
 
 export function moveFor(w: Workflow, p: Progress, cmd: Command, now: number): Progress {

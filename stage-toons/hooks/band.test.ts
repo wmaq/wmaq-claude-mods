@@ -47,7 +47,7 @@ test('untracked is one line: the dim track, Not tracked yet and the feature', ()
   expect(bandLayout(W, freshProgress(0), false, 100).map(text)).toEqual([' ○─○─○─○─○─○─○─○─○─○  Not tracked yet'])
   expect(bandLayout(W, { ...freshProgress(0), feature: 'login' }, false, 100).map(text)).toEqual([' ○─○─○─○─○─○─○─○─○─○  Not tracked yet · login'])
   expect(bandLayout(W, freshProgress(0), false, 40).map(text)).toEqual(['Not tracked yet'])
-  expect(bandLayout(W, freshProgress(0), false, 100, 'Demo 1/13: road-trip').map(text)).toEqual([' ○─○─○─○─○─○─○─○─○─○  Not tracked yet', ' Demo 1/13: road-trip'])
+  expect(bandLayout(W, freshProgress(0), false, 100, 'Demo 1/25: road-trip').map(text)).toEqual([' ○─○─○─○─○─○─○─○─○─○  Not tracked yet', ' Demo 1/25: road-trip'])
   // A Fable audit can start before the first stage is set.
   expect(text(bandLayout(W, freshProgress(0), true, 100)[0])).toBe(' ○─○─○─○─○─○─○─○─○─○  Not tracked yet  ⌕ Fable reviewing')
 })
@@ -76,7 +76,7 @@ test('the demo line can stand in for the message', () => {
   expect(bandLayout(DEFAULT_WORKFLOW, plan, false, 40, 'Demo 3/12: Spec').map(text)).toEqual(['5/10 Plan — Demo 3/12: Spec'])
 })
 
-const site = { surface: 'terminal', isWorking: false, hasSurvey: false, isAgentView: false, isHidden: false, columns: 100, maxRows: 10, isDemo: false }
+const site = { surface: 'terminal', isWorking: false, hasSurvey: false, isAgentView: false, isHidden: false, columns: 100, maxRows: 10, demo: 'none' as const }
 
 test('the band shows the idle Clawd in a wide terminal while Claude waits', () => {
   expect(bandMode(site)).toBe('idle')
@@ -88,7 +88,7 @@ test('the band shows the idle Clawd in a wide terminal while Claude waits', () =
 })
 
 test('the band plays the demo in a terminal of 30 columns or more, working or not', () => {
-  const demo = { ...site, isDemo: true }
+  const demo = { ...site, demo: 'scenes' as const }
   expect(bandMode(demo)).toBe('demo')
   expect(bandMode({ ...demo, isWorking: true })).toBe('demo')
   expect(bandMode({ ...demo, columns: 30 })).toBe('demo')
@@ -99,7 +99,7 @@ test('the band plays the demo in a terminal of 30 columns or more, working or no
 test('the band yields to a survey, an agent transcript, and /stage hide', () => {
   for (const off of [{ hasSurvey: true }, { isAgentView: true }, { isHidden: true }]) {
     expect(bandMode({ ...site, ...off })).toBe('none')
-    expect(bandMode({ ...site, ...off, isDemo: true })).toBe('none')
+    expect(bandMode({ ...site, ...off, demo: 'scenes' as const })).toBe('none')
   }
 })
 
@@ -116,10 +116,18 @@ test('the band cuts its lines between characters, never through an emoji', () =>
 test('the idle Clawd and the demo need the rows to show whole', () => {
   expect(bandMode({ ...site, maxRows: 5 })).toBe('idle')
   expect(bandMode({ ...site, maxRows: 4 })).toBe('text')
-  expect(bandMode({ ...site, isDemo: true, maxRows: 9 })).toBe('demo')
-  expect(bandMode({ ...site, isDemo: true, maxRows: 8 })).toBe('text')
+  expect(bandMode({ ...site, demo: 'scenes' as const, maxRows: 9 })).toBe('demo')
+  expect(bandMode({ ...site, demo: 'scenes' as const, maxRows: 8 })).toBe('text')
   // Below 50 columns the bar is one line, so the demo takes a row less.
-  expect(bandMode({ ...site, isDemo: true, columns: 40, maxRows: 8 })).toBe('demo')
+  expect(bandMode({ ...site, demo: 'scenes' as const, columns: 40, maxRows: 8 })).toBe('demo')
+})
+
+test('the idle demo shows the idle box wherever it has room, working or not', () => {
+  const idle = { ...site, demo: 'idle' as const }
+  expect(bandMode(idle)).toBe('idle')
+  expect(bandMode({ ...idle, isWorking: true })).toBe('idle')
+  expect(bandMode({ ...idle, columns: IDLE_MIN - 1 })).toBe('text')
+  expect(bandMode({ ...idle, maxRows: 4 })).toBe('text')
 })
 
 test('the track has as many dots as the workflow has track stages', () => {
