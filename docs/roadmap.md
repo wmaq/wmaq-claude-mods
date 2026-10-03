@@ -92,3 +92,13 @@ claude-toons was shared.
   depend on the stage just completed, for example celebrating after a
   merge or holding the spec after the spec stage. Builds on v0.2's idle
   Clawd.
+- **Moving the stage automatically.** The bar depends on Claude
+  remembering `set_stage`. A `tool.call` hook could move it from what
+  happens: `superpowers:brainstorming` → brainstorm, `writing-plans` →
+  plan, an Agent with `model: fable` on spec or plan → that audit, a merge
+  to `main` → cleanup done. Claude would still call `set_stage` for the
+  message. The triggers could live in `.claude/stage-toons.json`, so a
+  custom workflow has its own.
+- **Stage history.** Time spent per stage and per feature, and
+  `/stage log` for a timeline. Progress is already saved per project, with
+  its recent moves.
