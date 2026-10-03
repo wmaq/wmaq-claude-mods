@@ -55,9 +55,10 @@ A scene library and custom workflows. Spec:
   (`import()` doesn't load); scenes from outside the mod would need a data
   format (deferred, below).
 
-Open check: whether the session's workflow survives `/clear` (it lives in
-`$.state`); try `/stage workflow` after a `/clear` at the start of a
-session.
+Checked live: the session's workflow (in `$.state`) survives `/clear`; the
+file is read again only by `/stage workflow reload` or a new session.
+`/stage workflow init` makes the file it writes the session's source when
+the session was on the default.
 
 Left as they are (from Fable's v0.3 review):
 - `/stage workflow init` doesn't catch a `$.fs.exists` rejection (the API
