@@ -64,7 +64,8 @@ You can move it yourself with `/stage`:
 | `/stage feature <name>` | Name the feature (`/stage feature -` clears it) |
 | `/stage message <text>` | Set the message |
 | `/stage hide` | Hide or show the bar and the cartoons |
-| `/stage demo [seconds]` | Play every scene, 10 s each (2 to 60); `/stage demo stop` ends it |
+| `/stage demo [<stage> \| idle] [seconds]` | Play every scene, one stage's scenes (by id), or the idle routines, 10 s each (2 to 60); a bare number is the seconds |
+| `/stage demo stop` | End the demo |
 | `/stage workflow` | Show the workflow, where it came from, and each stage's scene |
 | `/stage workflow init` | Write the default workflow to `.claude/stage-toons.json` to edit |
 | `/stage workflow reload` | Read `.claude/stage-toons.json` again and switch to it |
@@ -73,14 +74,18 @@ Claude is told about your moves.
 
 ## While Claude waits for you
 
-When Claude isn't working, a small Clawd stands left of the bar. He blinks,
-glances at the prompt and the bar, taps a foot, and after a minute sits
-down and dozes off. He shows in a terminal at least 70 columns wide;
-otherwise the bar is text alone.
+When Claude isn't working, a small Clawd stands left of the bar, in a box
+26 columns wide. He has two routines, the classic one (he blinks, glances at
+the prompt and the bar, taps a foot) and Nyan Clawd. One is picked each time
+a turn starts. Whichever it is, after a minute he sits down and dozes off.
+He shows in a terminal at least 78 columns wide; otherwise the bar is text
+alone.
 
-`/stage demo` plays all 13 scenes of the library in turn below the bar,
+`/stage demo` plays all 25 scenes of the library in turn below the bar,
 each named with the stage that plays it, so you can see them without
-waiting for the work to reach each stage. A new prompt ends the demo.
+waiting for the work to reach each stage. `/stage demo plan` plays only the
+scenes of one stage, and `/stage demo idle` the idle routines. A new prompt
+ends the demo.
 
 ## Your own workflow
 
@@ -91,25 +96,32 @@ then `/stage workflow reload`. Without the file, the default applies.
 A workflow has `track` stages, in order, and `side` stages, which the work
 can enter from any point and leave again. Each stage has an `id` (what
 `set_stage` and `/stage` take), a `label` for the bar, a `message` for the
-status line, a `when` line telling Claude when to move there, and a `scene`:
+status line, a `when` line telling Claude when to move there, and `scenes`:
 
 ```json
 {
   "track": [
-    { "id": "plan", "label": "Plan", "message": "Writing the plan",
-      "when": "writing the implementation plan", "scene": "stepping-stones" }
+    { "id": "develop", "label": "Develop", "message": "Building it",
+      "when": "writing the code", "scenes": ["bricklaying", "terminal"] }
   ],
   "side": [
     { "id": "debugging", "label": "Debugging", "message": "Hunting a bug",
-      "when": "finding and fixing a bug, at any point", "scene": "bug-hunt" }
+      "when": "finding and fixing a bug, at any point", "scenes": ["bug-hunt"] }
   ]
 }
 ```
 
+A stage lists 1 to 5 scenes. One is picked at random each time the work
+enters the stage, never the one it showed last when it has another. The
+older `"scene": "bug-hunt"` still works.
+
 Scenes: road-trip, light-bulbs, writing-desk, proofread-page,
 stepping-stones, proofread-checklist, bricklaying, test-tubes, gift,
-sweeping, bug-hunt, mystery-box. `/stage demo` plays them all;
-`/stage workflow` shows the current workflow and its scenes.
+sweeping, bug-hunt, mystery-box, and the second scene of each default
+stage: stargazing, sticky-notes, blueprint, red-pen, dominoes, clipboard,
+terminal, control-panel, waiting-bench, dishes, flashlight, fishing.
+`/stage demo` plays them all; `/stage workflow` shows the current workflow
+and its scenes.
 
 Limits: 1 to 15 track stages, up to 5 side stages; ids are lowercase
 letters, digits and dashes. A mistake in the file is reported with where it

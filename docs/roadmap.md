@@ -80,6 +80,25 @@ release.
 on the bar ("?" read as unknown); the prompt section says to load
 `set_stage` with ToolSearch when it is a deferred tool.
 
+### v0.4 step 1 (in progress)
+
+Scene variety. Spec:
+`docs/superpowers/specs/2026-10-03-stage-toons-scene-variety-design.md`.
+Plan: `docs/superpowers/plans/2026-10-03-stage-toons-scene-variety-step1.md`.
+- **Stages list scenes.** `"scenes": [...]`, 1 to 5 per stage (the old
+  `"scene"` still reads); one is picked at random when the work enters the
+  stage, never the one it showed last when it has another.
+- **12 new scenes**, each the second scene of a default stage: stargazing,
+  sticky-notes, blueprint, red-pen, dominoes, clipboard, terminal,
+  control-panel, waiting-bench, dishes, flashlight, fishing.
+- **The idle box is 26 columns** (shown from 78) with two routines, classic
+  and Nyan Clawd, one picked each time a turn starts; all doze after a
+  minute.
+- **`/stage demo <stage>` and `/stage demo idle`** play one stage's scenes
+  or the idle routines; the library demo plays 25 scenes.
+
+Step 2 (a second batch of scenes: coffee, reading, yo-yo, ...) to come.
+
 Possibly later: sharing stage-toons with the community, the way
 claude-toons was shared.
 
