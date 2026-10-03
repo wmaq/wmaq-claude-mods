@@ -10,7 +10,7 @@ test('while Claude waits, the band shows the idle Clawd beside the bar', async (
   await $.session.start(START)
   const ui = await mountBand($)
   const idle = await ui.find({ key: 'idle' })
-  expect(idle?.props).toMatchObject({ columns: 18, rows: 4 })
+  expect(idle?.props).toMatchObject({ columns: 26, rows: 4 })
   expect((await ui.find({ key: 'stage-toons' }))?.text).toContain('Not tracked yet')
   // A blank row keeps Clawd off the transcript's last line.
   expect((await ui.find({ key: 'idle-row' }))?.props).toMatchObject({ marginTop: 1 })
@@ -140,7 +140,7 @@ test('the idle Clawd starts awake when the band stops working, before the turn i
   await ui.redraw(bandProps(100))
   const cells = String((await ui.find({ key: 'idle' }))?.props.cells ?? '')
   expect(cells).not.toBe('')
-  expect(colorInRows({ key: 'idle', cells, columns: 18, rows: 4 }, [0, 1, 2, 3], Z_COLOR)).toBe(false)
+  expect(colorInRows({ key: 'idle', cells, columns: 26, rows: 4 }, [0, 1, 2, 3], Z_COLOR)).toBe(false)
 })
 
 test('/stage demo says so when the band has no room for it', async ($, on) => {

@@ -81,7 +81,7 @@ const site = { surface: 'terminal', isWorking: false, hasSurvey: false, isAgentV
 test('the band shows the idle Clawd in a wide terminal while Claude waits', () => {
   expect(bandMode(site)).toBe('idle')
   expect(bandMode({ ...site, columns: IDLE_MIN })).toBe('idle')
-  expect(IDLE_MIN).toBe(70)
+  expect(IDLE_MIN).toBe(78)
   expect(bandMode({ ...site, columns: IDLE_MIN - 1 })).toBe('text')
   expect(bandMode({ ...site, isWorking: true })).toBe('text')
   expect(bandMode({ ...site, surface: 'desktop' })).toBe('text')

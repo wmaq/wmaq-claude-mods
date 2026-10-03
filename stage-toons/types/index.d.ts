@@ -31,6 +31,9 @@ export type SessionWorkflow = { workflow: Workflow; source: 'file' | 'default' }
 // scene each stage showed last in this session (never pruned).
 export type ScenePick = { stage: StageId | null; scene: string; lastByStage: Record<StageId, string> }
 
+// An idle routine's name (hooks/idle/).
+export type IdleId = string
+
 declare module 'claude-code' {
   interface PluginState {
     'stage-toons': {
@@ -41,6 +44,7 @@ declare module 'claude-code' {
       workflow: SessionWorkflow | null
       warned: boolean
       scene: ScenePick | null
+      idle: IdleId | null
     }
   }
 }

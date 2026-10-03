@@ -9,13 +9,13 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Progress, ScenePick, SessionWorkflow, StageId, Workflow } from '../types'
+import type { IdleId, Progress, ScenePick, SessionWorkflow, StageId, Workflow } from '../types'
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { bandLayout, bandMode, type BandSite, IDLE_GAP, type Tone, TOON_MIN } from './band'
 import { moveFor, parseCommand, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { type Demo, DEMO_SCENES, demoAt, demoLine } from './demo'
 import { createDirector, type Director, react, shot, tick, withAuditing, withScene } from './director'
-import { IDLE_COLS, IDLE_ROWS, idleFrame } from './idle'
+import { IDLE_COLS, IDLE_ROWS, idleFrame, pickIdle } from './idle'
 import { pickOne } from './pick'
 import { encodeCells } from './pixels'
 import { type KV, loadProgress, saveProgress, storeKey, validate } from './progress'
@@ -48,6 +48,10 @@ const sectionAtom = atom({ plugin: 'stage-toons', key: 'workflowText' } as const
 const workflowAtom = atom({ plugin: 'stage-toons', key: 'workflow' } as const, null)
 // Whether the store warning was given: kept across a reload, so it shows once a session.
 const warnedAtom = atom({ plugin: 'stage-toons', key: 'warned' } as const, false)
+// The idle routine for the next idle period: picked when a turn starts, so
+// the band's render (which may not write $.state) only reads it; kept across
+// a hot reload.
+const idleAtom = atom({ plugin: 'stage-toons', key: 'idle' } as const, null)
 // The scene the stage shows: kept across a hot reload, so the toon does not
 // change under the person when the module reloads.
 const sceneAtom = atom({ plugin: 'stage-toons', key: 'scene' } as const, null)
@@ -90,6 +94,9 @@ type Mod = {
   band: Site
   // When Claude last went idle: the session's start or the main turn's end.
   idleSince: number
+  // The idle routine on show, and routines that threw this session.
+  idle: IdleId
+  brokenIdle: Set<IdleId>
   // Whether the band was last drawn while Claude worked, and what it was
   // last drawn in (null before it is first drawn).
   isBandWorking: boolean
@@ -114,6 +121,8 @@ const createMod = (): Mod => ({
   toon: createSite('toon'),
   band: createSite('idle'),
   idleSince: 0,
+  idle: 'classic',
+  brokenIdle: new Set(),
   isBandWorking: false,
   lastBand: null,
   demo: null,
@@ -193,7 +202,13 @@ function castOf($: EngineInterface, mod: Mod): Cast {
 
 // A site's next frame, or null once the demo it plays is over.
 function siteCells($: EngineInterface, mod: Mod, site: Site, now: number): string | null {
-  if (site.kind === 'idle') return encodeCells(idleFrame(now - mod.idleSince))
+  if (site.kind === 'idle') {
+    return encodeCells(
+      idleFrame(mod.idle, now - mod.idleSince, mod.brokenIdle, (id, error) =>
+        $.ui.log(`stage-toons: idle routine ${id} failed and was replaced by classic: ${String(error)}`, { to: 'debug' }),
+      ),
+    )
+  }
   if (site.kind === 'demo') {
     const frame = mod.demo ? demoAt(mod.demo, now) : null
 
@@ -378,6 +393,13 @@ export const register: Register = on => {
     mod.isHidden = isHidden
     mod.surface = e.surface
     mod.idleSince = now
+    let routine = await read($, idleAtom)
+    if (routine === null) {
+      const first = pickIdle(undefined, Math.random())
+      await update($, idleAtom, () => first)
+      routine = first
+    }
+    mod.idle = routine
     // A reload forgets which agents were Fable, so the auditor stands down.
     mod.auditors.clear()
     await update($, progressAtom, () => progress)
@@ -406,6 +428,10 @@ export const register: Register = on => {
 
   // Another session on this project may have moved the stage.
   on('prompt.submit', async ($, e, next) => {
+    // The routine for the idle period after this turn, left out the one just shown.
+    const routine = pickIdle(mod.idle, Math.random())
+    mod.idle = routine
+    await update($, idleAtom, () => routine)
     // A turn starts: the toon under the spinner takes over from the demo.
     if (mod.demo) endDemo($, mod)
     try {
