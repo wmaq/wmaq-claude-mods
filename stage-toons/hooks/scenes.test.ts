@@ -11,6 +11,7 @@ const LIBRARY = [
   'road-trip', 'light-bulbs', 'writing-desk', 'proofread-page', 'stepping-stones', 'proofread-checklist', 'bricklaying', 'test-tubes', 'gift',
   'sweeping', 'bug-hunt', 'mystery-box', 'fable-audit', 'standing',
   'stargazing', 'sticky-notes', 'blueprint', 'red-pen',
+  'dominoes', 'clipboard', 'terminal', 'control-panel',
 ]
 
 const SCENE_LIST: Scene[] = Object.values(SCENES)
@@ -140,4 +141,21 @@ test('batch 1, part 1: each new scene shows what it is about', () => {
 test('every default stage lists its batch-1 scene second', () => {
   const second = (id: string) => [...DEFAULT_WORKFLOW.track, ...DEFAULT_WORKFLOW.side].find(s => s.id === id)?.scenes[1]
   expect([second('roadmap'), second('brainstorm'), second('spec'), second('spec-audit')]).toEqual(['stargazing', 'sticky-notes', 'blueprint', 'red-pen'])
+  expect([second('plan'), second('plan-audit'), second('develop'), second('claude-test')]).toEqual(['dominoes', 'clipboard', 'terminal', 'control-panel'])
+})
+
+test('batch 1, part 2: each new scene shows what it is about', () => {
+  // Dominoes go up one by one, then all lie flat.
+  expect(has('dominoes', C.paper, 0.1)).toBeLessThan(has('dominoes', C.paper, 3.9))
+  const standing = (t: number) => [...renderFull(SCENES.dominoes!, t).px].filter((c, i) => c === C.paper && Math.floor(i / 48) === 9).length
+  expect(standing(4)).toBe(8)
+  expect(standing(6.5)).toBe(0)
+  // The clipboard's lines get ticked.
+  expect(has('clipboard', C.green, 0.5)).toBe(1)
+  expect(has('clipboard', C.green, 7.5)).toBe(4)
+  // Code scrolls up the screen.
+  expect([...renderFull(SCENES.terminal!, 0.1).px]).not.toEqual([...renderFull(SCENES.terminal!, 0.5).px])
+  // Red, red, then green.
+  expect(has('control-panel', C.red, 1)).toBe(12)
+  expect(has('control-panel', C.green, 4)).toBe(12)
 })
