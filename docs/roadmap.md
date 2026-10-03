@@ -75,6 +75,11 @@ A probe showed hooks modules load from an installed plugin like from a
 `--plugin-dir`. The mod's version (`plugin.json`, 0.3.0) goes up with every
 release.
 
+**0.3.1 (2026-10-03)**, from Claude's first run on macOS: a side stage reads
+"Debugging (side stage)" to the model and `/stage`, and plain "Debugging"
+on the bar ("?" read as unknown); the prompt section says to load
+`set_stage` with ToolSearch when it is a deferred tool.
+
 Possibly later: sharing stage-toons with the community, the way
 claude-toons was shared.
 
