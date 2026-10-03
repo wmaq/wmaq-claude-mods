@@ -52,8 +52,15 @@ test('nyan: a six-stripe rainbow behind Clawd, its wave stepping, and stars rush
   const b = at(0.1, 'nyan')
   for (const stripe of [C.red, C.orange, C.gold, C.green, C.blue, C.violet]) {
     const px = where(b, stripe)
-    expect(px.length).toBe(CLAWD_X)
-    expect(px.every(p => p.x < CLAWD_X)).toBe(true)
+    expect(px.filter(p => p.x < CLAWD_X)).toHaveLength(CLAWD_X)
+    // It runs on under Clawd's sprite box, where his body covers it.
+    expect(px.every(p => p.x < CLAWD_X + 2)).toBe(true)
+  }
+  // No gap: on the body's rows, the pixel left of Clawd's first orange is rainbow.
+  const stripes: number[] = [C.red, C.orange, C.gold, C.green, C.blue, C.violet]
+  for (let y = 1; y <= 5; y++) {
+    const first = Math.min(...where(b, CLAWD_ORANGE).filter(p => p.y === y).map(p => p.x))
+    expect(stripes).toContain(b.px[y * b.w + first - 1])
   }
   expect([...at(0.1, 'nyan').px]).not.toEqual([...at(0.35, 'nyan').px])
   // Stars show now and then on the free rows, and move left.

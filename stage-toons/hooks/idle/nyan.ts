@@ -34,9 +34,10 @@ export const nyan: IdleRoutine = {
   draw: (b, t) => {
     drawStars(b, t)
     // The step-wave: blocks of 3 columns, every other one a pixel lower,
-    // trading places every 0.25 s.
+    // trading places every 0.25 s. It runs 2 columns into Clawd's sprite
+    // box, under his body (drawn after it), so it starts right behind him.
     const flip = every(t, 0.25) % 2
-    for (let x = 0; x < CLAWD_X; x++) {
+    for (let x = 0; x < CLAWD_X + 2; x++) {
       const drop = (Math.floor(x / 3) + flip) % 2
       STRIPES.forEach((color, i) => setPixel(b, x, 1 + drop + i, color))
     }
