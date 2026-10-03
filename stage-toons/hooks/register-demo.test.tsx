@@ -30,6 +30,20 @@ test('/stage demo idle plays the routines in the idle box, then the doze, then e
   expect(await bandText($)).not.toContain('Idle demo')
 })
 
+test('/stage demo idle over a playing scene demo keeps playing before the band is drawn again', async ($, on) => {
+  const { clock } = engine(on)
+  await $.session.start(START)
+  const ui = await mountBand($)
+  await runStage($, 'demo 5')
+  await ui.redraw()
+  await clock.advance(200)
+  await runStage($, 'demo idle 5')
+  // The scene demo's loop wakes before any redraw switches the band's kind.
+  await clock.advance(200)
+  expect(await bandText($)).toContain('Idle demo 1/3: classic')
+  expect(text(await runStage($, 'demo stop'))).toBe('Demo stopped.')
+})
+
 test('/stage demo idle without room says so and plays nothing', async ($, on) => {
   engine(on)
   await $.session.start(START)

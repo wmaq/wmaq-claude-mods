@@ -243,6 +243,13 @@ function animate($: EngineInterface, mod: Mod, site: Site) {
         const now = await $.clock.now()
         const cells = siteCells($, mod, site, now)
         if (cells === null) {
+          // A demo of the other kind has just started: the site still has
+          // the old kind until the redraw /stage demo asked for, so this
+          // frame is skipped.
+          if (mod.demo && demoStep(mod.demo, now)) {
+            await $.clock.sleep(FRAME_MS[kind])
+            continue
+          }
           // The demo is over. Nothing is awaited from here to the loop's
           // end, so the redraw that brings the band back finds it finished.
           site.requestId = undefined
