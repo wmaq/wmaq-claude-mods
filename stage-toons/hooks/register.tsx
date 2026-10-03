@@ -267,12 +267,18 @@ async function registerTool($: EngineInterface, mod: Mod) {
   }
 }
 
-async function initWorkflow($: EngineInterface): Promise<string> {
+async function initWorkflow($: EngineInterface, mod: Mod): Promise<string> {
   if (await $.fs.exists(WORKFLOW_FILE)) return `${WORKFLOW_FILE} exists; edit it, then /stage workflow reload`
   try {
     await $.fs.write(WORKFLOW_FILE, workflowJson(DEFAULT_WORKFLOW))
   } catch (error) {
     return `couldn't write ${WORKFLOW_FILE}: ${String(error)}`
+  }
+  // The file holds the stages the session already has: it is now their source.
+  if (mod.workflowSource === 'default') {
+    const next: SessionWorkflow = { workflow: mod.workflow, source: 'file' }
+    mod.workflowSource = 'file'
+    await update($, workflowAtom, () => next)
   }
 
   return `Wrote the default workflow to ${WORKFLOW_FILE}: edit it, then /stage workflow reload.`
@@ -433,7 +439,7 @@ export const register: Register = on => {
       return { text: 'Demo stopped.' }
     }
     if (cmd.kind === 'workflow') return { text: workflowSummary(mod.workflow, mod.workflowSource) }
-    if (cmd.kind === 'workflow-init') return { text: await initWorkflow($) }
+    if (cmd.kind === 'workflow-init') return { text: await initWorkflow($, mod) }
     if (cmd.kind === 'workflow-reload') return reloadWorkflow($, mod, now)
     if (cmd.kind === 'hide') {
       const isHidden = !(await read($, hiddenAtom))

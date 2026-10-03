@@ -1,6 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { answerText, bandText, engine, KEY, NOW, runStage, sectionText, setStage, START } from './harness'
+import { DEFAULT_WORKFLOW, workflowJson } from './workflow'
 
 const FILE = '.claude/stage-toons.json'
 const CUSTOM = {
@@ -49,6 +50,16 @@ test('init writes the default workflow, and refuses when the file exists', async
   expect(text(await runStage($, 'workflow init'))).toBe('Wrote the default workflow to .claude/stage-toons.json: edit it, then /stage workflow reload.')
   expect(world.files[FILE]).toContain('"id": "roadmap"')
   expect(text(await runStage($, 'workflow init'))).toBe('.claude/stage-toons.json exists; edit it, then /stage workflow reload')
+})
+
+test('after init the session reads its workflow as from the file, with nothing changed for Claude', async ($, on) => {
+  const { world } = engine(on)
+  await $.session.start(START)
+  const registered = world.schemas.length
+  await runStage($, 'workflow init')
+  expect(text(await runStage($, 'workflow'))).toContain('Workflow: from .claude/stage-toons.json')
+  expect(world.schemas.length).toBe(registered)
+  expect(text(await runStage($, 'workflow reload'))).toBe('workflow unchanged.')
 })
 
 test('init says so when the write fails', async ($, on) => {
@@ -136,7 +147,7 @@ test("another session's progress is reconciled in memory, not saved", async ($, 
 test('reload of the same stages from another source says unchanged and tells Claude nothing', async ($, on) => {
   const { world } = engine(on)
   await $.session.start(START)
-  await runStage($, 'workflow init')
+  world.files[FILE] = workflowJson(DEFAULT_WORKFLOW)
   const registered = world.schemas.length
   const answer = (await runStage($, 'workflow reload')) as { text?: string; context?: string[] }
   expect(answer.text).toBe('workflow unchanged (now from .claude/stage-toons.json).')
