@@ -14,6 +14,7 @@ const LIBRARY = [
   'dominoes', 'clipboard', 'terminal', 'control-panel',
   'waiting-bench', 'dishes', 'flashlight', 'fishing',
   'treasure-map', 'thought-clouds', 'scroll', 'stamp',
+  'ladder', 'scales', 'workbench', 'crash-test',
 ]
 
 const SCENE_LIST: Scene[] = Object.values(SCENES)
@@ -206,7 +207,7 @@ const at = (id: string, color: number, t: number) => {
   return [...b.px].flatMap((c, i) => (c === color ? [{ x: i % b.w, y: Math.floor(i / b.w) }] : []))
 }
 
-const BATCH_2 = ['treasure-map', 'thought-clouds', 'scroll', 'stamp']
+const BATCH_2 = ['treasure-map', 'thought-clouds', 'scroll', 'stamp', 'ladder', 'scales', 'workbench', 'crash-test']
 
 test('batch 2: at 30 columns, the narrowest the demo plays at, the crop still shows most of Clawd', () => {
   for (const id of BATCH_2) {
@@ -254,4 +255,30 @@ test('batch 2, part 1: each new scene shows what it is about', () => {
   expect(has('stamp', C.green, 1.1)).toBe(0)
   expect(at('stamp', C.red, 1.2).every(p => p.y === 7)).toBe(true)
   expect(has('stamp', C.green, 1.4)).toBe(5)
+})
+
+test('batch 2, part 2: each new scene shows what it is about', () => {
+  // The rungs go up one by one; Clawd climbs to the top and comes down.
+  expect(has('ladder', C.woodDark, 0.1)).toBe(0)
+  expect(has('ladder', C.woodDark, 2.8)).toBe(18)
+  expect(heroAt(SCENES.ladder!, 6.5).y).toBe(0)
+  expect(heroAt(SCENES.ladder!, 9.9)).toEqual(heroAt(SCENES.ladder!, 0))
+  // The beam tilts until the second block levels it, and a tick shows.
+  const beamRows = (t: number) => new Set(at('scales', C.wood, t).map(p => p.y)).size
+  expect(beamRows(0.5)).toBeGreaterThan(1)
+  expect(beamRows(3.5)).toBe(1)
+  expect(has('scales', C.green, 0.5)).toBe(0)
+  expect(has('scales', C.green, 3.5)).toBe(5)
+  // The robot is built, its eye lights up blue, and it walks away.
+  expect(has('workbench', C.gray, 0.1)).toBe(0)
+  expect(has('workbench', C.gray, 3)).toBeGreaterThan(has('workbench', C.gray, 1))
+  expect(has('workbench', C.blue, 3)).toBe(0)
+  expect(has('workbench', C.blue, 3.7)).toBe(1)
+  expect(has('workbench', C.gray, 6.6)).toBe(0)
+  // The cart rolls up to the wall, which bangs, and bounces back.
+  const cartX = (t: number) => Math.min(...at('crash-test', C.blue, t).map(p => p.x))
+  expect(cartX(0.2)).toBeLessThan(cartX(1.5))
+  expect(cartX(3)).toBeLessThan(cartX(1.5))
+  expect(has('crash-test', C.gold, 1)).toBe(0)
+  expect(has('crash-test', C.gold, 1.7)).toBeGreaterThan(0)
 })

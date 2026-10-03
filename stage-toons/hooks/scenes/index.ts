@@ -9,17 +9,20 @@ import { bricklaying } from './bricklaying'
 import { bugHunt } from './bug-hunt'
 import { clipboard } from './clipboard'
 import { controlPanel } from './control-panel'
+import { crashTest } from './crash-test'
 import { dishes } from './dishes'
 import { dominoes } from './dominoes'
 import { fableAudit } from './fable-audit'
 import { fishing } from './fishing'
 import { flashlight } from './flashlight'
 import { gift } from './gift'
+import { ladder } from './ladder'
 import { lightBulbs } from './light-bulbs'
 import { mysteryBox } from './mystery-box'
 import { proofreadChecklist, proofreadPage } from './proofread'
 import { redPen } from './red-pen'
 import { roadTrip } from './road-trip'
+import { scales } from './scales'
 import { scroll } from './scroll'
 import { stamp } from './stamp'
 import { standing } from './standing'
@@ -32,6 +35,7 @@ import { testTubes } from './test-tubes'
 import { thoughtClouds } from './thought-clouds'
 import { treasureMap } from './treasure-map'
 import { waitingBench } from './waiting-bench'
+import { workbench } from './workbench'
 import { writingDesk } from './writing-desk'
 
 export const SCENES: Record<SceneId, Scene> = {
@@ -65,6 +69,10 @@ export const SCENES: Record<SceneId, Scene> = {
   'thought-clouds': thoughtClouds,
   scroll,
   stamp,
+  ladder,
+  scales,
+  workbench,
+  'crash-test': crashTest,
 }
 
 // What a stage may play: not Fable's scene (it plays while a Fable subagent
