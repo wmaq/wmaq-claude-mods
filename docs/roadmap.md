@@ -80,7 +80,7 @@ release.
 on the bar ("?" read as unknown); the prompt section says to load
 `set_stage` with ToolSearch when it is a deferred tool.
 
-### v0.4 step 1 (in progress)
+### v0.4 step 1 (2026-10-03, merged)
 
 Scene variety. Spec:
 `docs/superpowers/specs/2026-10-03-stage-toons-scene-variety-design.md`.
@@ -97,7 +97,18 @@ Plan: `docs/superpowers/plans/2026-10-03-stage-toons-scene-variety-step1.md`.
 - **`/stage demo <stage>` and `/stage demo idle`** play one stage's scenes
   or the idle routines; the library demo plays 25 scenes.
 
-Step 2 (a second batch of scenes: coffee, reading, yo-yo, ...) to come.
+- **Nyan's stars** are single twinkling pixels on the rows the rainbow
+  leaves free, not the spec's plus shapes: the 26 x 8 box has no room.
+
+Left as they are (from the reviews):
+- Going untracked and back to the same stage shows the same scene again
+  (the pick keeps the last tracked stage; spec-literal).
+- Some scenes reset visibly at the loop point (the dishes stacks), as
+  bricklaying's wall does.
+
+Step 2 to come: a second batch of 12 scenes (treasure-map, thought-clouds,
+scroll, stamp, ladder, scales, workbench, crash-test, cake, recycling,
+bug-net, dice) and the idle routines coffee, reading and yo-yo.
 
 Possibly later: sharing stage-toons with the community, the way
 claude-toons was shared.

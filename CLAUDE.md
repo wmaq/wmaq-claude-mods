@@ -6,7 +6,7 @@ the marketplace manifest `.claude-plugin/marketplace.json`.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner and an idle Clawd beside the bar | v0.4 step 1 on branch scene-variety; later ideas in `docs/roadmap.md` |
+| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner and an idle Clawd beside the bar | v0.4 step 1 merged (0.4.0); step 2 and later ideas in `docs/roadmap.md` |
 
 ## The workflow
 
@@ -55,7 +55,12 @@ It names this session's hot-reload folder,
   into the hot-reload folder loads the mod once, but saves through it never
   trigger a reload. Copy the mod in and refresh the copy after every change:
   `cp -r <mod>/.claude-plugin <mod>/hooks <mod>/types ~/.claude/dev-mods/<session id>/<mod>/`.
-  The mod reloads when the turn that changed it ends.
+  The mod reloads when the turn that changed it ends. When files move
+  (v0.4 turned `hooks/idle.ts` into `hooks/idle/`), replace the copy's
+  `hooks` wholesale (`rm -rf` it first): a stale file shadows the new
+  folder.
+- **Git Bash rewrites a commit subject that starts with `/stage`** into a
+  Windows path; start the subject with another word.
 - **Checks**, from the repository root:
   ```sh
   claude plugin validate <mod>
