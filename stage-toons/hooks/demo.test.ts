@@ -33,6 +33,6 @@ test('the demo is over after its last scene', () => {
 test('the demo line names the scene and the stage that plays it', () => {
   expect(demoLine(after(25_000)!, DEFAULT_WORKFLOW)).toBe('Demo 3/13: writing-desk (Spec) · /stage demo stop ends it')
   expect(demoLine(after(125_000)!, DEFAULT_WORKFLOW)).toBe('Demo 13/13: fable-audit (Fable reviewing) · /stage demo stop ends it')
-  const small = { track: [{ ...DEFAULT_WORKFLOW.track[0]!, scene: 'gift' }], side: [] }
+  const small = { track: [{ ...DEFAULT_WORKFLOW.track[0]!, scenes: ['gift'] }], side: [] }
   expect(demoLine(after(5_000)!, small)).toBe('Demo 1/13: road-trip · /stage demo stop ends it')
 })

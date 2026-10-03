@@ -23,7 +23,7 @@ import { type SceneId, STAGE_W } from './scene'
 import { REACTIONS, SCENES, STAGE_SCENES } from './scenes'
 import { applyMove, describe, freshProgress, isAdvance, reconcile } from './stages'
 import { type Cast, composeFrame, TOON_ROWS } from './toon'
-import { DEFAULT_WORKFLOW, parseWorkflow, sameWorkflow, sceneOf, stageIds, stageList, workflowJson } from './workflow'
+import { DEFAULT_WORKFLOW, parseWorkflow, sameWorkflow, sceneOf, stageIds, stageList, withScenes, workflowJson } from './workflow'
 
 const PLUGIN = 'stage-toons'
 const HIDDEN_KEY = 'hidden'
@@ -344,7 +344,7 @@ export const register: Register = on => {
       await update($, workflowAtom, () => first)
       if (file.kind === 'bad') $.ui.toast(BAD_FILE)
     }
-    mod.workflow = held.workflow
+    mod.workflow = withScenes(held.workflow)
     mod.workflowSource = held.source
     const loaded = await loadProgress(storeOf($), mod.key, now)
     if (!loaded.isAvailable) await warnUnsaved($)

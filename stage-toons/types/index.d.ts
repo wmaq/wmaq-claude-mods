@@ -16,8 +16,9 @@ export type Progress = {
 
 // One stage of a workflow (hooks/workflow.ts): what set_stage and /stage
 // take, what the bar shows, the status line on entering it, the line that
-// tells Claude when to move here, and the scene it plays.
-export type StageDef = { id: string; label: string; message: string; when: string; scene: string }
+// tells Claude when to move here, and the scenes it may play (one is picked
+// each time the work enters it).
+export type StageDef = { id: string; label: string; message: string; when: string; scenes: readonly string[] }
 
 // The stages the work moves through: the track, in order, and the side
 // stages, entered from any point and left again.

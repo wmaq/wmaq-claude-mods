@@ -33,7 +33,7 @@ export function demoAt(demo: Demo, now: number): DemoFrame | null {
 // then side) that plays it.
 function labelOf(id: SceneId, w: Workflow): string {
   if (id === FABLE_SCENE) return `${id} (Fable reviewing)`
-  const stage = [...w.track, ...w.side].find(s => s.scene === id)
+  const stage = [...w.track, ...w.side].find(s => s.scenes.includes(id))
 
   return stage ? `${id} (${stage.label})` : id
 }

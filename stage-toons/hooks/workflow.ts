@@ -1,5 +1,5 @@
 // A workflow: the stages the work moves through, on the track in order and
-// beside it, each naming the scene it plays. Data and lookups; the default
+// beside it, each naming the scenes it may play. Data and lookups; the default
 // is the workflow stage-toons ships with.
 
 import type { StageDef, Workflow } from '../types'
@@ -11,20 +11,20 @@ export const UNTRACKED_SCENE = 'mystery-box'
 
 export const DEFAULT_WORKFLOW: Workflow = {
   track: [
-    { id: 'roadmap', label: 'Roadmap', message: 'Discussing the roadmap and new features', when: 'roadmap discussion, new features brainstorming', scene: 'road-trip' },
-    { id: 'brainstorm', label: 'Brainstorm', message: 'Brainstorming the feature', when: "one feature's brainstorming", scene: 'light-bulbs' },
-    { id: 'spec', label: 'Spec', message: 'Writing the spec', when: 'writing the spec', scene: 'writing-desk' },
-    { id: 'spec-audit', label: 'Spec audit', message: 'Fable is auditing the spec', when: 'a Fable subagent audits the spec', scene: 'proofread-page' },
-    { id: 'plan', label: 'Plan', message: 'Writing the implementation plan', when: 'writing the implementation plan', scene: 'stepping-stones' },
-    { id: 'plan-audit', label: 'Plan audit', message: 'Fable is auditing the plan', when: 'a Fable subagent audits the plan', scene: 'proofread-checklist' },
-    { id: 'develop', label: 'Develop', message: 'Building it', when: 'building it', scene: 'bricklaying' },
-    { id: 'claude-test', label: 'Claude testing', message: 'Claude is testing the work', when: 'Claude verifies the work', scene: 'test-tubes' },
-    { id: 'user-test', label: 'Your testing', message: 'Over to you for testing', when: 'the user tests it', scene: 'gift' },
-    { id: 'cleanup', label: 'Cleanup', message: 'Cleaning up leftovers, chores and docs', when: 'leftovers, chores, docs', scene: 'sweeping' },
+    { id: 'roadmap', label: 'Roadmap', message: 'Discussing the roadmap and new features', when: 'roadmap discussion, new features brainstorming', scenes: ['road-trip'] },
+    { id: 'brainstorm', label: 'Brainstorm', message: 'Brainstorming the feature', when: "one feature's brainstorming", scenes: ['light-bulbs'] },
+    { id: 'spec', label: 'Spec', message: 'Writing the spec', when: 'writing the spec', scenes: ['writing-desk'] },
+    { id: 'spec-audit', label: 'Spec audit', message: 'Fable is auditing the spec', when: 'a Fable subagent audits the spec', scenes: ['proofread-page'] },
+    { id: 'plan', label: 'Plan', message: 'Writing the implementation plan', when: 'writing the implementation plan', scenes: ['stepping-stones'] },
+    { id: 'plan-audit', label: 'Plan audit', message: 'Fable is auditing the plan', when: 'a Fable subagent audits the plan', scenes: ['proofread-checklist'] },
+    { id: 'develop', label: 'Develop', message: 'Building it', when: 'building it', scenes: ['bricklaying'] },
+    { id: 'claude-test', label: 'Claude testing', message: 'Claude is testing the work', when: 'Claude verifies the work', scenes: ['test-tubes'] },
+    { id: 'user-test', label: 'Your testing', message: 'Over to you for testing', when: 'the user tests it', scenes: ['gift'] },
+    { id: 'cleanup', label: 'Cleanup', message: 'Cleaning up leftovers, chores and docs', when: 'leftovers, chores, docs', scenes: ['sweeping'] },
   ],
   side: [
-    { id: 'debugging', label: 'Debugging', message: 'Hunting a bug', when: 'finding and fixing a bug, at any point', scene: 'bug-hunt' },
-    { id: 'other', label: 'Other', message: 'Work outside the usual stages', when: 'work that fits none of the stages', scene: 'mystery-box' },
+    { id: 'debugging', label: 'Debugging', message: 'Hunting a bug', when: 'finding and fixing a bug, at any point', scenes: ['bug-hunt'] },
+    { id: 'other', label: 'Other', message: 'Work outside the usual stages', when: 'work that fits none of the stages', scenes: ['mystery-box'] },
   ],
 }
 
@@ -41,7 +41,7 @@ export const rank = (w: Workflow, id: string | null): number => (id === null ? -
 // Where /stage 0 and /stage ? go: Other, else the first side stage.
 export const zeroStage = (w: Workflow): StageDef | undefined => w.side.find(s => s.id === 'other') ?? w.side[0]
 
-export const sceneOf = (w: Workflow, id: string | null): string => stageOf(w, id)?.scene ?? UNTRACKED_SCENE
+export const sceneOf = (w: Workflow, id: string | null): string => stageOf(w, id)?.scenes[0] ?? UNTRACKED_SCENE
 
 export function stageList(w: Workflow): string {
   const track = `track: ${w.track.map(s => s.id).join(', ')}`
@@ -53,9 +53,11 @@ export const RESERVED_IDS = ['next', 'back', 'hide', 'demo', 'feature', 'message
 export const TRACK_MAX = 15
 export const SIDE_MAX = 5
 
-const FIELDS = ['id', 'label', 'message', 'when', 'scene'] as const
-type Field = (typeof FIELDS)[number]
-const LIMITS: Record<Field, number> = { id: 24, label: 20, message: 80, when: 120, scene: 64 }
+export const SCENES_MAX = 5
+const TEXT_FIELDS = ['id', 'label', 'message', 'when'] as const
+type TextField = (typeof TEXT_FIELDS)[number]
+const FIELDS = [...TEXT_FIELDS, 'scene', 'scenes'] as const
+const LIMITS: Record<TextField, number> = { id: 24, label: 20, message: 80, when: 120 }
 const ID = /^[a-z][a-z0-9-]{0,23}$/
 // Library scenes a stage can't use, and why.
 const NOT_FOR_STAGES: Record<string, string> = {
@@ -64,6 +66,59 @@ const NOT_FOR_STAGES: Record<string, string> = {
 }
 
 const chars = (text: string): number => Array.from(text).length
+
+// A scene name a stage may use; otherwise its error, at `at`.
+function isStageScene(name: string, at: string, errors: string[], sceneNames: readonly string[]): boolean {
+  if (NOT_FOR_STAGES[name] !== undefined) errors.push(`${at} "${name}" ${NOT_FOR_STAGES[name]}; a stage can't use it`)
+  else if (!sceneNames.includes(name)) errors.push(`${at} "${name}" is not a scene (${sceneNames.join(', ')})`)
+  else return true
+
+  return false
+}
+
+// A stage's scenes: its list, or the one scene an older file gives.
+function scenesAt(raw: Record<string, unknown>, path: string, errors: string[], sceneNames: readonly string[]): string[] | null {
+  const one = raw.scene
+  const list = raw.scenes
+  if (one !== undefined && list !== undefined) {
+    errors.push(`${path}: has both scene and scenes; give one`)
+
+    return null
+  }
+  if (one !== undefined) {
+    if (typeof one !== 'string') errors.push(`${path}.scene: must be text`)
+    else if (one.trim() === '') errors.push(`${path}.scene: empty`)
+    else if (isStageScene(one.trim(), `${path}.scene`, errors, sceneNames)) return [one.trim()]
+
+    return null
+  }
+  if (list === undefined) {
+    errors.push(`${path}.scenes: missing`)
+
+    return null
+  }
+  if (!Array.isArray(list) || !list.every(n => typeof n === 'string')) {
+    errors.push(`${path}.scenes: must be a list of scene names`)
+
+    return null
+  }
+  const names = (list as string[]).map(n => n.trim())
+  if (names.length === 0) errors.push(`${path}.scenes: empty`)
+  else if (names.length > SCENES_MAX) errors.push(`${path}.scenes: ${names.length} scenes; at most ${SCENES_MAX}`)
+  if (names.length === 0 || names.length > SCENES_MAX) return null
+  const before = errors.length
+  names.forEach((name, i) => {
+    const first = names.indexOf(name)
+    // A name given again is reported once, where it first repeats.
+    if (first !== i) {
+      if (names.indexOf(name, first + 1) === i) errors.push(`${path}.scenes: names "${name}" twice`)
+    } else {
+      isStageScene(name, `${path}.scenes[${i}]`, errors, sceneNames)
+    }
+  })
+
+  return errors.length === before ? names : null
+}
 
 function stageAt(item: unknown, path: string, errors: string[], sceneNames: readonly string[]): StageDef | null {
   if (typeof item !== 'object' || item === null || Array.isArray(item)) {
@@ -74,8 +129,8 @@ function stageAt(item: unknown, path: string, errors: string[], sceneNames: read
   const raw = item as Record<string, unknown>
   const before = errors.length
   for (const key of Object.keys(raw)) if (!(FIELDS as readonly string[]).includes(key)) errors.push(`${path}.${key}: not a field (${FIELDS.join(', ')})`)
-  const text: Partial<Record<Field, string>> = {}
-  for (const field of FIELDS) {
+  const text: Partial<Record<TextField, string>> = {}
+  for (const field of TEXT_FIELDS) {
     const value = raw[field]
     if (value === undefined) errors.push(`${path}.${field}: missing`)
     else if (typeof value !== 'string') errors.push(`${path}.${field}: must be text`)
@@ -83,15 +138,14 @@ function stageAt(item: unknown, path: string, errors: string[], sceneNames: read
     else if (chars(value.trim()) > LIMITS[field]) errors.push(`${path}.${field}: ${chars(value.trim())} characters, at most ${LIMITS[field]}`)
     else text[field] = value.trim()
   }
-  const { id, scene } = text
+  const { id } = text
   if (id !== undefined && !ID.test(id)) errors.push(`${path}.id "${id}": lowercase letters, digits and dashes, starting with a letter`)
   else if (id !== undefined && (RESERVED_IDS as readonly string[]).includes(id)) {
     errors.push(`${path}.id "${id}" is one of /stage's words (${RESERVED_IDS.join(', ')})`)
   }
-  if (scene !== undefined && NOT_FOR_STAGES[scene] !== undefined) errors.push(`${path}.scene "${scene}" ${NOT_FOR_STAGES[scene]}; a stage can't use it`)
-  else if (scene !== undefined && !sceneNames.includes(scene)) errors.push(`${path}.scene "${scene}" is not a scene (${sceneNames.join(', ')})`)
+  const scenes = scenesAt(raw, path, errors, sceneNames)
 
-  return errors.length === before ? { id: text.id!, label: text.label!, message: text.message!, when: text.when!, scene: text.scene! } : null
+  return errors.length === before && scenes ? { id: text.id!, label: text.label!, message: text.message!, when: text.when!, scenes } : null
 }
 
 function stagesAt(value: unknown, name: 'track' | 'side', min: number, max: number, errors: string[], sceneNames: readonly string[]) {
@@ -140,3 +194,16 @@ export function parseWorkflow(json: string, sceneNames: readonly string[]): { wo
 export const workflowJson = (w: Workflow): string => `${JSON.stringify({ track: w.track, side: w.side }, null, 2)}\n`
 
 export const sameWorkflow = (a: Workflow, b: Workflow): boolean => workflowJson(a) === workflowJson(b)
+
+// A workflow as an older version kept it in $.state (each stage with one
+// scene), read as this version's: each stage with its scenes.
+export function withScenes(w: Workflow): Workflow {
+  const fit = (s: StageDef): StageDef => {
+    const old = s as StageDef & { scene?: string }
+    if (Array.isArray(old.scenes)) return s
+
+    return { id: old.id, label: old.label, message: old.message, when: old.when, scenes: [old.scene ?? UNTRACKED_SCENE] }
+  }
+
+  return { track: w.track.map(fit), side: w.side.map(fit) }
+}

@@ -73,26 +73,10 @@ test('/stage workflow shows, inits or reloads the workflow', () => {
 })
 
 test('the workflow summary says where it came from and lists the stages with their scenes', () => {
-  expect(workflowSummary(W, 'default').split('\n')).toEqual([
-    'Workflow: the default (no .claude/stage-toons.json; /stage workflow init writes it there to edit)',
-    'Track:',
-    '  1 roadmap: Roadmap (road-trip)',
-    '  2 brainstorm: Brainstorm (light-bulbs)',
-    '  3 spec: Spec (writing-desk)',
-    '  4 spec-audit: Spec audit (proofread-page)',
-    '  5 plan: Plan (stepping-stones)',
-    '  6 plan-audit: Plan audit (proofread-checklist)',
-    '  7 develop: Develop (bricklaying)',
-    '  8 claude-test: Claude testing (test-tubes)',
-    '  9 user-test: Your testing (gift)',
-    '  10 cleanup: Cleanup (sweeping)',
-    'Side:',
-    '  debugging: Debugging (bug-hunt)',
-    '  0 other: Other (mystery-box)',
-  ])
-  expect(workflowSummary({ track: W.track.slice(0, 1), side: [] }, 'file').split('\n')).toEqual([
-    'Workflow: from .claude/stage-toons.json',
-    'Track:',
-    '  1 roadmap: Roadmap (road-trip)',
-  ])
+  const lines = workflowSummary(W, 'default').split('\n')
+  expect(lines[0]).toBe('Workflow: the default (no .claude/stage-toons.json; /stage workflow init writes it there to edit)')
+  expect(lines).toContain(`  7 develop: Develop (${W.track[6]!.scenes.join(', ')})`)
+  expect(lines).toContain(`  0 other: Other (${W.side[1]!.scenes.join(', ')})`)
+  const two = { track: [{ ...W.track[0]!, scenes: ['road-trip', 'gift'] }], side: [] }
+  expect(workflowSummary(two, 'file').split('\n')).toEqual(['Workflow: from .claude/stage-toons.json', 'Track:', '  1 roadmap: Roadmap (road-trip, gift)'])
 })

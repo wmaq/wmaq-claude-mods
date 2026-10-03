@@ -94,11 +94,11 @@ test('text is cut between characters, never through an emoji', () => {
 
 const SMALL: Workflow = {
   track: [
-    { id: 'plan', label: 'Plan', message: 'Planning', when: 'planning', scene: 'stepping-stones' },
-    { id: 'build', label: 'Build', message: 'Building', when: 'building', scene: 'bricklaying' },
-    { id: 'ship', label: 'Ship', message: 'Shipping', when: 'shipping', scene: 'gift' },
+    { id: 'plan', label: 'Plan', message: 'Planning', when: 'planning', scenes: ['stepping-stones'] },
+    { id: 'build', label: 'Build', message: 'Building', when: 'building', scenes: ['bricklaying'] },
+    { id: 'ship', label: 'Ship', message: 'Shipping', when: 'shipping', scenes: ['gift'] },
   ],
-  side: [{ id: 'debugging', label: 'Debugging', message: 'Hunting a bug', when: 'debugging', scene: 'mystery-box' }],
+  side: [{ id: 'debugging', label: 'Debugging', message: 'Hunting a bug', when: 'debugging', scenes: ['mystery-box'] }],
 }
 
 test('any workflow: numbers, ids and 0 parse against it', () => {

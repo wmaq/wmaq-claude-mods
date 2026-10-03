@@ -71,7 +71,7 @@ test('every scene is filed under its own name: the library', () => {
     ['road-trip', 'light-bulbs', 'writing-desk', 'proofread-page', 'stepping-stones', 'proofread-checklist', 'bricklaying', 'test-tubes', 'gift', 'sweeping', 'bug-hunt', 'mystery-box', 'fable-audit', 'standing'].sort(),
   )
   expect(STAGE_SCENES).toEqual(Object.keys(SCENES).filter(n => n !== 'fable-audit' && n !== 'standing'))
-  for (const s of [...DEFAULT_WORKFLOW.track, ...DEFAULT_WORKFLOW.side]) expect(STAGE_SCENES).toContain(s.scene)
+  for (const s of [...DEFAULT_WORKFLOW.track, ...DEFAULT_WORKFLOW.side]) for (const id of s.scenes) expect(STAGE_SCENES).toContain(id)
 })
 
 test('in the auditor scene both Clawds are on stage', () => {

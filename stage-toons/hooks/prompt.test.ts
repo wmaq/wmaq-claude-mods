@@ -6,10 +6,10 @@ import { DEFAULT_WORKFLOW as W, stageIds, type Workflow } from './workflow'
 
 const SMALL: Workflow = {
   track: [
-    { id: 'plan', label: 'Plan', message: 'Planning', when: 'planning the work', scene: 'stepping-stones' },
-    { id: 'build', label: 'Build', message: 'Building', when: 'writing the code', scene: 'bricklaying' },
+    { id: 'plan', label: 'Plan', message: 'Planning', when: 'planning the work', scenes: ['stepping-stones'] },
+    { id: 'build', label: 'Build', message: 'Building', when: 'writing the code', scenes: ['bricklaying'] },
   ],
-  side: [{ id: 'debugging', label: 'Debugging', message: 'Hunting a bug', when: 'finding and fixing a bug', scene: 'mystery-box' }],
+  side: [{ id: 'debugging', label: 'Debugging', message: 'Hunting a bug', when: 'finding and fixing a bug', scenes: ['mystery-box'] }],
 }
 
 test('the workflow section lists every stage, the tool, and the state at session start', () => {

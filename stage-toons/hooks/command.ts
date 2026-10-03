@@ -109,9 +109,9 @@ export function workflowSummary(w: Workflow, source: 'file' | 'default'): string
   const lines = [
     source === 'file' ? `Workflow: from ${WORKFLOW_FILE}` : `Workflow: the default (no ${WORKFLOW_FILE}; /stage workflow init writes it there to edit)`,
     'Track:',
-    ...w.track.map((s, i) => `  ${i + 1} ${s.id}: ${s.label} (${s.scene})`),
+    ...w.track.map((s, i) => `  ${i + 1} ${s.id}: ${s.label} (${s.scenes.join(', ')})`),
   ]
-  if (w.side.length > 0) lines.push('Side:', ...w.side.map(s => `  ${s === zero ? '0 ' : ''}${s.id}: ${s.label} (${s.scene})`))
+  if (w.side.length > 0) lines.push('Side:', ...w.side.map(s => `  ${s === zero ? '0 ' : ''}${s.id}: ${s.label} (${s.scenes.join(', ')})`))
 
   return lines.join('\n')
 }
