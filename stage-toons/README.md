@@ -27,7 +27,24 @@ Anshu Chimala, whose Clawd sprite it borrows (MIT; see `NOTICE`).
 | 8 | Claude testing | Claude verifies the work |
 | 9 | Your testing | You test it |
 | 10 | Cleanup | Leftovers, chores and docs |
-| ? | Other | Anything that fits none of them |
+
+Beside the track are two side stages, which the work can enter from any
+point and leave again:
+
+| Stage | What it means |
+|---|---|
+| Debugging | Finding and fixing a bug, at any point (`/stage debugging`) |
+| Other | Anything that fits none of them (`/stage 0` or `/stage ?`) |
+
+On a side stage the bar shows the stage instead of the track, and the track
+stage the work returns to:
+
+```
+ ? Debugging · login bug   ↩ 7/10 Develop
+ Reproducing the failing login test
+```
+
+This is the default workflow. A project can define its own (below).
 
 ## How the bar moves
 
@@ -42,11 +59,15 @@ You can move it yourself with `/stage`:
 |---|---|
 | `/stage` | Show the stage and the recent moves |
 | `/stage 5`, `/stage plan` | Move to a stage (`0` or `?` for Other) |
+| `/stage debugging` | Move to a side stage by its id |
 | `/stage next`, `/stage back` | One step |
 | `/stage feature <name>` | Name the feature (`/stage feature -` clears it) |
 | `/stage message <text>` | Set the message |
 | `/stage hide` | Hide or show the bar and the cartoons |
 | `/stage demo [seconds]` | Play every scene, 10 s each (2 to 60); `/stage demo stop` ends it |
+| `/stage workflow` | Show the workflow, where it came from, and each stage's scene |
+| `/stage workflow init` | Write the default workflow to `.claude/stage-toons.json` to edit |
+| `/stage workflow reload` | Read `.claude/stage-toons.json` again and switch to it |
 
 Claude is told about your moves.
 
@@ -57,9 +78,42 @@ glances at the prompt and the bar, taps a foot, and after a minute sits
 down and dozes off. He shows in a terminal at least 70 columns wide;
 otherwise the bar is text alone.
 
-`/stage demo` plays all 12 scenes in turn below the bar (the ten stages,
-Other and Fable's audit), so you can see them without waiting for the
-work to reach each stage. A new prompt ends the demo.
+`/stage demo` plays all 13 scenes of the library in turn below the bar,
+each named with the stage that plays it, so you can see them without
+waiting for the work to reach each stage. A new prompt ends the demo.
+
+## Your own workflow
+
+A project can define its own stages in `.claude/stage-toons.json`.
+`/stage workflow init` writes the default there to start from; edit it,
+then `/stage workflow reload`. Without the file, the default applies.
+
+A workflow has `track` stages, in order, and `side` stages, which the work
+can enter from any point and leave again. Each stage has an `id` (what
+`set_stage` and `/stage` take), a `label` for the bar, a `message` for the
+status line, a `when` line telling Claude when to move there, and a `scene`:
+
+```json
+{
+  "track": [
+    { "id": "plan", "label": "Plan", "message": "Writing the plan",
+      "when": "writing the implementation plan", "scene": "stepping-stones" }
+  ],
+  "side": [
+    { "id": "debugging", "label": "Debugging", "message": "Hunting a bug",
+      "when": "finding and fixing a bug, at any point", "scene": "bug-hunt" }
+  ]
+}
+```
+
+Scenes: road-trip, light-bulbs, writing-desk, proofread-page,
+stepping-stones, proofread-checklist, bricklaying, test-tubes, gift,
+sweeping, bug-hunt, mystery-box. `/stage demo` plays them all;
+`/stage workflow` shows the current workflow and its scenes.
+
+Limits: 1 to 15 track stages, up to 5 side stages; ids are lowercase
+letters, digits and dashes. A mistake in the file is reported with where it
+is, and the session keeps a working workflow.
 
 ## Install
 
