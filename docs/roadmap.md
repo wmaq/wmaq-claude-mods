@@ -127,6 +127,13 @@ claude-toons was shared.
   Clawd, who dozes off after a minute. A "waiting on agents" toon would fit
   better (Clawd watching the agents work). The mod already sees spawns
   (`agent.spawn`) and can list running agents (`$.agent.list`).
+- **Layers (a Z axis) for scenes.** Today a scene paints in a fixed order
+  (backdrop, actors, front) and a later pixel simply covers an earlier
+  one, so placing a prop behind or in front of Clawd means arranging the
+  code around that order. A depth per actor and prop would make layering
+  easy: Nyan's rainbow could start right behind Clawd's body instead of
+  where his sprite box ends, and props could pass in front of or behind
+  him.
 - **Stage history.** Time spent per stage and per feature, and
   `/stage log` for a timeline. Progress is already saved per project, with
   its recent moves.
