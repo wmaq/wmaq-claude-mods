@@ -184,3 +184,36 @@ test('/stage lists demo where it is registered', async ($, on) => {
   expect(world.commands.at(-1)?.argumentHint).toContain('demo')
   expect(world.commands.at(-1)?.description).toContain('demo')
 })
+
+test('the idle routine is picked at session start and again when a turn starts, never during a render', async ($, on) => {
+  const picks: string[] = []
+  on('state.set', ($, e, next) => {
+    const write = e as unknown as { key: string; value: unknown }
+    if (write.key === 'idle') picks.push(String(write.value))
+
+    return next(e)
+  })
+  engine(on)
+  await $.session.start(START)
+  expect(picks).toHaveLength(1)
+  await $.prompt.submit({ text: 'hi', wait: false, origin: { kind: 'composer' } } as never)
+  expect(picks).toHaveLength(2)
+  expect(picks[1]).not.toBe(picks[0])
+  const ui = await mountBand($, 'terminal', bandProps(100, { isWorking: true }))
+  await ui.redraw(bandProps(100))
+  expect(picks).toHaveLength(2)
+})
+
+test('a hot reload keeps the idle routine', async ($, on) => {
+  const picks: string[] = []
+  on('state.get', ($, e, next) => (e.key === 'idle' ? { value: { value: 'nyan', version: 1 } } : next(e)))
+  on('state.set', ($, e, next) => {
+    const write = e as unknown as { key: string; value: unknown }
+    if (write.key === 'idle') picks.push(String(write.value))
+
+    return next(e)
+  })
+  engine(on)
+  await $.session.start(START)
+  expect(picks).toHaveLength(0)
+})

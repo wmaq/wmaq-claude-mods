@@ -8,6 +8,7 @@ import { pickOne } from '../pick'
 import { createBuffer, type PixelBuffer } from '../pixels'
 import { classic } from './classic'
 import { DOZE_MS, drawDoze } from './doze'
+import { nyan } from './nyan'
 import type { IdleRoutine } from './routine'
 
 export { CLAWD_X, DOZE_MS, Z_COLOR } from './doze'
@@ -16,7 +17,7 @@ export type { IdleRoutine } from './routine'
 export const IDLE_COLS = 26
 export const IDLE_ROWS = 4
 export const FALLBACK_ROUTINE = 'classic'
-export const ROUTINES: Record<IdleId, IdleRoutine> = { classic }
+export const ROUTINES: Record<IdleId, IdleRoutine> = { classic, nyan }
 export const IDLE_IDS: readonly IdleId[] = Object.keys(ROUTINES)
 
 export const pickIdle = (previous: IdleId | undefined, random: number): IdleId => pickOne(IDLE_IDS, previous, random)

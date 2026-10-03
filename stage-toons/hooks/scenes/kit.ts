@@ -29,6 +29,10 @@ export const C = {
   smoke: 0x9e9e9e,
   // A torch's beam in the dark: a dim yellow.
   beam: 0x5f5326,
+  // The rainbow's orange and violet: well apart from Clawd's orange and
+  // Fable's violet.
+  orange: 0xff8c1a,
+  violet: 0xc04fc8,
 } as const
 
 // How many whole periods have passed.

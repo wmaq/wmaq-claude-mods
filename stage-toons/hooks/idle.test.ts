@@ -3,6 +3,7 @@ import { expect, test } from 'claude-code/testing'
 import { CLAWD_ORANGE, EYE_DARK } from './clawd'
 import { CLAWD_X, DOZE_MS, IDLE_COLS, IDLE_IDS, IDLE_ROWS, idleFrame, pickIdle, ROUTINES, Z_COLOR } from './idle'
 import type { PixelBuffer } from './pixels'
+import { C } from './scenes/kit'
 
 const at = (seconds: number, routine = 'classic') => idleFrame(routine, seconds * 1000)
 const where = (b: PixelBuffer, color: number) => [...b.px].flatMap((c, i) => (c === color ? [{ x: i % b.w, y: Math.floor(i / b.w) }] : []))
@@ -44,6 +45,21 @@ test('classic: Clawd taps a foot now and then, and loops every 8 seconds', () =>
   expect(feet(at(5.1))).not.toBe(feet(at(5.3)))
   expect(feet(at(0.5))).toBe(feet(at(1.5)))
   expect([...at(8.5).px]).toEqual([...at(0.5).px])
+})
+
+test('nyan: a six-stripe rainbow behind Clawd, its wave stepping, and stars rushing past', () => {
+  expect(IDLE_IDS).toEqual(['classic', 'nyan'])
+  const b = at(0.1, 'nyan')
+  for (const stripe of [C.red, C.orange, C.gold, C.green, C.blue, C.violet]) {
+    const px = where(b, stripe)
+    expect(px.length).toBe(CLAWD_X)
+    expect(px.every(p => p.x < CLAWD_X)).toBe(true)
+  }
+  expect([...at(0.1, 'nyan').px]).not.toEqual([...at(0.35, 'nyan').px])
+  // Stars show now and then on the free rows, and move left.
+  const stars = (t: number) => where(at(t, 'nyan'), C.white)
+  expect([0.1, 0.35, 0.6, 0.85].some(t => stars(t).length > 0)).toBe(true)
+  for (let t = 0; t < 4; t += 0.05) expect(stars(t).every(p => p.y === 0 || p.y === 7)).toBe(true)
 })
 
 test('after a minute every routine dozes the same way: sitting, eyes closed, z rising at his left', () => {
