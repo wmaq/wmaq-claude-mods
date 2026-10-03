@@ -4,6 +4,8 @@ import { bandLayout, bandMode, IDLE_MIN, type Span, trackSpans } from './band'
 import { applyMove, freshProgress } from './stages'
 import { DEFAULT_WORKFLOW } from './workflow'
 
+const W = DEFAULT_WORKFLOW
+
 const text = (line: Span[] | undefined) => (line ?? []).map(s => s.text).join('')
 const plan = applyMove(DEFAULT_WORKFLOW, freshProgress(0), { stage: 'plan', feature: 'stage-toons', by: 'claude', at: 1 })
 
@@ -22,11 +24,32 @@ test('the wide band has the track, the label and the message', () => {
   expect(lines[1]?.[0]?.tone).toBe('message')
 })
 
-test('Other dims the track where it stood and labels itself', () => {
-  const p = applyMove(DEFAULT_WORKFLOW, plan, { stage: 'other', message: 'Fixing a CI flake', by: 'claude', at: 2 })
-  expect(trackSpans(DEFAULT_WORKFLOW, p).every(s => s.tone === 'future')).toBe(true)
-  expect(text(bandLayout(DEFAULT_WORKFLOW, p, false, 100)[0])).toBe(' ●━●━●━●━◉─○─○─○─○─○  ? Other · stage-toons')
-  expect(text(bandLayout(DEFAULT_WORKFLOW, freshProgress(0), false, 100)[0])).toBe(' ○─○─○─○─○─○─○─○─○─○  Not tracked yet')
+test('a side stage hides the track and shows where the work returns', () => {
+  const p = applyMove(W, plan, { stage: 'debugging', message: 'Reproducing the login bug', by: 'claude', at: 2 })
+  const lines = bandLayout(W, p, false, 100)
+  expect(lines.map(text)).toEqual([' ? Debugging · stage-toons   ↩ 5/10 Plan', ' Reproducing the login bug'])
+  expect(lines[0]?.at(-1)).toEqual({ text: '   ↩ 5/10 Plan', tone: 'note' })
+})
+
+test('on a side stage the return note goes first, then the feature, then the label is cut', () => {
+  const p = applyMove(W, plan, { stage: 'debugging', by: 'claude', at: 2 })
+  // " ? Debugging · " and 30 x's is 45 cells; the note adds 14.
+  const long = { ...p, feature: 'x'.repeat(30) }
+  expect(text(bandLayout(W, long, false, 100)[0])).toBe(` ? Debugging · ${'x'.repeat(30)}   ↩ 5/10 Plan`)
+  expect(text(bandLayout(W, long, false, 52)[0])).toBe(` ? Debugging · ${'x'.repeat(30)}`)
+  expect(text(bandLayout(W, { ...p, feature: 'x'.repeat(40) }, false, 52)[0])).toBe(' ? Debugging')
+  expect(bandLayout(W, p, false, 49).map(text)).toEqual(['? Debugging — Hunting a bug'])
+  const fresh = applyMove(W, freshProgress(0), { stage: 'other', by: 'user', at: 1 })
+  expect(text(bandLayout(W, fresh, false, 100)[0])).toBe(' ? Other')
+})
+
+test('untracked is one line: the dim track, Not tracked yet and the feature', () => {
+  expect(bandLayout(W, freshProgress(0), false, 100).map(text)).toEqual([' ○─○─○─○─○─○─○─○─○─○  Not tracked yet'])
+  expect(bandLayout(W, { ...freshProgress(0), feature: 'login' }, false, 100).map(text)).toEqual([' ○─○─○─○─○─○─○─○─○─○  Not tracked yet · login'])
+  expect(bandLayout(W, freshProgress(0), false, 40).map(text)).toEqual(['Not tracked yet'])
+  expect(bandLayout(W, freshProgress(0), false, 100, 'Demo 1/13: road-trip').map(text)).toEqual([' ○─○─○─○─○─○─○─○─○─○  Not tracked yet', ' Demo 1/13: road-trip'])
+  // A Fable audit can start before the first stage is set.
+  expect(text(bandLayout(W, freshProgress(0), true, 100)[0])).toBe(' ○─○─○─○─○─○─○─○─○─○  Not tracked yet  ⌕ Fable reviewing')
 })
 
 test('the Fable tag shows while auditing, and goes first when room runs out', () => {

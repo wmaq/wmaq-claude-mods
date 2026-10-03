@@ -51,6 +51,7 @@ const TONES: Record<Tone, { color?: string; bold?: boolean; dimColor?: boolean }
   label: {},
   tag: { color: '#8B7AE8' },
   message: { dimColor: true },
+  note: { dimColor: true },
 }
 
 // A Raster the mod repaints: the toon under the spinner, or the band's

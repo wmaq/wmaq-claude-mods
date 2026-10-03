@@ -137,3 +137,14 @@ test('the band yields to surveys and agent views, and shrinks when narrow', asyn
   expect(await bandText($, 'terminal', bandProps(100, { agentId: 'agent-1' }))).toBe('(engine)')
   expect(await bandText($, 'terminal', bandProps(40))).toBe('5/10 Plan — Writing the plan')
 })
+
+test('/stage debugging hides the track and shows the stage left', async ($, on) => {
+  engine(on)
+  await $.session.start(START)
+  await setStage($, { stage: 'develop', message: 'Building' })
+  await runStage($, 'debugging')
+  const text = await bandText($)
+  expect(text).toContain('? Debugging')
+  expect(text).toContain('↩ 7/10 Develop')
+  expect(text).not.toContain('●')
+})
