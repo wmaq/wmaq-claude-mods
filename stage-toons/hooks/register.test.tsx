@@ -3,8 +3,9 @@ import { expect, test } from 'claude-code/testing'
 import type { Progress } from '../types'
 import { answerText, bandProps, bandText, BS, COMPOSE, engine, KEY, NOW, runStage, setStage, START, SUMMARY, TOOL_NAME } from './harness'
 import { applyMove, freshProgress } from './stages'
+import { DEFAULT_WORKFLOW } from './workflow'
 
-const saved = (stage: Progress['stage'], message: string, at = NOW - 1000): Progress => applyMove(freshProgress(0), { stage, message, by: 'claude', at })
+const saved = (stage: Progress['stage'], message: string, at = NOW - 1000): Progress => applyMove(DEFAULT_WORKFLOW, freshProgress(0), { stage, message, by: 'claude', at })
 
 test('a fresh project shows Other, on the terminal and on the desktop', async ($, on) => {
   engine(on)

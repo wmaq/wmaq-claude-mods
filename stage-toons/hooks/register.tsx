@@ -21,9 +21,9 @@ import { type KV, loadProgress, saveProgress, storeKey, validate } from './progr
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, TOOL_SCHEMA, toolNameFor, workflowText } from './prompt'
 import { type SceneId, STAGE_W } from './scene'
 import { REACTIONS, SCENES } from './scenes'
-import { applyMove, describe, freshProgress, isAdvance, isStageId, STAGE_IDS } from './stages'
+import { applyMove, describe, freshProgress, isAdvance } from './stages'
 import { type Cast, composeFrame, TOON_ROWS } from './toon'
-import { DEFAULT_WORKFLOW, sceneOf } from './workflow'
+import { DEFAULT_WORKFLOW, sceneOf, stageIds } from './workflow'
 
 const PLUGIN = 'stage-toons'
 const HIDDEN_KEY = 'hidden'
@@ -128,23 +128,23 @@ async function current($: EngineInterface, now: number): Promise<Progress> {
 async function commit($: EngineInterface, mod: Mod, before: Progress, after: Progress, now: number) {
   await update($, progressAtom, () => after)
   mod.director = withScene(mod.director, sceneOf(DEFAULT_WORKFLOW, after.stage), now)
-  if (isAdvance(before, after)) mod.director = react(mod.director, 'advance', now)
+  if (isAdvance(DEFAULT_WORKFLOW, before, after)) mod.director = react(mod.director, 'advance', now)
   if (!(await saveProgress(storeOf($), mod.key, after))) await warnUnsaved($)
 }
 
 async function setStage($: EngineInterface, mod: Mod, args: ToolArgs) {
   if (args.agentId !== undefined) return { deny: 'stage-toons: only the main conversation moves the workflow stage.' }
   const { stage, message, feature } = args
-  if (!isStageId(stage) || typeof message !== 'string' || message.trim() === '') {
-    return { deny: `stage-toons: set_stage needs "stage" (one of ${STAGE_IDS.join(', ')}) and a non-empty "message".` }
+  if (typeof stage !== 'string' || !stageIds(DEFAULT_WORKFLOW).includes(stage) || typeof message !== 'string' || message.trim() === '') {
+    return { deny: `stage-toons: set_stage needs "stage" (one of ${stageIds(DEFAULT_WORKFLOW).join(', ')}) and a non-empty "message".` }
   }
   const now = await $.clock.now()
   const before = await current($, now)
-  const after = applyMove(before, { stage, message, feature: typeof feature === 'string' ? feature : undefined, by: 'claude', at: now })
+  const after = applyMove(DEFAULT_WORKFLOW, before, { stage, message, feature: typeof feature === 'string' ? feature : undefined, by: 'claude', at: now })
   await commit($, mod, before, after, now)
 
   // Core takes a registered tool's result as a string, an array or nothing.
-  return { result: `Stage ${describe(after)}` }
+  return { result: `Stage ${describe(DEFAULT_WORKFLOW, after)}` }
 }
 
 async function setAuditing($: EngineInterface, mod: Mod, isAuditing: boolean) {
@@ -358,7 +358,7 @@ export const register: Register = on => {
     const after = moveFor(before, cmd, now)
     await commit($, mod, before, after, now)
 
-    return { text: `Stage ${describe(after)}`, context: [`[stage-toons] The user set the stage: ${describe(after)}`] }
+    return { text: `Stage ${describe(DEFAULT_WORKFLOW, after)}`, context: [`[stage-toons] The user set the stage: ${describe(DEFAULT_WORKFLOW, after)}`] }
   })
 
   on('prompt.compose', async ($, e, next) => {

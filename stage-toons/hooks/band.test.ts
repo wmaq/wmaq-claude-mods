@@ -2,9 +2,10 @@ import { expect, test } from 'claude-code/testing'
 
 import { bandLayout, bandMode, IDLE_MIN, type Span, trackSpans } from './band'
 import { applyMove, freshProgress } from './stages'
+import { DEFAULT_WORKFLOW } from './workflow'
 
 const text = (line: Span[] | undefined) => (line ?? []).map(s => s.text).join('')
-const plan = applyMove(freshProgress(0), { stage: 'plan', feature: 'stage-toons', by: 'claude', at: 1 })
+const plan = applyMove(DEFAULT_WORKFLOW, freshProgress(0), { stage: 'plan', feature: 'stage-toons', by: 'claude', at: 1 })
 
 test('the track marks done, current and future steps', () => {
   const spans = trackSpans(plan)
@@ -22,7 +23,7 @@ test('the wide band has the track, the label and the message', () => {
 })
 
 test('Other dims the track where it stood and labels itself', () => {
-  const p = applyMove(plan, { stage: 'other', message: 'Fixing a CI flake', by: 'claude', at: 2 })
+  const p = applyMove(DEFAULT_WORKFLOW, plan, { stage: 'other', message: 'Fixing a CI flake', by: 'claude', at: 2 })
   expect(trackSpans(p).every(s => s.tone === 'future')).toBe(true)
   expect(text(bandLayout(p, false, 100)[0])).toBe(' ●━●━●━●━◉─○─○─○─○─○  ? Other · stage-toons')
   expect(text(bandLayout(freshProgress(0), false, 100)[0])).toBe(' ○─○─○─○─○─○─○─○─○─○  ? Other')
@@ -36,7 +37,7 @@ test('the Fable tag shows while auditing, and goes first when room runs out', ()
 })
 
 test('a long feature is dropped before anything is cut, and the message is cut to fit', () => {
-  const long = applyMove(plan, { stage: 'plan', feature: 'x'.repeat(40), message: 'm'.repeat(80), by: 'claude', at: 2 })
+  const long = applyMove(DEFAULT_WORKFLOW, plan, { stage: 'plan', feature: 'x'.repeat(40), message: 'm'.repeat(80), by: 'claude', at: 2 })
   const [line1, line2] = bandLayout(long, false, 60)
   expect(text(line1)).toBe(' ●━●━●━●━◉─○─○─○─○─○  5/10 Plan')
   expect(text(line2)).toBe(` ${'m'.repeat(57)}…`)
@@ -80,7 +81,7 @@ test('the band yields to a survey, an agent transcript, and /stage hide', () => 
 })
 
 test('the band cuts its lines between characters, never through an emoji', () => {
-  const p = applyMove(freshProgress(0), { stage: 'plan', message: '🚀'.repeat(40), by: 'claude', at: 1 })
+  const p = applyMove(DEFAULT_WORKFLOW, freshProgress(0), { stage: 'plan', message: '🚀'.repeat(40), by: 'claude', at: 1 })
   for (const columns of [30, 41, 60, 61]) {
     for (const line of bandLayout(p, false, columns)) {
       const t = text(line)

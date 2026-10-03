@@ -3,6 +3,7 @@
 import type { Progress, StageId } from '../types'
 import { DEMO_MAX, DEMO_MIN, DEMO_SECONDS } from './demo'
 import { applyMove, backStage, describe, nextStage, parseStage, stageLabel } from './stages'
+import { DEFAULT_WORKFLOW } from './workflow'
 
 export type Command =
   | { kind: 'show' }
@@ -39,7 +40,7 @@ export function parseCommand(args: string): Command {
   if (word === 'demo') return parseDemo(tail.toLowerCase())
   if (tail !== '') return { kind: 'usage' }
   if (word === 'next' || word === 'back' || word === 'hide') return { kind: word }
-  const stage = parseStage(word)
+  const stage = parseStage(DEFAULT_WORKFLOW, word)
 
   return stage ? { kind: 'move', stage } : { kind: 'usage' }
 }
@@ -56,15 +57,15 @@ export function moveFor(p: Progress, cmd: Command, now: number): Progress {
   const by = 'user'
   switch (cmd.kind) {
     case 'move':
-      return applyMove(p, { stage: cmd.stage, by, at: now })
+      return applyMove(DEFAULT_WORKFLOW, p, { stage: cmd.stage, by, at: now })
     case 'next':
-      return applyMove(p, { stage: nextStage(p), by, at: now })
+      return applyMove(DEFAULT_WORKFLOW, p, { stage: nextStage(DEFAULT_WORKFLOW, p), by, at: now })
     case 'back':
-      return applyMove(p, { stage: backStage(p), by, at: now })
+      return applyMove(DEFAULT_WORKFLOW, p, { stage: backStage(DEFAULT_WORKFLOW, p), by, at: now })
     case 'feature':
-      return applyMove(p, { stage: p.stage, feature: cmd.name === '-' ? '' : cmd.name, by, at: now })
+      return applyMove(DEFAULT_WORKFLOW, p, { stage: p.stage, feature: cmd.name === '-' ? '' : cmd.name, by, at: now })
     case 'message':
-      return applyMove(p, { stage: p.stage, message: cmd.text, by, at: now })
+      return applyMove(DEFAULT_WORKFLOW, p, { stage: p.stage, message: cmd.text, by, at: now })
     default:
       return p
   }
@@ -74,9 +75,9 @@ const ago = (ms: number): string =>
   ms < 60_000 ? 'just now' : ms < 3_600_000 ? `${Math.floor(ms / 60_000)}m ago` : ms < 86_400_000 ? `${Math.floor(ms / 3_600_000)}h ago` : `${Math.floor(ms / 86_400_000)}d ago`
 
 export function showText(p: Progress, now: number): string {
-  const lines = [`Stage ${describe(p)}`]
+  const lines = [`Stage ${describe(DEFAULT_WORKFLOW, p)}`]
   const recent = p.history.slice(-5).reverse()
-  if (recent.length > 0) lines.push('Recent moves:', ...recent.map(h => `  ${stageLabel(h.stage)} by ${h.by}, ${ago(now - h.at)}`))
+  if (recent.length > 0) lines.push('Recent moves:', ...recent.map(h => `  ${stageLabel(DEFAULT_WORKFLOW, h.stage)} by ${h.by}, ${ago(now - h.at)}`))
 
   return lines.join('\n')
 }

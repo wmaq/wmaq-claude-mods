@@ -2,7 +2,8 @@
 // that lists the stages.
 
 import type { Progress } from '../types'
-import { describe, STAGE_IDS } from './stages'
+import { describe } from './stages'
+import { DEFAULT_WORKFLOW, stageIds } from './workflow'
 
 export const TOOL = 'set_stage'
 export const COMMAND = 'stage'
@@ -19,7 +20,7 @@ export const TOOL_DESCRIPTION =
 export const TOOL_SCHEMA = {
   type: 'object',
   properties: {
-    stage: { type: 'string', enum: [...STAGE_IDS] },
+    stage: { type: 'string', enum: stageIds(DEFAULT_WORKFLOW) },
     message: { type: 'string', description: 'What is happening now, present tense, under 80 characters' },
     feature: { type: 'string', description: "The feature's short name, when it is known or changes" },
   },
@@ -42,6 +43,6 @@ export function workflowText(p: Progress, toolName: string): string {
     'and a short present-tense message. Also call it when the focus within a',
     'stage changes notably, but not more than every few minutes. Its result',
     'and any "[stage-toons]" note are the current state.',
-    `At session start: ${describe(p)}.`,
+    `At session start: ${describe(DEFAULT_WORKFLOW, p)}.`,
   ].join('\n')
 }

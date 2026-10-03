@@ -1,23 +1,12 @@
-export type TrackStageId =
-  | 'roadmap'
-  | 'brainstorm'
-  | 'spec'
-  | 'spec-audit'
-  | 'plan'
-  | 'plan-audit'
-  | 'develop'
-  | 'claude-test'
-  | 'user-test'
-  | 'cleanup'
-
-export type StageId = TrackStageId | 'other'
+// A stage's id, as the workflow names it (StageDef.id).
+export type StageId = string
 
 export type HistoryEntry = { stage: StageId; at: number; by: 'claude' | 'user' }
 
 export type Progress = {
   v: 1
   stage: StageId
-  lastTrackStage: TrackStageId | null
+  lastTrackStage: StageId | null
   feature: string | null
   message: string
   history: HistoryEntry[]

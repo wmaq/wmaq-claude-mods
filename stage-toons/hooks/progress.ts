@@ -1,9 +1,10 @@
 // Saving a project's progress with $.store, under a key per project
 // directory, and reading it back only when it still has the shape this
-// version writes.
+// version writes. The shape is checked here; stage ids against the
+// workflow elsewhere.
 
-import type { HistoryEntry, Progress, TrackStageId } from '../types'
-import { cut, FEATURE_MAX, freshProgress, isStageId, isTrack, MESSAGE_MAX } from './stages'
+import type { HistoryEntry, Progress, StageId } from '../types'
+import { cut, FEATURE_MAX, freshProgress, MESSAGE_MAX } from './stages'
 
 export type KV = {
   get: (key: string) => Promise<unknown>
@@ -24,15 +25,15 @@ const isEntry = (h: unknown): h is HistoryEntry => {
   if (typeof h !== 'object' || h === null) return false
   const e = h as Record<string, unknown>
 
-  return isStageId(e.stage) && Number.isFinite(e.at) && (e.by === 'claude' || e.by === 'user')
+  return typeof e.stage === 'string' && Number.isFinite(e.at) && (e.by === 'claude' || e.by === 'user')
 }
 
 export function validate(x: unknown): Progress | null {
   if (typeof x !== 'object' || x === null) return null
   const p = x as Record<string, unknown>
-  if (p.v !== 1 || !isStageId(p.stage)) return null
+  if (p.v !== 1 || typeof p.stage !== 'string') return null
   const last = p.lastTrackStage
-  if (last !== null && !(isStageId(last) && isTrack(last))) return null
+  if (last !== null && typeof last !== 'string') return null
   if (typeof p.message !== 'string' || typeof p.updatedAt !== 'number' || !Number.isFinite(p.updatedAt)) return null
   if (p.feature !== null && typeof p.feature !== 'string') return null
   if (!Array.isArray(p.history)) return null
@@ -40,7 +41,7 @@ export function validate(x: unknown): Progress | null {
   return {
     v: 1,
     stage: p.stage,
-    lastTrackStage: last as TrackStageId | null,
+    lastTrackStage: last as StageId | null,
     feature: p.feature === null ? null : cut(p.feature as string, FEATURE_MAX),
     message: cut(p.message, MESSAGE_MAX),
     history: p.history.filter(isEntry),

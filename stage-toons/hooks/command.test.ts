@@ -2,6 +2,7 @@ import { expect, test } from 'claude-code/testing'
 
 import { moveFor, parseCommand, showText, USAGE } from './command'
 import { applyMove, freshProgress } from './stages'
+import { DEFAULT_WORKFLOW } from './workflow'
 
 test('/stage arguments parse into commands', () => {
   expect(parseCommand('')).toEqual({ kind: 'show' })
@@ -39,8 +40,8 @@ test('commands move the progress as the user', () => {
 })
 
 test('/stage alone shows the state and the latest moves first', () => {
-  let p = applyMove(freshProgress(0), { stage: 'spec', by: 'claude', at: 0 })
-  p = applyMove(p, { stage: 'plan', by: 'user', at: 60_000 })
+  let p = applyMove(DEFAULT_WORKFLOW, freshProgress(0), { stage: 'spec', by: 'claude', at: 0 })
+  p = applyMove(DEFAULT_WORKFLOW, p, { stage: 'plan', by: 'user', at: 60_000 })
   expect(showText(p, 3 * 60_000)).toBe(
     [
       'Stage 5/10 Plan · no feature · "Writing the implementation plan"',
