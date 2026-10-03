@@ -8,8 +8,11 @@ import { bricklaying } from './bricklaying'
 import { bugHunt } from './bug-hunt'
 import { clipboard } from './clipboard'
 import { controlPanel } from './control-panel'
+import { dishes } from './dishes'
 import { dominoes } from './dominoes'
 import { fableAudit } from './fable-audit'
+import { fishing } from './fishing'
+import { flashlight } from './flashlight'
 import { gift } from './gift'
 import { lightBulbs } from './light-bulbs'
 import { mysteryBox } from './mystery-box'
@@ -23,6 +26,7 @@ import { stickyNotes } from './sticky-notes'
 import { sweeping } from './sweeping'
 import { terminal } from './terminal'
 import { testTubes } from './test-tubes'
+import { waitingBench } from './waiting-bench'
 import { writingDesk } from './writing-desk'
 
 export const SCENES: Record<SceneId, Scene> = {
@@ -48,6 +52,10 @@ export const SCENES: Record<SceneId, Scene> = {
   clipboard,
   terminal,
   'control-panel': controlPanel,
+  'waiting-bench': waitingBench,
+  dishes,
+  flashlight,
+  fishing,
 }
 
 // What a stage may play: not Fable's scene (it plays while a Fable subagent

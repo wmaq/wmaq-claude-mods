@@ -27,6 +27,8 @@ export const C = {
   road: 0xc8a96a,
   dust: 0xb8a58a,
   smoke: 0x9e9e9e,
+  // A torch's beam in the dark: a dim yellow.
+  beam: 0x5f5326,
 } as const
 
 // How many whole periods have passed.

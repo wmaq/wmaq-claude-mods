@@ -12,6 +12,7 @@ const LIBRARY = [
   'sweeping', 'bug-hunt', 'mystery-box', 'fable-audit', 'standing',
   'stargazing', 'sticky-notes', 'blueprint', 'red-pen',
   'dominoes', 'clipboard', 'terminal', 'control-panel',
+  'waiting-bench', 'dishes', 'flashlight', 'fishing',
 ]
 
 const SCENE_LIST: Scene[] = Object.values(SCENES)
@@ -142,6 +143,7 @@ test('every default stage lists its batch-1 scene second', () => {
   const second = (id: string) => [...DEFAULT_WORKFLOW.track, ...DEFAULT_WORKFLOW.side].find(s => s.id === id)?.scenes[1]
   expect([second('roadmap'), second('brainstorm'), second('spec'), second('spec-audit')]).toEqual(['stargazing', 'sticky-notes', 'blueprint', 'red-pen'])
   expect([second('plan'), second('plan-audit'), second('develop'), second('claude-test')]).toEqual(['dominoes', 'clipboard', 'terminal', 'control-panel'])
+  expect([second('user-test'), second('cleanup'), second('debugging'), second('other')]).toEqual(['waiting-bench', 'dishes', 'flashlight', 'fishing'])
 })
 
 test('batch 1, part 2: each new scene shows what it is about', () => {
@@ -158,4 +160,27 @@ test('batch 1, part 2: each new scene shows what it is about', () => {
   // Red, red, then green.
   expect(has('control-panel', C.red, 1)).toBe(12)
   expect(has('control-panel', C.green, 4)).toBe(12)
+})
+
+test('batch 1, part 3: each new scene shows what it is about', () => {
+  // The clock's hand moves.
+  expect([...renderFull(SCENES['waiting-bench']!, 0.1).px]).not.toEqual([...renderFull(SCENES['waiting-bench']!, 0.6).px])
+  // The dirty stack shrinks as the clean one grows.
+  expect(has('dishes', C.white, 0.5)).toBeLessThan(has('dishes', C.white, 5.5))
+  // The beam finds the bug: it shows red only while lit.
+  expect(has('flashlight', C.red, 0.5)).toBe(0)
+  // The lit bug alone is 4 red pixels.
+  expect(has('flashlight', C.red, 3.5)).toBeGreaterThan(3)
+  expect(has('flashlight', C.beam, 1)).toBeGreaterThan(20)
+  // A boot, then a fish.
+  expect(has('fishing', C.darkGray, 3.5)).toBeGreaterThan(5)
+  expect(has('fishing', C.green, 7)).toBeGreaterThan(5)
+})
+
+test('the kit never uses Clawd orange or Fable violet', () => {
+  for (const color of Object.values(C)) expect([CLAWD_ORANGE, FABLE_VIOLET]).not.toContain(color)
+})
+
+test('every default stage has two scenes after batch 1', () => {
+  for (const s of [...DEFAULT_WORKFLOW.track, ...DEFAULT_WORKFLOW.side]) expect(s.scenes).toHaveLength(2)
 })
