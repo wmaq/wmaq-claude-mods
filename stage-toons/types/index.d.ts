@@ -24,6 +24,15 @@ export type Progress = {
   updatedAt: number
 }
 
+// One stage of a workflow (hooks/workflow.ts): what set_stage and /stage
+// take, what the bar shows, the status line on entering it, the line that
+// tells Claude when to move here, and the scene it plays.
+export type StageDef = { id: string; label: string; message: string; when: string; scene: string }
+
+// The stages the work moves through: the track, in order, and the side
+// stages, entered from any point and left again.
+export type Workflow = { track: readonly StageDef[]; side: readonly StageDef[] }
+
 declare module 'claude-code' {
   interface PluginState {
     'stage-toons': {
