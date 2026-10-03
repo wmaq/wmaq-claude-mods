@@ -9,10 +9,10 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Progress, Workflow } from '../types'
+import type { Progress, SessionWorkflow, Workflow } from '../types'
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { bandLayout, bandMode, type BandSite, IDLE_GAP, type Tone, TOON_MIN } from './band'
-import { moveFor, parseCommand, showText, usage } from './command'
+import { moveFor, parseCommand, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { type Demo, DEMO_SCENES, demoAt, demoLine } from './demo'
 import { createDirector, type Director, react, shot, tick, withAuditing, withScene } from './director'
 import { IDLE_COLS, IDLE_ROWS, idleFrame } from './idle'
@@ -20,14 +20,15 @@ import { encodeCells } from './pixels'
 import { type KV, loadProgress, saveProgress, storeKey, validate } from './progress'
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolNameFor, toolSchema, workflowText } from './prompt'
 import { type SceneId, STAGE_W } from './scene'
-import { REACTIONS, SCENES } from './scenes'
-import { applyMove, describe, freshProgress, isAdvance } from './stages'
+import { REACTIONS, SCENES, STAGE_SCENES } from './scenes'
+import { applyMove, describe, freshProgress, isAdvance, reconcile } from './stages'
 import { type Cast, composeFrame, TOON_ROWS } from './toon'
-import { DEFAULT_WORKFLOW, sceneOf, stageIds } from './workflow'
+import { DEFAULT_WORKFLOW, parseWorkflow, sameWorkflow, sceneOf, stageIds, stageList, workflowJson } from './workflow'
 
 const PLUGIN = 'stage-toons'
 const HIDDEN_KEY = 'hidden'
 const UNSAVED = "stage-toons: couldn't save progress; it lasts for this session only"
+const BAD_FILE = 'stage-toons: .claude/stage-toons.json has errors; using the default workflow. /stage workflow reload lists them.'
 // Refused blits in a row before the loop gives up: the spinner it painted is
 // gone, as when a background agent's row closes. Until a blit since the last
 // render has been taken, refusals are expected for a moment (after a resize
@@ -40,7 +41,10 @@ const MAX_REFUSED_UNSEEN = 24
 const progressAtom = atom({ plugin: 'stage-toons', key: 'progress' } as const, null)
 const auditingAtom = atom({ plugin: 'stage-toons', key: 'auditing' } as const, false)
 const hiddenAtom = atom({ plugin: 'stage-toons', key: 'hidden' } as const, false)
-const workflowAtom = atom({ plugin: 'stage-toons', key: 'workflowText' } as const, null)
+const sectionAtom = atom({ plugin: 'stage-toons', key: 'workflowText' } as const, null)
+// The session's workflow: kept across a hot reload, so the bar, the tool and
+// the cached prompt section keep to the same one until /stage workflow reload.
+const workflowAtom = atom({ plugin: 'stage-toons', key: 'workflow' } as const, null)
 // Whether the store warning was given: kept across a reload, so it shows once a session.
 const warnedAtom = atom({ plugin: 'stage-toons', key: 'warned' } as const, false)
 
@@ -68,8 +72,9 @@ const createSite = (kind: SiteKind): Site => ({ requestId: undefined, kind, colu
 // reload. What must outlive a reload is in $.state.
 type Mod = {
   key: string
-  // The session's workflow.
+  // The session's workflow, and whether it came from the project's file.
   workflow: Workflow
+  workflowSource: 'file' | 'default'
   toolName: string
   commandName: string
   director: Director
@@ -94,6 +99,7 @@ type Mod = {
 const createMod = (): Mod => ({
   key: storeKey(''),
   workflow: DEFAULT_WORKFLOW,
+  workflowSource: 'default',
   toolName: toolNameFor(PLUGIN),
   commandName: COMMAND,
   director: createDirector('mystery-box', false),
@@ -235,6 +241,65 @@ function animate($: EngineInterface, mod: Mod, site: Site) {
   })
 }
 
+type FileWorkflow = { kind: 'none' } | { kind: 'ok'; workflow: Workflow } | { kind: 'bad'; errors: string[] }
+
+// The project's workflow file: absent, a workflow, or what is wrong with it.
+async function readWorkflowFile($: EngineInterface): Promise<FileWorkflow> {
+  try {
+    if (!(await $.fs.exists(WORKFLOW_FILE))) return { kind: 'none' }
+    const text = await $.fs.read(WORKFLOW_FILE)
+    const parsed = parseWorkflow(typeof text === 'string' ? text : '', STAGE_SCENES)
+
+    return 'workflow' in parsed ? { kind: 'ok', workflow: parsed.workflow } : { kind: 'bad', errors: parsed.errors }
+  } catch (error) {
+    return { kind: 'bad', errors: [`could not read it: ${String(error)}`] }
+  }
+}
+
+const sessionWorkflowOf = (file: FileWorkflow): SessionWorkflow =>
+  file.kind === 'ok' ? { workflow: file.workflow, source: 'file' } : { workflow: DEFAULT_WORKFLOW, source: 'default' }
+
+async function registerTool($: EngineInterface, mod: Mod) {
+  try {
+    mod.toolName = (await $.tool.register({ name: TOOL, description: TOOL_DESCRIPTION, inputSchema: toolSchema(mod.workflow) })).tool
+  } catch (error) {
+    $.ui.log(`stage-toons: could not register set_stage: ${String(error)}`, { to: 'debug' })
+  }
+}
+
+async function initWorkflow($: EngineInterface): Promise<string> {
+  if (await $.fs.exists(WORKFLOW_FILE)) return `stage-toons: ${WORKFLOW_FILE} exists; edit it, then /stage workflow reload`
+  try {
+    await $.fs.write(WORKFLOW_FILE, workflowJson(DEFAULT_WORKFLOW))
+  } catch (error) {
+    return `stage-toons: couldn't write ${WORKFLOW_FILE}: ${String(error)}`
+  }
+
+  return `stage-toons: Wrote the default workflow to ${WORKFLOW_FILE}: edit it, then /stage workflow reload.`
+}
+
+async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promise<{ text: string; context?: string[] }> {
+  const file = await readWorkflowFile($)
+  if (file.kind === 'bad') return { text: [`stage-toons: ${WORKFLOW_FILE} has errors; kept the current workflow:`, ...file.errors.map(e => `  ${e}`)].join('\n') }
+  const next = sessionWorkflowOf(file)
+  if (next.source === mod.workflowSource && sameWorkflow(next.workflow, mod.workflow)) return { text: 'stage-toons: workflow unchanged.' }
+  mod.workflow = next.workflow
+  mod.workflowSource = next.source
+  await update($, workflowAtom, () => next)
+  const { progress, moved } = reconcile(mod.workflow, await current($, now))
+  await update($, progressAtom, () => progress)
+  mod.director = withScene(mod.director, sceneOf(mod.workflow, progress.stage), now)
+  await registerTool($, mod)
+  await update($, sectionAtom, () => workflowText(mod.workflow, progress, mod.toolName))
+  // The band's lines name stages: draw it again.
+  $.ui.invalidate('ui.render')
+  const from = next.source === 'file' ? `from ${WORKFLOW_FILE}` : `the default (no ${WORKFLOW_FILE})`
+  const lines = [`stage-toons: workflow ${from}: ${mod.workflow.track.length} track stages, ${mod.workflow.side.length} side stages.`]
+  if (moved) lines.push(moved)
+
+  return { text: lines.join('\n'), context: [`[stage-toons] The workflow changed: ${stageList(mod.workflow)}. Now: ${describe(mod.workflow, progress)}`] }
+}
+
 // Starts the demo, or says why not.
 function startDemo(mod: Mod, seconds: number, now: number, isHidden: boolean): string {
   if (isHidden) return 'stage-toons is hidden; /stage hide shows it.'
@@ -258,8 +323,19 @@ export const register: Register = on => {
     const result = await next(e)
     const now = await $.clock.now()
     mod.key = storeKey(e.cwd)
+    let held = await read($, workflowAtom)
+    if (held === null) {
+      const file = await readWorkflowFile($)
+      held = sessionWorkflowOf(file)
+      const first = held
+      await update($, workflowAtom, () => first)
+      if (file.kind === 'bad') $.ui.toast(BAD_FILE)
+    }
+    mod.workflow = held.workflow
+    mod.workflowSource = held.source
     const loaded = await loadProgress(storeOf($), mod.key, now)
     if (!loaded.isAvailable) await warnUnsaved($)
+    const progress = reconcile(mod.workflow, loaded.progress).progress
     let isHidden = false
     try {
       isHidden = (await $.store.get(HIDDEN_KEY)) === true
@@ -271,26 +347,26 @@ export const register: Register = on => {
     mod.idleSince = now
     // A reload forgets which agents were Fable, so the auditor stands down.
     mod.auditors.clear()
-    await update($, progressAtom, () => loaded.progress)
+    await update($, progressAtom, () => progress)
     await update($, hiddenAtom, () => isHidden)
     await update($, auditingAtom, () => false)
-    mod.director = createDirector(sceneOf(mod.workflow, loaded.progress.stage), false)
+    mod.director = createDirector(sceneOf(mod.workflow, progress.stage), false)
+    await registerTool($, mod)
     try {
-      mod.toolName = (await $.tool.register({ name: TOOL, description: TOOL_DESCRIPTION, inputSchema: toolSchema(mod.workflow) })).tool
       mod.commandName = (
         await $.command.register({
           name: COMMAND,
-          description: 'Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene',
-          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [seconds | stop]]',
+          description: 'Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene; /stage workflow shows or reloads the workflow',
+          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [seconds | stop] | workflow [init | reload]]',
           immediate: true,
         })
       ).command
     } catch (error) {
-      $.ui.log(`stage-toons: could not register set_stage or /stage: ${String(error)}`, { to: 'debug' })
+      $.ui.log(`stage-toons: could not register /stage: ${String(error)}`, { to: 'debug' })
     }
     // Computed once per session and kept across reloads: the section sits
     // in the cached part of the prompt.
-    if ((await read($, workflowAtom)) === null) await update($, workflowAtom, () => workflowText(mod.workflow, loaded.progress, mod.toolName))
+    if ((await read($, sectionAtom)) === null) await update($, sectionAtom, () => workflowText(mod.workflow, progress, mod.toolName))
 
     return result
   })
@@ -303,8 +379,10 @@ export const register: Register = on => {
       const stored = validate(await $.store.get(mod.key))
       const mine = await read($, progressAtom)
       if (stored && (!mine || stored.updatedAt > mine.updatedAt)) {
-        await update($, progressAtom, () => stored)
-        mod.director = withScene(mod.director, sceneOf(mod.workflow, stored.stage), await $.clock.now())
+        // Fitted to this session's workflow in memory only: never saved back.
+        const fitted = reconcile(mod.workflow, stored).progress
+        await update($, progressAtom, () => fitted)
+        mod.director = withScene(mod.director, sceneOf(mod.workflow, fitted.stage), await $.clock.now())
       }
     } catch {
       // The store is unreadable: keep what this session has.
@@ -347,6 +425,9 @@ export const register: Register = on => {
 
       return { text: 'Demo stopped.' }
     }
+    if (cmd.kind === 'workflow') return { text: workflowSummary(mod.workflow, mod.workflowSource) }
+    if (cmd.kind === 'workflow-init') return { text: await initWorkflow($) }
+    if (cmd.kind === 'workflow-reload') return reloadWorkflow($, mod, now)
     if (cmd.kind === 'hide') {
       const isHidden = !(await read($, hiddenAtom))
       mod.isHidden = isHidden
@@ -367,10 +448,10 @@ export const register: Register = on => {
 
   on('prompt.compose', async ($, e, next) => {
     const result = await next(e)
-    let text = await read($, workflowAtom)
+    let text = await read($, sectionAtom)
     if (text === null) {
       const fresh = workflowText(mod.workflow, await current($, await $.clock.now()), mod.toolName)
-      await update($, workflowAtom, () => fresh)
+      await update($, sectionAtom, () => fresh)
       text = fresh
     }
 
@@ -383,7 +464,7 @@ export const register: Register = on => {
     const result = await next(e)
     if (e.agentId === undefined && e.trigger !== 'precompute' && result.messages !== undefined) {
       const p = await current($, await $.clock.now())
-      await update($, workflowAtom, () => workflowText(mod.workflow, p, mod.toolName))
+      await update($, sectionAtom, () => workflowText(mod.workflow, p, mod.toolName))
     }
 
     return result

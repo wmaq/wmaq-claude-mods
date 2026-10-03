@@ -23,6 +23,9 @@ export type StageDef = { id: string; label: string; message: string; when: strin
 // stages, entered from any point and left again.
 export type Workflow = { track: readonly StageDef[]; side: readonly StageDef[] }
 
+// The session's workflow and where it came from.
+export type SessionWorkflow = { workflow: Workflow; source: 'file' | 'default' }
+
 declare module 'claude-code' {
   interface PluginState {
     'stage-toons': {
@@ -30,6 +33,7 @@ declare module 'claude-code' {
       auditing: boolean
       hidden: boolean
       workflowText: string | null
+      workflow: SessionWorkflow | null
       warned: boolean
     }
   }

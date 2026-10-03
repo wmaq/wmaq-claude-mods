@@ -42,13 +42,18 @@ export type World = {
   invalidations: number
   commands: { description: string; argumentHint: string }[]
   toasts: string[]
+  // The project's files as the fs hooks see them, whether they fail, and
+  // each set_stage schema registered.
+  files: Record<string, string>
+  isFsBroken: boolean
+  schemas: unknown[]
   agents: AgentRow[]
   spawnModel: string
   spawned: number
 }
 
 export function engine(on: On, preset: { store?: Record<string, unknown> } = {}) {
-  const world: World = { store: { ...preset.store }, isStoreBroken: false, isBlitRefused: false, blits: [], invalidations: 0, commands: [], toasts: [], agents: [], spawnModel: 'claude-sonnet-5-5', spawned: 0 }
+  const world: World = { store: { ...preset.store }, isStoreBroken: false, isBlitRefused: false, blits: [], invalidations: 0, commands: [], toasts: [], files: {}, isFsBroken: false, schemas: [], agents: [], spawnModel: 'claude-sonnet-5-5', spawned: 0 }
   const clock = mock.clock(on, { now: NOW })
   const guard = () => {
     if (world.isStoreBroken) throw new Error('store unavailable')
@@ -69,7 +74,32 @@ export function engine(on: On, preset: { store?: Record<string, unknown> } = {})
   on('prompt.submit', ($, e) => ({ text: e.text }))
   on('prompt.compose', () => ({ sections: [{ id: 'intro', text: 'You are Claude Code.', scope: 'shared' as const }] }))
   on('session.compact', () => ({ messages: [SUMMARY] }))
-  on('tool.register', ($, e) => ({ value: { tool: `mcp__stage-toons__${e.name}` } }))
+  on('tool.register', ($, e) => {
+    world.schemas.push(e.inputSchema)
+
+    return { value: { tool: `mcp__stage-toons__${e.name}` } }
+  })
+  // The engine hands these hooks resolved paths: a file is known by its
+  // path from .claude/ on, as the tests name it (.claude/stage-toons.json).
+  const fileOf = (path: string) => {
+    const slashed = path.split(BS).join('/')
+    const at = slashed.lastIndexOf('.claude/')
+
+    return at < 0 ? slashed : slashed.slice(at)
+  }
+  on('fs.exists', ($, e) => ({ value: fileOf(e.path) in world.files }))
+  on('fs.read', ($, e) => {
+    const file = fileOf(e.path)
+    if (world.isFsBroken || !(file in world.files)) throw new Error(`ENOENT: ${file}`)
+
+    return { value: world.files[file]! }
+  })
+  on('fs.write', ($, e) => {
+    if (world.isFsBroken) throw new Error('EACCES')
+    world.files[fileOf(e.path)] = e.text
+
+    return { value: undefined }
+  })
   on('command.register', ($, e) => {
     world.commands.push({ description: e.description, argumentHint: e.argumentHint ?? '' })
 
@@ -193,3 +223,6 @@ export function colorInRows(blit: Blit | undefined, rows: number[], color: numbe
     return false
   })
 }
+
+// The workflow section of the system prompt, as the next request would get it.
+export const sectionText = async ($: Engine) => (await $.prompt.compose(COMPOSE as never)).sections.at(-1)?.text ?? ''
