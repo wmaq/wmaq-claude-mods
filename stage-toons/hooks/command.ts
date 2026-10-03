@@ -15,14 +15,19 @@ export type Command =
   | { kind: 'hide' }
   | { kind: 'demo'; seconds: number }
   | { kind: 'demo-stop' }
+  | { kind: 'workflow' }
+  | { kind: 'workflow-init' }
+  | { kind: 'workflow-reload' }
   | { kind: 'usage' }
+
+export const WORKFLOW_FILE = '.claude/stage-toons.json'
 
 export function usage(w: Workflow): string {
   const zero = zeroStage(w)
   const stages = [...w.track.map((s, i) => `${i + 1} ${s.id}`), ...w.side.map(s => (s === zero ? `0 ${s.id}` : s.id))]
 
   return [
-    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [seconds]]',
+    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [seconds] | workflow [init | reload]]',
     '  /stage                  show the current stage and the recent moves',
     `  /stage 5, /stage plan   move to a stage${zero ? ` (0 or ? for ${zero.label})` : ''}`,
     '  /stage next, /stage back',
@@ -30,6 +35,7 @@ export function usage(w: Workflow): string {
     '  /stage message <text>   set the status message',
     '  /stage hide             hide or show the bar and the cartoons',
     `  /stage demo [seconds]   play every scene, ${DEMO_SECONDS} s each (${DEMO_MIN} to ${DEMO_MAX}); /stage demo stop ends it`,
+    '  /stage workflow [init | reload]  show the workflow; write the default to .claude/stage-toons.json; read the file again',
     `Stages: ${stages.join(', ')}`,
   ].join('\n')
 }
@@ -43,6 +49,14 @@ export function parseCommand(w: Workflow, args: string): Command {
   if (word === 'feature') return tail ? { kind: 'feature', name: tail } : { kind: 'usage' }
   if (word === 'message') return tail ? { kind: 'message', text: tail } : { kind: 'usage' }
   if (word === 'demo') return parseDemo(tail.toLowerCase())
+  if (word === 'workflow') {
+    const sub = tail.toLowerCase()
+    if (sub === '') return { kind: 'workflow' }
+    if (sub === 'init') return { kind: 'workflow-init' }
+    if (sub === 'reload') return { kind: 'workflow-reload' }
+
+    return { kind: 'usage' }
+  }
   if (tail !== '') return { kind: 'usage' }
   if (word === 'next' || word === 'back' || word === 'hide') return { kind: word }
   const stage = parseStage(w, word)
@@ -86,6 +100,18 @@ export function showText(w: Workflow, p: Progress, now: number): string {
   const lines = [`Stage ${describe(w, p)}`]
   const recent = p.history.slice(-5).reverse()
   if (recent.length > 0) lines.push('Recent moves:', ...recent.map(h => `  ${stageLabel(w, h.stage)} by ${h.by}, ${ago(now - h.at)}`))
+
+  return lines.join('\n')
+}
+
+export function workflowSummary(w: Workflow, source: 'file' | 'default'): string {
+  const zero = zeroStage(w)
+  const lines = [
+    source === 'file' ? `Workflow: from ${WORKFLOW_FILE}` : `Workflow: the default (no ${WORKFLOW_FILE}; /stage workflow init writes it there to edit)`,
+    'Track:',
+    ...w.track.map((s, i) => `  ${i + 1} ${s.id}: ${s.label} (${s.scene})`),
+  ]
+  if (w.side.length > 0) lines.push('Side:', ...w.side.map(s => `  ${s === zero ? '0 ' : ''}${s.id}: ${s.label} (${s.scene})`))
 
   return lines.join('\n')
 }

@@ -1,8 +1,10 @@
 import { expect, test } from 'claude-code/testing'
 
-import { moveFor, parseCommand, showText, usage } from './command'
+import { moveFor, parseCommand, showText, usage, workflowSummary } from './command'
 import { applyMove, freshProgress } from './stages'
 import { DEFAULT_WORKFLOW } from './workflow'
+
+const W = DEFAULT_WORKFLOW
 
 test('/stage arguments parse into commands', () => {
   expect(parseCommand(DEFAULT_WORKFLOW, '')).toEqual({ kind: 'show' })
@@ -60,4 +62,37 @@ test('the usage lists the workflow stages and says where 0 goes', () => {
   const small = { track: DEFAULT_WORKFLOW.track.slice(0, 2), side: [] }
   expect(usage(small)).toContain('Stages: 1 roadmap, 2 brainstorm')
   expect(usage(small)).not.toContain('0 or ?')
+})
+
+test('/stage workflow shows, inits or reloads the workflow', () => {
+  expect(parseCommand(W, 'workflow')).toEqual({ kind: 'workflow' })
+  expect(parseCommand(W, 'Workflow INIT')).toEqual({ kind: 'workflow-init' })
+  expect(parseCommand(W, 'workflow reload')).toEqual({ kind: 'workflow-reload' })
+  expect(parseCommand(W, 'workflow edit')).toEqual({ kind: 'usage' })
+  expect(usage(W)).toContain('/stage workflow [init | reload]')
+})
+
+test('the workflow summary says where it came from and lists the stages with their scenes', () => {
+  expect(workflowSummary(W, 'default').split('\n')).toEqual([
+    'Workflow: the default (no .claude/stage-toons.json; /stage workflow init writes it there to edit)',
+    'Track:',
+    '  1 roadmap: Roadmap (road-trip)',
+    '  2 brainstorm: Brainstorm (light-bulbs)',
+    '  3 spec: Spec (writing-desk)',
+    '  4 spec-audit: Spec audit (proofread-page)',
+    '  5 plan: Plan (stepping-stones)',
+    '  6 plan-audit: Plan audit (proofread-checklist)',
+    '  7 develop: Develop (bricklaying)',
+    '  8 claude-test: Claude testing (test-tubes)',
+    '  9 user-test: Your testing (gift)',
+    '  10 cleanup: Cleanup (sweeping)',
+    'Side:',
+    '  debugging: Debugging (bug-hunt)',
+    '  0 other: Other (mystery-box)',
+  ])
+  expect(workflowSummary({ track: W.track.slice(0, 1), side: [] }, 'file').split('\n')).toEqual([
+    'Workflow: from .claude/stage-toons.json',
+    'Track:',
+    '  1 roadmap: Roadmap (road-trip)',
+  ])
 })
