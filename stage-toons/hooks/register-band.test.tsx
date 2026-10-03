@@ -1,8 +1,16 @@
 import { expect, test } from 'claude-code/testing'
 
-import { bandProps, blitsOf, colorInRows, endTurn, engine, mountBand, runStage, START } from './harness'
+import { bandProps, type Blit, blitsOf, colorInRows, decode, endTurn, engine, mountBand, runStage, START } from './harness'
 import { Z_COLOR } from './idle'
-import { C } from './scenes/kit'
+
+// The idle box's cells left of Clawd, columns 0 to 10, are all blank.
+function isLeftBlank(blit: Blit | undefined): boolean {
+  if (!blit) return false
+  const words = decode(blit.cells)
+  for (let row = 0; row < blit.rows; row++) for (let x = 0; x <= 10; x++) if (words[(row * blit.columns + x) * 3] !== 0x20) return false
+
+  return true
+}
 
 const text = (answer: unknown) => (answer as { text?: string }).text ?? ''
 
@@ -218,17 +226,18 @@ test('the routine picked at a prompt shows only from the next idle period, not a
   await $.session.start(START)
   await mountBand($)
   await clock.advance(500)
-  // Nyan's rainbow has the only orange of the two routines.
-  const isNyan = () => colorInRows(blitsOf(world, 'idle').at(-1), [0, 1, 2, 3], C.orange)
-  expect(isNyan()).toBe(false)
+  // Classic alone leaves the box left of Clawd blank: every other routine
+  // draws there (idle.test.ts).
+  const isClassic = () => isLeftBlank(blitsOf(world, 'idle').at(-1))
+  expect(isClassic()).toBe(true)
   await $.prompt.submit({ text: 'hi', wait: false, origin: { kind: 'composer' } } as never)
   const before = blitsOf(world, 'idle').length
   await clock.advance(500)
   expect(blitsOf(world, 'idle').length).toBeGreaterThan(before)
-  expect(isNyan()).toBe(false)
+  expect(isClassic()).toBe(true)
   await endTurn($)
   await clock.advance(500)
-  expect(isNyan()).toBe(true)
+  expect(isClassic()).toBe(false)
 })
 
 test('a hot reload keeps the idle routine', async ($, on) => {

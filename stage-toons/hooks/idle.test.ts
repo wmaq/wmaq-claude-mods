@@ -48,7 +48,6 @@ test('classic: Clawd taps a foot now and then, and loops every 8 seconds', () =>
 })
 
 test('nyan: a six-stripe rainbow behind Clawd, its wave stepping, and stars rushing past', () => {
-  expect(IDLE_IDS).toEqual(['classic', 'nyan'])
   const b = at(0.1, 'nyan')
   for (const stripe of [C.red, C.orange, C.gold, C.green, C.blue, C.violet]) {
     const px = where(b, stripe)
@@ -69,12 +68,66 @@ test('nyan: a six-stripe rainbow behind Clawd, its wave stepping, and stars rush
   for (let t = 0; t < 4; t += 0.05) expect(stars(t).every(p => p.y === 0 || p.y === 7)).toBe(true)
 })
 
-test('every routine draws inside the box: nothing past its last column', () => {
+test('the routines: classic and Nyan from step 1, coffee, reading and yo-yo from step 2', () => {
+  expect(IDLE_IDS).toEqual(['classic', 'nyan', 'coffee', 'reading', 'yo-yo'])
+})
+
+test('every routine but classic draws something left of Clawd at every moment', () => {
+  for (const id of IDLE_IDS.filter(id => id !== 'classic')) {
+    for (let t = 0; t < ROUTINES[id]!.loop; t += 0.05) {
+      const b = at(t, id)
+      expect([...b.px].some((c, i) => c !== EMPTY && i % b.w <= 10)).toBe(true)
+    }
+  }
+  // Classic draws nothing there.
+  for (let t = 0; t < 8; t += 0.1) expect([...at(t).px].some((c, i) => c !== EMPTY && i % 26 <= 10)).toBe(false)
+})
+
+test('coffee: steam rises from the mug, and he lifts it to sip with his eyes closed', () => {
+  expect(where(at(0.1, 'coffee'), C.glass).length).toBeGreaterThan(0)
+  expect(where(at(3, 'coffee'), C.glass)).toHaveLength(0)
+  expect(eyeRows(at(3, 'coffee'))).toEqual([3])
+  const mugTop = (t: number) => Math.min(...where(at(t, 'coffee'), C.white).map(p => p.y))
+  expect(mugTop(3)).toBeLessThan(mugTop(1))
+})
+
+test('reading: an open book at his side, a page sweeping over every two seconds', () => {
+  expect(where(at(0.5, 'reading'), C.paper).length).toBeGreaterThan(20)
+  expect(where(at(0.5, 'reading'), C.white)).toHaveLength(0)
+  const page = (t: number) => where(at(t, 'reading'), C.white).map(p => p.x)
+  expect(page(1.7)[0]).toBeGreaterThan(page(1.9)[0]!)
+  expect(page(3.7).length).toBeGreaterThan(0)
+})
+
+test('yo-yo: down and up on its string, then around the world, back at the hand', () => {
+  const yoyo = (t: number) => where(at(t, 'yo-yo'), C.red)
+  expect(Math.min(...yoyo(0.4).map(p => p.y))).toBeGreaterThan(Math.min(...yoyo(0.8).map(p => p.y)))
+  expect(Math.min(...yoyo(3).map(p => p.x))).toBeLessThan(5)
+  expect(yoyo(3.999)).toEqual(yoyo(0))
+  expect(yoyo(2.4)).toEqual(yoyo(0))
+})
+
+test("no routine draws in the doze's z colour while awake: it would read as dozing", () => {
+  for (const id of IDLE_IDS) for (let t = 0; t < 59.9; t += 0.1) expect(where(at(t, id), Z_COLOR)).toHaveLength(0)
+})
+
+test('coffee, reading and yo-yo meet themselves at the loop point', () => {
+  const changed = (a: PixelBuffer, b: PixelBuffer) => [...a.px].filter((c, i) => c !== b.px[i]).length
+  for (const id of ['coffee', 'reading', 'yo-yo']) expect(changed(at(ROUTINES[id]!.loop - 0.02, id), at(0.02, id))).toBeLessThan(15)
+})
+
+test("coffee, reading and yo-yo: Clawd's eyes always show", () => {
+  for (const id of ['coffee', 'reading', 'yo-yo']) {
+    for (let t = 0; t < ROUTINES[id]!.loop; t += 0.05) expect(where(at(t, id), EYE_DARK).length).toBeGreaterThanOrEqual(4)
+  }
+})
+
+test('every routine draws inside the box: nothing past its last column or row', () => {
   for (const id of IDLE_IDS) {
     for (let t = 0; t < ROUTINES[id]!.loop; t += 0.05) {
-      const b = createBuffer(IDLE_COLS + 4, IDLE_ROWS * 2)
+      const b = createBuffer(IDLE_COLS + 4, IDLE_ROWS * 2 + 4)
       ROUTINES[id]!.draw(b, t)
-      expect([...b.px].filter((c, i) => c !== EMPTY && i % b.w >= IDLE_COLS)).toHaveLength(0)
+      expect([...b.px].filter((c, i) => c !== EMPTY && (i % b.w >= IDLE_COLS || Math.floor(i / b.w) >= IDLE_ROWS * 2))).toHaveLength(0)
     }
   }
 })
