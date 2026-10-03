@@ -4,7 +4,7 @@
 // workflow elsewhere.
 
 import type { HistoryEntry, Progress, StageId } from '../types'
-import { cut, FEATURE_MAX, freshProgress, MESSAGE_MAX } from './stages'
+import { cut, FEATURE_MAX, freshProgress, MESSAGE_MAX, NOT_TRACKED } from './stages'
 
 export type KV = {
   get: (key: string) => Promise<unknown>
@@ -31,16 +31,20 @@ const isEntry = (h: unknown): h is HistoryEntry => {
 export function validate(x: unknown): Progress | null {
   if (typeof x !== 'object' || x === null) return null
   const p = x as Record<string, unknown>
-  if (p.v !== 1 || typeof p.stage !== 'string') return null
+  if (p.v !== 1 && p.v !== 2) return null
+  if (p.stage !== null && typeof p.stage !== 'string') return null
+  if (p.v === 1 && p.stage === null) return null
   const last = p.lastTrackStage
   if (last !== null && typeof last !== 'string') return null
   if (typeof p.message !== 'string' || typeof p.updatedAt !== 'number' || !Number.isFinite(p.updatedAt)) return null
   if (p.feature !== null && typeof p.feature !== 'string') return null
   if (!Array.isArray(p.history)) return null
+  // v0.2 filed a fresh project under Other.
+  const wasFresh = p.v === 1 && p.stage === 'other' && last === null && p.message === NOT_TRACKED && p.history.length === 0
 
   return {
-    v: 1,
-    stage: p.stage,
+    v: 2,
+    stage: wasFresh ? null : (p.stage as StageId | null),
     lastTrackStage: last as StageId | null,
     feature: p.feature === null ? null : cut(p.feature as string, FEATURE_MAX),
     message: cut(p.message, MESSAGE_MAX),

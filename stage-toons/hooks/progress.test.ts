@@ -32,7 +32,7 @@ test('stored progress is validated', () => {
   expect(validate(good)).toEqual(good)
   expect(validate(null)).toBeNull()
   expect(validate('plan')).toBeNull()
-  expect(validate({ ...good, v: 2 })).toBeNull()
+  expect(validate({ ...good, v: 3 })).toBeNull()
   expect(validate({ ...good, stage: 3 })).toBeNull()
   expect(validate({ ...good, lastTrackStage: 5 })).toBeNull()
   expect(validate({ ...good, message: 3 })).toBeNull()
@@ -63,4 +63,13 @@ test('a timestamp that is not a finite number is refused', () => {
     expect(validate({ ...good, updatedAt: at })).toBeNull()
     expect(validate({ ...good, history: [{ stage: 'plan', at, by: 'user' }] })?.history).toEqual([])
   }
+})
+
+test('progress v1 loads as v2; the old fresh state loads as untracked', () => {
+  const v1 = { v: 1, stage: 'plan', lastTrackStage: 'plan', feature: null, message: 'Writing', history: [], updatedAt: 3 }
+  expect(validate(v1)).toEqual({ ...v1, v: 2 })
+  const oldFresh = { v: 1, stage: 'other', lastTrackStage: null, feature: null, message: 'Not tracked yet', history: [], updatedAt: 3 }
+  expect(validate(oldFresh)).toEqual({ ...oldFresh, v: 2, stage: null })
+  expect(validate({ ...oldFresh, v: 2, stage: null })).toEqual({ ...oldFresh, v: 2, stage: null })
+  expect(validate({ ...oldFresh, v: 3 })).toBeNull()
 })

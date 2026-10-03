@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Progress, StageId } from '../types'
-import { applyMove, backStage, cut, describe, freshProgress, isAdvance, nextStage, parseStage, stageLabel } from './stages'
+import { applyMove, backStage, cut, describe, freshProgress, isAdvance, nextStage, parseStage, reconcile, stageLabel } from './stages'
 import { DEFAULT_WORKFLOW as W, type Workflow } from './workflow'
 
 const at = (stage: StageId, extra: Partial<Progress> = {}): Progress => ({
@@ -9,10 +9,6 @@ const at = (stage: StageId, extra: Partial<Progress> = {}): Progress => ({
   stage,
   lastTrackStage: stage === 'other' ? null : stage,
   ...extra,
-})
-
-test('a fresh project starts in Other, untracked', () => {
-  expect(freshProgress(5)).toEqual({ v: 1, stage: 'other', lastTrackStage: null, feature: null, message: 'Not tracked yet', history: [], updatedAt: 5 })
 })
 
 test('stages parse from numbers, ids and the aliases for Other', () => {
@@ -59,7 +55,7 @@ test('next and back stop at the ends of the track', () => {
   expect(nextStage(W, at('spec'))).toBe('spec-audit')
   expect(backStage(W, at('spec'))).toBe('brainstorm')
   expect(nextStage(W, freshProgress(0))).toBe('roadmap')
-  expect(backStage(W, freshProgress(0))).toBe('other')
+  expect(backStage(W, freshProgress(0))).toBeNull()
   expect(nextStage(W, at('other', { lastTrackStage: 'cleanup' }))).toBe('cleanup')
 })
 
@@ -84,7 +80,7 @@ test('the state reads as one line', () => {
   expect(describe(W, applyMove(W, freshProgress(0), { stage: 'plan', feature: 'stage-toons', by: 'user', at: 1 }))).toBe(
     '5/10 Plan · stage-toons · "Writing the implementation plan"',
   )
-  expect(describe(W, freshProgress(0))).toBe('? Other · no feature · "Not tracked yet"')
+  expect(describe(W, freshProgress(0))).toBe('Not tracked yet · no feature')
 })
 
 // Whether a string holds half of a surrogate pair, as a cut through an emoji leaves.
@@ -125,4 +121,31 @@ test('any workflow: moves, labels and the stage left for a side stage', () => {
   expect(nextStage(SMALL, p)).toBe('ship')
   expect(isAdvance(SMALL, p, applyMove(SMALL, p, { stage: 'ship', by: 'claude', at: 3 }))).toBe(true)
   expect(stageLabel(SMALL, 'qa')).toBe('qa (no longer in the workflow)')
+})
+
+test('a fresh project is untracked', () => {
+  expect(freshProgress(5)).toEqual({ v: 2, stage: null, lastTrackStage: null, feature: null, message: 'Not tracked yet', history: [], updatedAt: 5 })
+  expect(describe(W, freshProgress(0))).toBe('Not tracked yet · no feature')
+  expect(describe(W, { ...freshProgress(0), feature: 'login' })).toBe('Not tracked yet · login')
+  expect(nextStage(W, freshProgress(0))).toBe('roadmap')
+  expect(backStage(W, freshProgress(0))).toBeNull()
+  expect(isAdvance(W, freshProgress(0), applyMove(W, freshProgress(0), { stage: 'roadmap', by: 'claude', at: 1 }))).toBe(true)
+})
+
+test('reconcile: a stage gone from the workflow goes back to the last track stage, or to untracked', () => {
+  const onQa = { ...freshProgress(9), stage: 'qa', lastTrackStage: 'build', message: 'Testing', history: [{ stage: 'qa', at: 9, by: 'claude' as const }] }
+  const back = reconcile(SMALL, onQa)
+  expect(back.progress).toEqual({ ...onQa, stage: 'build', message: 'Building' })
+  expect(back.moved).toBe('the saved stage "qa" is not in this workflow: back to 2/3 Build')
+  const lost = reconcile(SMALL, { ...onQa, lastTrackStage: 'gone' })
+  expect(lost.progress).toEqual({ ...onQa, stage: null, lastTrackStage: null, message: 'Not tracked yet' })
+  expect(lost.moved).toBe('the saved stage "qa" is not in this workflow: not tracked yet')
+  const fine = applyMove(SMALL, freshProgress(0), { stage: 'ship', by: 'claude', at: 1 })
+  expect(reconcile(SMALL, fine)).toEqual({ progress: fine, moved: null })
+})
+
+test("reconcile: a last track stage that is now a side stage is forgotten, so back and the return note don't use it", () => {
+  const p = { ...freshProgress(0), stage: 'debugging', lastTrackStage: 'debugging' }
+  expect(reconcile(SMALL, p)).toEqual({ progress: { ...p, lastTrackStage: null }, moved: null })
+  expect(backStage(SMALL, reconcile(SMALL, p).progress)).toBe('debugging')
 })

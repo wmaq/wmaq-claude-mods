@@ -32,7 +32,7 @@ test('commands move the progress as the user', () => {
   const p = freshProgress(0)
   expect(moveFor(DEFAULT_WORKFLOW, p, { kind: 'move', stage: 'spec' }, 5)).toMatchObject({ stage: 'spec', message: 'Writing the spec', history: [{ stage: 'spec', at: 5, by: 'user' }] })
   expect(moveFor(DEFAULT_WORKFLOW, p, { kind: 'next' }, 5).stage).toBe('roadmap')
-  expect(moveFor(DEFAULT_WORKFLOW, p, { kind: 'back' }, 5).stage).toBe('other')
+  expect(moveFor(DEFAULT_WORKFLOW, p, { kind: 'back' }, 5).stage).toBeNull()
   expect(moveFor(DEFAULT_WORKFLOW, p, { kind: 'feature', name: 'gauge' }, 5).feature).toBe('gauge')
   expect(moveFor(DEFAULT_WORKFLOW, moveFor(DEFAULT_WORKFLOW, p, { kind: 'feature', name: 'gauge' }, 5), { kind: 'feature', name: '-' }, 6).feature).toBeNull()
   expect(moveFor(DEFAULT_WORKFLOW, p, { kind: 'message', text: 'poking' }, 5).message).toBe('poking')
@@ -50,7 +50,7 @@ test('/stage alone shows the state and the latest moves first', () => {
       '  3/10 Spec by claude, 3m ago',
     ].join('\n'),
   )
-  expect(showText(DEFAULT_WORKFLOW, freshProgress(0), 0)).toBe('Stage ? Other · no feature · "Not tracked yet"')
+  expect(showText(DEFAULT_WORKFLOW, freshProgress(0), 0)).toBe('Stage Not tracked yet · no feature')
   expect(usage(DEFAULT_WORKFLOW)).toContain('/stage next')
 })
 

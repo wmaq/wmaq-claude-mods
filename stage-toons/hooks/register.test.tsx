@@ -7,12 +7,11 @@ import { DEFAULT_WORKFLOW } from './workflow'
 
 const saved = (stage: Progress['stage'], message: string, at = NOW - 1000): Progress => applyMove(DEFAULT_WORKFLOW, freshProgress(0), { stage, message, by: 'claude', at })
 
-test('a fresh project shows Other, on the terminal and on the desktop', async ($, on) => {
+test('a fresh project is not tracked yet, on the terminal and on the desktop', async ($, on) => {
   engine(on)
   await $.session.start(START)
   for (const surface of ['terminal', 'desktop'] as const) {
     const text = await bandText($, surface)
-    expect(text).toContain('? Other')
     expect(text).toContain('Not tracked yet')
   }
 })
@@ -34,10 +33,10 @@ test('saved progress is read back under any Windows spelling of the directory', 
   expect(text).toContain('Building the band')
 })
 
-test('invalid saved progress starts fresh in Other', async ($, on) => {
+test('invalid saved progress starts untracked', async ($, on) => {
   engine(on, { store: { [KEY]: { v: 7, stage: 'deploy' } } })
   await $.session.start(START)
-  expect(await bandText($)).toContain('? Other')
+  expect(await bandText($)).toContain('Not tracked yet')
 })
 
 test("another session's move shows after the next prompt", async ($, on) => {
@@ -56,7 +55,7 @@ test('set_stage is refused from a subagent and for bad input', async ($, on) => 
   expect(bad.deny).toContain('roadmap, brainstorm, spec')
   const empty = (await setStage($, { stage: 'plan', message: '   ' })) as { deny?: string }
   expect(empty.deny).toBeDefined()
-  expect(await bandText($)).toContain('? Other')
+  expect(await bandText($)).toContain('Not tracked yet')
 })
 
 test('/stage moves, steps, names, shows and hides', async ($, on) => {
@@ -86,7 +85,7 @@ test('the workflow section holds the start state until a real compaction', async
   expect(first?.id).toBe('stage-toons:workflow')
   expect(first?.scope).toBe('session')
   expect(first?.text).toContain(TOOL_NAME)
-  expect(first?.text).toContain('At session start: ? Other · no feature · "Not tracked yet".')
+  expect(first?.text).toContain('At session start: Not tracked yet · no feature.')
   await setStage($, { stage: 'plan', message: 'Writing the plan' })
   expect(await section()).toEqual(first)
   // A hot reload fires session.start again.

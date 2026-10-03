@@ -26,7 +26,7 @@ test('Other dims the track where it stood and labels itself', () => {
   const p = applyMove(DEFAULT_WORKFLOW, plan, { stage: 'other', message: 'Fixing a CI flake', by: 'claude', at: 2 })
   expect(trackSpans(DEFAULT_WORKFLOW, p).every(s => s.tone === 'future')).toBe(true)
   expect(text(bandLayout(DEFAULT_WORKFLOW, p, false, 100)[0])).toBe(' ●━●━●━●━◉─○─○─○─○─○  ? Other · stage-toons')
-  expect(text(bandLayout(DEFAULT_WORKFLOW, freshProgress(0), false, 100)[0])).toBe(' ○─○─○─○─○─○─○─○─○─○  ? Other')
+  expect(text(bandLayout(DEFAULT_WORKFLOW, freshProgress(0), false, 100)[0])).toBe(' ○─○─○─○─○─○─○─○─○─○  Not tracked yet')
 })
 
 test('the Fable tag shows while auditing, and goes first when room runs out', () => {

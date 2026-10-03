@@ -4,8 +4,9 @@ export type StageId = string
 export type HistoryEntry = { stage: StageId; at: number; by: 'claude' | 'user' }
 
 export type Progress = {
-  v: 1
-  stage: StageId
+  v: 2
+  // null: the work has not entered a stage yet.
+  stage: StageId | null
   lastTrackStage: StageId | null
   feature: string | null
   message: string

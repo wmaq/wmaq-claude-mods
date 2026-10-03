@@ -65,8 +65,11 @@ export function moveFor(w: Workflow, p: Progress, cmd: Command, now: number): Pr
       return applyMove(w, p, { stage: cmd.stage, by, at: now })
     case 'next':
       return applyMove(w, p, { stage: nextStage(w, p), by, at: now })
-    case 'back':
-      return applyMove(w, p, { stage: backStage(w, p), by, at: now })
+    case 'back': {
+      const stage = backStage(w, p)
+
+      return stage === null ? p : applyMove(w, p, { stage, by, at: now })
+    }
     case 'feature':
       return applyMove(w, p, { stage: p.stage, feature: cmd.name === '-' ? '' : cmd.name, by, at: now })
     case 'message':
