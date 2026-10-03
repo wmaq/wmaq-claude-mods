@@ -34,11 +34,33 @@ Left as they are (from Fable's v0.2 review):
 - Text is measured in code points, not terminal cells: a wide emoji takes
   two columns, and `truncate-end` cuts what overflows.
 
+### v0.3 (next): a scene library and custom workflows
+
+Architectural, so the full path: spec, Fable's audit, plan, then build.
+- **Scene library and workflow model.** Scenes get their own names and are
+  no longer keyed by stage; a stage becomes data (`id`, label, message,
+  when Claude moves to it, which scene plays). The default workflow stays
+  the ten stages and Other, and nothing visible changes.
+- **Custom workflows.** A person defines their own stages (a workflow file,
+  picked in the config menu), and the tool schema, the system-prompt
+  section, the band, `/stage` and saved progress follow the workflow.
+- **Scenes stay code, written by us.** A mod can't load code at runtime
+  (`import()` doesn't load), so scenes from outside the mod would need a
+  data format; that is deferred. New scenes and variations are added to
+  the library in the mod's source.
+
+Possibly later: sharing stage-toons with the community, the way
+claude-toons was shared.
+
 ### Later (ideas, up for discussion)
 
+- **Scene authoring by others.** A data format for scenes (sprites and
+  keyframed actors), `/stage preview <scene>`, and a skill that teaches an
+  agent to make one. Deferred in favour of v0.3.
 - **A debugging stage.** A stage, with its own scene, for hunting a bug
   (superpowers:systematic-debugging). Open: where it sits in the workflow,
   or whether it is a side stage any step can drop into and return from.
+  With v0.3's custom workflows, adding it becomes configuration.
 - **Idle variants by the last finished step.** The idle Clawd's loops
   depend on the stage just completed, for example celebrating after a
   merge or holding the spec after the spec stage. Builds on v0.2's idle
