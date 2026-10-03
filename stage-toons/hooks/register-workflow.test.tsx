@@ -132,3 +132,15 @@ test("another session's progress is reconciled in memory, not saved", async ($, 
   expect(await bandText($)).toContain('Not tracked yet')
   expect(world.store[KEY]).toEqual(theirs)
 })
+
+test('reload of the same stages from another source says unchanged and tells Claude nothing', async ($, on) => {
+  const { world } = engine(on)
+  await $.session.start(START)
+  await runStage($, 'workflow init')
+  const registered = world.schemas.length
+  const answer = (await runStage($, 'workflow reload')) as { text?: string; context?: string[] }
+  expect(answer.text).toBe('stage-toons: workflow unchanged (now from .claude/stage-toons.json).')
+  expect(answer.context).toBeUndefined()
+  expect(world.schemas.length).toBe(registered)
+  expect(text(await runStage($, 'workflow'))).toContain('Workflow: from .claude/stage-toons.json')
+})

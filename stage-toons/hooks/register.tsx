@@ -282,7 +282,14 @@ async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promis
   const file = await readWorkflowFile($)
   if (file.kind === 'bad') return { text: [`stage-toons: ${WORKFLOW_FILE} has errors; kept the current workflow:`, ...file.errors.map(e => `  ${e}`)].join('\n') }
   const next = sessionWorkflowOf(file)
-  if (next.source === mod.workflowSource && sameWorkflow(next.workflow, mod.workflow)) return { text: 'stage-toons: workflow unchanged.' }
+  if (sameWorkflow(next.workflow, mod.workflow)) {
+    if (next.source === mod.workflowSource) return { text: 'stage-toons: workflow unchanged.' }
+    // The same stages from another source: nothing for Claude or the cache.
+    mod.workflowSource = next.source
+    await update($, workflowAtom, () => next)
+
+    return { text: `stage-toons: workflow unchanged (now ${next.source === 'file' ? `from ${WORKFLOW_FILE}` : 'the default'}).` }
+  }
   mod.workflow = next.workflow
   mod.workflowSource = next.source
   await update($, workflowAtom, () => next)
@@ -440,6 +447,8 @@ export const register: Register = on => {
 
       return { text: isHidden ? 'stage-toons is hidden. /stage hide shows it again.' : 'stage-toons is shown.' }
     }
+    // Untracked, a message would be shown nowhere and lost at the first stage.
+    if (cmd.kind === 'message' && before.stage === null) return { text: 'stage-toons: a message belongs to a stage; set one first (/stage next, or /stage <id>).' }
     const after = moveFor(mod.workflow, before, cmd, now)
     await commit($, mod, before, after, now)
 

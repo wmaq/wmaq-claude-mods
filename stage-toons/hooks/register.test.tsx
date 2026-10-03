@@ -148,3 +148,11 @@ test('/stage debugging hides the track and shows the stage left', async ($, on) 
   expect(text).toContain('↩ 7/10 Develop')
   expect(text).not.toContain('●')
 })
+
+test('/stage message waits for a stage while untracked', async ($, on) => {
+  engine(on)
+  await $.session.start(START)
+  const answer = (await runStage($, 'message Poking around')) as { text?: string }
+  expect(answer.text).toBe('stage-toons: a message belongs to a stage; set one first (/stage next, or /stage <id>).')
+  expect(await bandText($)).toContain('Not tracked yet')
+})
