@@ -68,7 +68,7 @@ test('every loop is seamless: the hero ends where it began', () => {
 test('every scene is filed under its own name: the library', () => {
   for (const [id, scene] of Object.entries(SCENES)) expect(scene.id).toBe(id)
   expect(Object.keys(SCENES).sort()).toEqual(
-    ['road-trip', 'light-bulbs', 'writing-desk', 'proofread-page', 'stepping-stones', 'proofread-checklist', 'bricklaying', 'test-tubes', 'gift', 'sweeping', 'mystery-box', 'fable-audit', 'standing'].sort(),
+    ['road-trip', 'light-bulbs', 'writing-desk', 'proofread-page', 'stepping-stones', 'proofread-checklist', 'bricklaying', 'test-tubes', 'gift', 'sweeping', 'bug-hunt', 'mystery-box', 'fable-audit', 'standing'].sort(),
   )
   expect(STAGE_SCENES).toEqual(Object.keys(SCENES).filter(n => n !== 'fable-audit' && n !== 'standing'))
   for (const s of [...DEFAULT_WORKFLOW.track, ...DEFAULT_WORKFLOW.side]) expect(STAGE_SCENES).toContain(s.scene)
@@ -106,4 +106,12 @@ test('Fable walks in from off stage to its place, and back out', () => {
   expect(fableAt('fable-arrives', 1.99)).toBeGreaterThan(40)
   expect(fableAt('fable-leaves', 0.01)).toBeGreaterThan(40)
   expect(fableAt('fable-leaves', 2)).toBe(0)
+})
+
+test('bug-hunt: the bug and the magnifying glass are on stage throughout', () => {
+  for (let t = 0.013; t < SCENES['bug-hunt']!.loop; t += 0.1) {
+    const b = renderFull(SCENES['bug-hunt']!, t)
+    expect(count(b, C.red)).toBeGreaterThan(1)
+    expect(count(b, C.glass)).toBeGreaterThan(2)
+  }
 })

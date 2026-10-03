@@ -4,6 +4,7 @@
 
 import type { Scene, SceneId } from '../scene'
 import { bricklaying } from './bricklaying'
+import { bugHunt } from './bug-hunt'
 import { fableAudit } from './fable-audit'
 import { gift } from './gift'
 import { lightBulbs } from './light-bulbs'
@@ -27,6 +28,7 @@ export const SCENES: Record<SceneId, Scene> = {
   'test-tubes': testTubes,
   gift,
   sweeping,
+  'bug-hunt': bugHunt,
   'mystery-box': mysteryBox,
   'fable-audit': fableAudit,
   standing,
@@ -49,6 +51,7 @@ export const DEMO_ORDER: readonly SceneId[] = [
   'test-tubes',
   'gift',
   'sweeping',
+  'bug-hunt',
   'mystery-box',
   'fable-audit',
 ]

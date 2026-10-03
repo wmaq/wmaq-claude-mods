@@ -56,7 +56,7 @@ test('/stage alone shows the state and the latest moves first', () => {
 
 test('the usage lists the workflow stages and says where 0 goes', () => {
   expect(usage(DEFAULT_WORKFLOW)).toContain('(0 or ? for Other)')
-  expect(usage(DEFAULT_WORKFLOW)).toContain('Stages: 1 roadmap, 2 brainstorm, 3 spec, 4 spec-audit, 5 plan, 6 plan-audit, 7 develop, 8 claude-test, 9 user-test, 10 cleanup, 0 other')
+  expect(usage(DEFAULT_WORKFLOW)).toContain('Stages: 1 roadmap, 2 brainstorm, 3 spec, 4 spec-audit, 5 plan, 6 plan-audit, 7 develop, 8 claude-test, 9 user-test, 10 cleanup, debugging, 0 other')
   const small = { track: DEFAULT_WORKFLOW.track.slice(0, 2), side: [] }
   expect(usage(small)).toContain('Stages: 1 roadmap, 2 brainstorm')
   expect(usage(small)).not.toContain('0 or ?')

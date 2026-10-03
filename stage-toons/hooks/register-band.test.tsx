@@ -67,12 +67,12 @@ test('/stage demo plays every scene below the bar, then gives the band back', as
   const { world, clock } = engine(on)
   await $.session.start(START)
   const ui = await mountBand($)
-  expect(text(await runStage($, 'demo 2'))).toContain('Playing 12 scenes, 2 s each')
+  expect(text(await runStage($, 'demo 2'))).toContain('Playing 13 scenes, 2 s each')
   expect(world.invalidations).toBeGreaterThan(0)
   await ui.redraw()
   expect(await ui.find({ key: 'idle' })).toBeUndefined()
   expect((await ui.find({ key: 'demo' }))?.props).toMatchObject({ columns: 48, rows: 7 })
-  expect((await ui.find({ key: 'stage-toons' }))?.text).toContain('Demo 1/12: Roadmap · /stage demo stop ends it')
+  expect((await ui.find({ key: 'stage-toons' }))?.text).toContain('Demo 1/13: road-trip (Roadmap) · /stage demo stop ends it')
   // The line under the bar is text: the band is drawn again for each scene.
   const started = world.invalidations
   await clock.advance(1_500)
@@ -81,9 +81,9 @@ test('/stage demo plays every scene below the bar, then gives the band back', as
   expect(world.invalidations).toBe(started + 1)
   expect(blitsOf(world, 'demo').length).toBeGreaterThan(20)
   await ui.redraw()
-  expect((await ui.find({ key: 'stage-toons' }))?.text).toContain('Demo 2/12: Brainstorm')
+  expect((await ui.find({ key: 'stage-toons' }))?.text).toContain('Demo 2/13: light-bulbs (Brainstorm)')
   const before = world.invalidations
-  await clock.advance(22_000)
+  await clock.advance(24_000)
   expect(world.invalidations).toBeGreaterThan(before)
   await ui.redraw()
   expect(await ui.find({ key: 'demo' })).toBeUndefined()

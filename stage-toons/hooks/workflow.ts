@@ -22,7 +22,10 @@ export const DEFAULT_WORKFLOW: Workflow = {
     { id: 'user-test', label: 'Your testing', message: 'Over to you for testing', when: 'the user tests it', scene: 'gift' },
     { id: 'cleanup', label: 'Cleanup', message: 'Cleaning up leftovers, chores and docs', when: 'leftovers, chores, docs', scene: 'sweeping' },
   ],
-  side: [{ id: 'other', label: 'Other', message: 'Work outside the usual stages', when: 'work that fits none of the stages', scene: 'mystery-box' }],
+  side: [
+    { id: 'debugging', label: 'Debugging', message: 'Hunting a bug', when: 'finding and fixing a bug, at any point', scene: 'bug-hunt' },
+    { id: 'other', label: 'Other', message: 'Work outside the usual stages', when: 'work that fits none of the stages', scene: 'mystery-box' },
+  ],
 }
 
 export const stageIds = (w: Workflow): string[] => [...w.track, ...w.side].map(s => s.id)

@@ -29,12 +29,13 @@ export function demoAt(demo: Demo, now: number): DemoFrame | null {
   return { index, shot: { base, wipe, reaction: null }, sceneMs }
 }
 
-// A scene as the demo names it: by the first stage (track, then side) that
-// plays it, else by its own name.
+// A scene as the demo names it: its own name, and the first stage (track,
+// then side) that plays it.
 function labelOf(id: SceneId, w: Workflow): string {
-  if (id === FABLE_SCENE) return 'Fable auditing'
+  if (id === FABLE_SCENE) return `${id} (Fable reviewing)`
+  const stage = [...w.track, ...w.side].find(s => s.scene === id)
 
-  return [...w.track, ...w.side].find(s => s.scene === id)?.label ?? id
+  return stage ? `${id} (${stage.label})` : id
 }
 
 export const demoLine = (f: DemoFrame, w: Workflow): string =>

@@ -13,7 +13,8 @@ const SMALL: Workflow = {
 
 test('the default workflow is the ten stages on the track and Other beside it', () => {
   expect(W.track.map(s => s.id)).toEqual(['roadmap', 'brainstorm', 'spec', 'spec-audit', 'plan', 'plan-audit', 'develop', 'claude-test', 'user-test', 'cleanup'])
-  expect(W.side.map(s => s.id)).toEqual(['other'])
+  expect(W.side.map(s => s.id)).toEqual(['debugging', 'other'])
+  expect(stageOf(W, 'debugging')).toEqual({ id: 'debugging', label: 'Debugging', message: 'Hunting a bug', when: 'finding and fixing a bug, at any point', scene: 'bug-hunt' })
   expect(stageOf(W, 'plan')).toEqual({ id: 'plan', label: 'Plan', message: 'Writing the implementation plan', when: 'writing the implementation plan', scene: 'stepping-stones' })
   expect(stageOf(W, 'other')?.scene).toBe('mystery-box')
   for (const s of [...W.track, ...W.side]) for (const v of Object.values(s)) expect(v.length).toBeGreaterThan(0)
