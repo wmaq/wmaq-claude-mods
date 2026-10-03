@@ -1,4 +1,4 @@
-// Your testing: Clawd pushes a gift your way, waits while you take it, and
+// Gift: Clawd pushes a gift your way, waits while you take it, and
 // walks back for the next one.
 
 import { setPixel } from '../pixels'
@@ -9,8 +9,8 @@ import { blinking, C, every, GIFT, lerp } from './kit'
 const clawdX = (t: number) => (t < 1.5 ? lerp(4, 10, t / 1.5) : t < 5 ? 10 : lerp(10, 4, t - 5))
 const giftX = (t: number) => (t < 1.5 ? clawdX(t) + 16 : lerp(26, 34, t - 1.5))
 
-export const userTest: Scene = {
-  id: 'user-test',
+export const gift: Scene = {
+  id: 'gift',
   loop: 6,
   focusX: 24,
   actors: [

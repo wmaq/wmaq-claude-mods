@@ -1,4 +1,4 @@
-// Roadmap: Clawd walks a winding road, a flag going up wherever it passes,
+// Road trip: Clawd walks a winding road, a flag going up wherever it passes,
 // then heads back to the start for the next leg.
 
 import { setPixel } from '../pixels'
@@ -11,8 +11,8 @@ const FLAGS = [20, 27, 34, 41]
 const OUT = 6
 const walkX = (t: number) => (t < OUT ? lerp(2, 26, t / OUT) : lerp(26, 2, (t - OUT) / (8 - OUT)))
 
-export const roadmap: Scene = {
-  id: 'roadmap',
+export const roadTrip: Scene = {
+  id: 'road-trip',
   loop: 8,
   focusX: 24,
   backdrop: b => {

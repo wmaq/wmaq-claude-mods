@@ -2,14 +2,14 @@
 // Pure: every change takes the time it happens at, and tick settles what
 // has run its course.
 
-import type { StageId } from '../types'
-import type { ReactionId, SceneId } from './scene'
+import { FABLE_SCENE, type ReactionId, type SceneId } from './scene'
 
 export const REACTION_MS: Record<ReactionId, number> = { failure: 2500, advance: 3000, 'fable-arrives': 2000, 'fable-leaves': 2000 }
 export const WIPE_MS = 300
 
 export type Director = {
-  stage: StageId
+  // The scene of the stage the work is in.
+  scene: SceneId
   auditing: boolean
   base: SceneId
   reaction: { id: ReactionId; at: number } | null
@@ -24,10 +24,10 @@ export type Shot = {
 
 const isFable = (id: ReactionId) => id === 'fable-arrives' || id === 'fable-leaves'
 
-export const createDirector = (stage: StageId, auditing: boolean): Director => ({
-  stage,
+export const createDirector = (scene: SceneId, auditing: boolean): Director => ({
+  scene,
   auditing,
-  base: auditing ? 'auditor' : stage,
+  base: auditing ? FABLE_SCENE : scene,
   reaction: null,
   wipe: null,
 })
@@ -43,27 +43,28 @@ export function tick(d: Director, now: number): Director {
     const ended = n.reaction.id
     n = { ...n, reaction: null }
     // A wipe begun under the walk ends with it: the auditor scene takes over whole.
-    if (ended === 'fable-arrives') n = { ...n, base: 'auditor', wipe: null }
+    if (ended === 'fable-arrives') n = { ...n, base: FABLE_SCENE, wipe: null }
   }
   if (n.wipe && now - n.wipe.at >= WIPE_MS) n = { ...n, wipe: null }
   const isWalking = n.reaction !== null && isFable(n.reaction.id)
   if (!isWalking) {
-    if (n.auditing && n.base !== 'auditor') n = { ...n, reaction: { id: 'fable-arrives', at: now }, wipe: null }
-    else if (!n.auditing && n.base === 'auditor') n = { ...n, base: n.stage, reaction: { id: 'fable-leaves', at: now }, wipe: null }
+    if (n.auditing && n.base !== FABLE_SCENE) n = { ...n, reaction: { id: 'fable-arrives', at: now }, wipe: null }
+    else if (!n.auditing && n.base === FABLE_SCENE) n = { ...n, base: n.scene, reaction: { id: 'fable-leaves', at: now }, wipe: null }
   }
 
   return n
 }
 
-export function withStage(d: Director, stage: StageId, now: number): Director {
+// The stage moved and its scene is `scene`.
+export function withScene(d: Director, scene: SceneId, now: number): Director {
   const n = tick(d, now)
-  if (stage === n.stage) return n
-  const isShowingStage = n.base !== 'auditor'
+  if (scene === n.scene) return n
+  const isShowingStage = n.base !== FABLE_SCENE
   // A wipe still running goes on wiping out the scene it started from,
   // into the newest stage.
   const wipe = isShowingStage ? (n.wipe ?? { from: n.base, at: now }) : n.wipe
 
-  return { ...n, stage, base: isShowingStage ? stage : n.base, wipe }
+  return { ...n, scene, base: isShowingStage ? scene : n.base, wipe }
 }
 
 export const withAuditing = (d: Director, auditing: boolean, now: number): Director => tick({ ...d, auditing }, now)

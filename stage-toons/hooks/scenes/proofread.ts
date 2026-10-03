@@ -1,11 +1,11 @@
-// Spec audit and plan audit: Clawd holds the document up and taps a foot,
-// waiting for the review.
+// Proofreading, a page or a checklist: Clawd holds the document up and
+// taps a foot, waiting for the review.
 
 import { setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, C, CHECKLIST, every, PAGE, still } from './kit'
 
-function waiting(id: 'spec-audit' | 'plan-audit', doc: Sprite): Scene {
+function waiting(id: 'proofread-page' | 'proofread-checklist', doc: Sprite): Scene {
   const docW = doc.frames[0]?.[0]?.length ?? 0
   const docH = doc.frames[0]?.length ?? 0
 
@@ -33,5 +33,5 @@ function waiting(id: 'spec-audit' | 'plan-audit', doc: Sprite): Scene {
   }
 }
 
-export const specAudit = waiting('spec-audit', PAGE)
-export const planAudit = waiting('plan-audit', CHECKLIST)
+export const proofreadPage = waiting('proofread-page', PAGE)
+export const proofreadChecklist = waiting('proofread-checklist', CHECKLIST)

@@ -1,4 +1,4 @@
-// Develop: Clawd hammers while a brick wall grows, then starts again.
+// Bricklaying: Clawd hammers while a brick wall grows, then starts again.
 
 import { clawdAnchors } from '../clawd'
 import { fillRect, setPixel } from '../pixels'
@@ -14,8 +14,8 @@ const brickAt = (i: number) => {
 }
 const isStriking = (t: number) => every(t, 0.25) % 2 === 1
 
-export const develop: Scene = {
-  id: 'develop',
+export const bricklaying: Scene = {
+  id: 'bricklaying',
   loop: 12,
   focusX: 24,
   actors: [

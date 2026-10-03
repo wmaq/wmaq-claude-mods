@@ -1,4 +1,4 @@
-// The auditor in play: Fable studies the scroll through a magnifying glass,
+// Fable's audit: Fable studies the scroll through a magnifying glass,
 // question marks and ticks pop up, and Clawd fidgets, then nods.
 
 import { FABLE } from '../clawd'
@@ -9,8 +9,8 @@ export const OPUS_X = 4
 export const FABLE_X = 30
 const isNodding = (t: number) => t % 3 >= 2 && t % 3 < 2.8
 
-export const auditor: Scene = {
-  id: 'auditor',
+export const fableAudit: Scene = {
+  id: 'fable-audit',
   loop: 6,
   focusX: 24,
   actors: [

@@ -2,11 +2,12 @@
 // cartoons can be seen while Claude is idle. Pure: which scene shows at a
 // moment, wiping in over the one before.
 
-import type { SceneId } from './scene'
+import type { Workflow } from '../types'
 import { type Shot, WIPE_MS } from './director'
-import { STAGE_IDS, STAGES } from './stages'
+import { FABLE_SCENE, type SceneId } from './scene'
+import { DEMO_ORDER } from './scenes'
 
-export const DEMO_SCENES: readonly SceneId[] = [...STAGE_IDS, 'auditor']
+export const DEMO_SCENES: readonly SceneId[] = DEMO_ORDER
 export const DEMO_SECONDS = 10
 export const DEMO_MIN = 2
 export const DEMO_MAX = 60
@@ -28,6 +29,13 @@ export function demoAt(demo: Demo, now: number): DemoFrame | null {
   return { index, shot: { base, wipe, reaction: null }, sceneMs }
 }
 
-const labelOf = (id: SceneId): string => (id === 'auditor' ? 'Fable auditing' : id === 'idle' ? 'Idle' : STAGES[id].label)
+// A scene as the demo names it: by the first stage (track, then side) that
+// plays it, else by its own name.
+function labelOf(id: SceneId, w: Workflow): string {
+  if (id === FABLE_SCENE) return 'Fable auditing'
 
-export const demoLine = (f: DemoFrame): string => `Demo ${f.index + 1}/${DEMO_SCENES.length}: ${labelOf(f.shot.base)} · /stage demo stop ends it`
+  return [...w.track, ...w.side].find(s => s.scene === id)?.label ?? id
+}
+
+export const demoLine = (f: DemoFrame, w: Workflow): string =>
+  `Demo ${f.index + 1}/${DEMO_SCENES.length}: ${labelOf(f.shot.base, w)} · /stage demo stop ends it`

@@ -1,4 +1,4 @@
-// Claude testing: test tubes bubble and a green tick pops over each.
+// Test tubes: test tubes bubble and a green tick pops over each.
 
 import { setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene } from '../scene'
@@ -6,8 +6,8 @@ import { blinking, C, still, TICK, TUBE } from './kit'
 
 const TUBES = [24, 31, 38]
 
-export const claudeTest: Scene = {
-  id: 'claude-test',
+export const testTubes: Scene = {
+  id: 'test-tubes',
   loop: 6,
   focusX: 24,
   backdrop: (b, t) => {

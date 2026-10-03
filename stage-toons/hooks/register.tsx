@@ -14,7 +14,7 @@ import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { bandLayout, bandMode, type BandSite, IDLE_GAP, type Tone, TOON_MIN } from './band'
 import { moveFor, parseCommand, showText, USAGE } from './command'
 import { type Demo, DEMO_SCENES, demoAt, demoLine } from './demo'
-import { createDirector, type Director, react, shot, tick, withAuditing, withStage } from './director'
+import { createDirector, type Director, react, shot, tick, withAuditing, withScene } from './director'
 import { IDLE_COLS, IDLE_ROWS, idleFrame } from './idle'
 import { encodeCells } from './pixels'
 import { type KV, loadProgress, saveProgress, storeKey, validate } from './progress'
@@ -23,6 +23,7 @@ import { type SceneId, STAGE_W } from './scene'
 import { REACTIONS, SCENES } from './scenes'
 import { applyMove, describe, freshProgress, isAdvance, isStageId, STAGE_IDS } from './stages'
 import { type Cast, composeFrame, TOON_ROWS } from './toon'
+import { DEFAULT_WORKFLOW, sceneOf } from './workflow'
 
 const PLUGIN = 'stage-toons'
 const HIDDEN_KEY = 'hidden'
@@ -91,7 +92,7 @@ const createMod = (): Mod => ({
   key: storeKey(''),
   toolName: toolNameFor(PLUGIN),
   commandName: COMMAND,
-  director: createDirector('other', false),
+  director: createDirector('mystery-box', false),
   auditors: new Set(),
   lastFailureAt: null,
   isHidden: false,
@@ -126,7 +127,7 @@ async function current($: EngineInterface, now: number): Promise<Progress> {
 
 async function commit($: EngineInterface, mod: Mod, before: Progress, after: Progress, now: number) {
   await update($, progressAtom, () => after)
-  mod.director = withStage(mod.director, after.stage, now)
+  mod.director = withScene(mod.director, sceneOf(DEFAULT_WORKFLOW, after.stage), now)
   if (isAdvance(before, after)) mod.director = react(mod.director, 'advance', now)
   if (!(await saveProgress(storeOf($), mod.key, after))) await warnUnsaved($)
 }
@@ -156,7 +157,7 @@ function castOf($: EngineInterface, mod: Mod): Cast {
     scenes: SCENES,
     reactions: REACTIONS,
     broken: mod.broken,
-    onBreak: (id, error) => $.ui.log(`stage-toons: scene ${id} failed and was replaced by idle: ${String(error)}`, { to: 'debug' }),
+    onBreak: (id, error) => $.ui.log(`stage-toons: scene ${id} failed and was replaced by the standing scene: ${String(error)}`, { to: 'debug' }),
   }
 }
 
@@ -269,7 +270,7 @@ export const register: Register = on => {
     await update($, progressAtom, () => loaded.progress)
     await update($, hiddenAtom, () => isHidden)
     await update($, auditingAtom, () => false)
-    mod.director = createDirector(loaded.progress.stage, false)
+    mod.director = createDirector(sceneOf(DEFAULT_WORKFLOW, loaded.progress.stage), false)
     try {
       mod.toolName = (await $.tool.register({ name: TOOL, description: TOOL_DESCRIPTION, inputSchema: TOOL_SCHEMA })).tool
       mod.commandName = (
@@ -299,7 +300,7 @@ export const register: Register = on => {
       const mine = await read($, progressAtom)
       if (stored && (!mine || stored.updatedAt > mine.updatedAt)) {
         await update($, progressAtom, () => stored)
-        mod.director = withStage(mod.director, stored.stage, await $.clock.now())
+        mod.director = withScene(mod.director, sceneOf(DEFAULT_WORKFLOW, stored.stage), await $.clock.now())
       }
     } catch {
       // The store is unreadable: keep what this session has.
@@ -451,7 +452,7 @@ export const register: Register = on => {
     const frame = mode === 'demo' && mod.demo ? demoAt(mod.demo, now) : null
     if (frame) mod.demoLineIndex = frame.index
     const barColumns = mode === 'idle' ? columns - IDLE_COLS - IDLE_GAP : columns
-    const lines = bandLayout(progress, await read($, auditingAtom), barColumns, frame ? demoLine(frame) : undefined)
+    const lines = bandLayout(progress, await read($, auditingAtom), barColumns, frame ? demoLine(frame, DEFAULT_WORKFLOW) : undefined)
     // Other plugins' bands, and the engine's, still draw: below the bar.
     const below = await next(e)
     const { Box, Text } = $.ui.resolve(e)

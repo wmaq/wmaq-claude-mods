@@ -1,11 +1,11 @@
-// Spec: Clawd writes at a desk while finished pages stack up beside it.
+// Writing desk: Clawd writes at a desk while finished pages stack up beside it.
 
 import { fillRect, setPixel } from '../pixels'
 import { CLAWD_TOP, type Scene } from '../scene'
 import { blinking, C, every, still } from './kit'
 
-export const spec: Scene = {
-  id: 'spec',
+export const writingDesk: Scene = {
+  id: 'writing-desk',
   loop: 6,
   focusX: 24,
   actors: [

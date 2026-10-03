@@ -1,4 +1,4 @@
-// Cleanup: Clawd sweeps back and forth while the docs fill a shelf.
+// Sweeping: Clawd sweeps back and forth while the docs fill a shelf.
 
 import { fillRect, setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene } from '../scene'
@@ -8,8 +8,8 @@ const sweepX = (t: number) => 6 + 10 * (t < 4 ? t / 4 : (8 - t) / 4)
 const facing = (t: number) => (t < 4 ? 1 : -1)
 const BOOKS = [C.blue, C.red, C.green, C.gold]
 
-export const cleanup: Scene = {
-  id: 'cleanup',
+export const sweeping: Scene = {
+  id: 'sweeping',
   loop: 8,
   focusX: 24,
   backdrop: b => fillRect(b, 36, 7, 11, 1, C.woodDark),

@@ -3,7 +3,8 @@ import { expect, test } from 'claude-code/testing'
 import { CLAWD_ORANGE, FABLE_VIOLET } from './clawd'
 import { createBuffer, type PixelBuffer } from './pixels'
 import { CLAWD_TOP, heroAt, renderFull, renderScene, type Scene, STAGE_H, STAGE_W } from './scene'
-import { REACTIONS, SCENES } from './scenes'
+import { REACTIONS, SCENES, STAGE_SCENES } from './scenes'
+import { DEFAULT_WORKFLOW } from './workflow'
 import { C } from './scenes/kit'
 
 const SCENE_LIST: Scene[] = Object.values(SCENES)
@@ -30,7 +31,7 @@ test('Clawd is on stage throughout every scene', () => {
 })
 
 test('Clawd stands on the bottom row of a 14-pixel stage, with six pixels of headroom', () => {
-  const b = renderFull(SCENES.idle, 0)
+  const b = renderFull(SCENES.standing!, 0)
   const rows = [...b.px].flatMap((c, i) => (c === CLAWD_ORANGE ? [Math.floor(i / b.w)] : []))
   expect(STAGE_H).toBe(14)
   expect(Math.min(...rows)).toBe(6)
@@ -41,8 +42,8 @@ test('Clawd stands on the bottom row of a 14-pixel stage, with six pixels of hea
 const goldOf = (b: PixelBuffer) => [...b.px].flatMap((c, i) => (c === C.gold ? [{ x: i % b.w, y: Math.floor(i / b.w) }] : []))
 
 test('the Other scene shows one question mark, whole and centred over the box', () => {
-  for (let t = 0.013; t < SCENES.other.loop; t += 0.05) {
-    const b = renderFull(SCENES.other, t)
+  for (let t = 0.013; t < SCENES['mystery-box']!.loop; t += 0.05) {
+    const b = renderFull(SCENES['mystery-box']!, t)
     const gold = goldOf(b)
     expect(gold).toHaveLength(5)
     const box = [...b.px].flatMap((c, i) => (c === C.woodDark ? [i % b.w] : []))
@@ -53,7 +54,7 @@ test('the Other scene shows one question mark, whole and centred over the box', 
 })
 
 test("the auditor's question mark shows whole", () => {
-  expect(goldOf(renderFull(SCENES.auditor, 1))).toHaveLength(5)
+  expect(goldOf(renderFull(SCENES['fable-audit']!, 1))).toHaveLength(5)
 })
 
 test('every loop is seamless: the hero ends where it began', () => {
@@ -64,16 +65,18 @@ test('every loop is seamless: the hero ends where it began', () => {
   }
 })
 
-test('every scene is filed under its own id, one per stage plus the auditor and idle', () => {
+test('every scene is filed under its own name: the library', () => {
   for (const [id, scene] of Object.entries(SCENES)) expect(scene.id).toBe(id)
   expect(Object.keys(SCENES).sort()).toEqual(
-    ['roadmap', 'brainstorm', 'spec', 'spec-audit', 'plan', 'plan-audit', 'develop', 'claude-test', 'user-test', 'cleanup', 'other', 'auditor', 'idle'].sort(),
+    ['road-trip', 'light-bulbs', 'writing-desk', 'proofread-page', 'stepping-stones', 'proofread-checklist', 'bricklaying', 'test-tubes', 'gift', 'sweeping', 'mystery-box', 'fable-audit', 'standing'].sort(),
   )
+  expect(STAGE_SCENES).toEqual(Object.keys(SCENES).filter(n => n !== 'fable-audit' && n !== 'standing'))
+  for (const s of [...DEFAULT_WORKFLOW.track, ...DEFAULT_WORKFLOW.side]) expect(STAGE_SCENES).toContain(s.scene)
 })
 
 test('in the auditor scene both Clawds are on stage', () => {
-  for (let t = 0.013; t < SCENES.auditor.loop; t += 0.1) {
-    const b = renderFull(SCENES.auditor, t)
+  for (let t = 0.013; t < SCENES['fable-audit']!.loop; t += 0.1) {
+    const b = renderFull(SCENES['fable-audit']!, t)
     expect(count(b, CLAWD_ORANGE)).toBeGreaterThan(40)
     expect(count(b, FABLE_VIOLET)).toBeGreaterThan(40)
   }

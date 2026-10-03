@@ -1,4 +1,4 @@
-// Plan: boxes on a checklist get ticked while Clawd lays stepping stones.
+// Stepping stones: boxes on a checklist get ticked while Clawd lays stepping stones.
 
 import { fillRect } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene } from '../scene'
@@ -7,8 +7,8 @@ import { blinking, C, still, STONE } from './kit'
 const ROWS = [5, 8, 11]
 const STONES = [18, 24, 30]
 
-export const plan: Scene = {
-  id: 'plan',
+export const steppingStones: Scene = {
+  id: 'stepping-stones',
   loop: 6,
   focusX: 24,
   backdrop: b => {

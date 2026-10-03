@@ -1,4 +1,4 @@
-// Brainstorm: ideas pop around Clawd and fizzle, until one stays lit.
+// Light bulbs: ideas pop around Clawd and fizzle, until one stays lit.
 
 import { setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene } from '../scene'
@@ -12,8 +12,8 @@ const SPOTS = [
 ]
 const EUREKA = 4.8
 
-export const brainstorm: Scene = {
-  id: 'brainstorm',
+export const lightBulbs: Scene = {
+  id: 'light-bulbs',
   loop: 6,
   focusX: 24,
   actors: [

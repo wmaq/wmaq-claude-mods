@@ -4,7 +4,7 @@
 
 import type { Shot } from './director'
 import { createBuffer, type PixelBuffer } from './pixels'
-import { crop, heroAt, type Mood, overlay, type ReactionId, type ReactionSpec, renderFull, type Scene, type SceneId, STAGE_H, STAGE_W, wipe } from './scene'
+import { crop, FALLBACK_SCENE, heroAt, type Mood, overlay, type ReactionId, type ReactionSpec, renderFull, type Scene, type SceneId, STAGE_H, STAGE_W, wipe } from './scene'
 
 export const TOON_ROWS = STAGE_H / 2
 
@@ -17,7 +17,7 @@ export type Cast = {
 
 export function composeFrame(shot: Shot, now: number, width: number, cast: Cast): PixelBuffer {
   const time = now / 1000
-  const sceneOf = (id: SceneId) => (cast.broken.has(id) ? cast.scenes.idle : cast.scenes[id])
+  const sceneOf = (id: SceneId) => (cast.broken.has(id) ? undefined : cast.scenes[id]) ?? cast.scenes[FALLBACK_SCENE]!
   const full = (id: SceneId, mood: Mood): PixelBuffer => {
     try {
       return renderFull(sceneOf(id), time, mood)
@@ -27,7 +27,7 @@ export function composeFrame(shot: Shot, now: number, width: number, cast: Cast)
         cast.onBreak(id, error)
       }
 
-      return renderFull(cast.scenes.idle, time, mood)
+      return renderFull(cast.scenes[FALLBACK_SCENE]!, time, mood)
     }
   }
   const reaction = shot.reaction ? cast.reactions[shot.reaction.id] : null

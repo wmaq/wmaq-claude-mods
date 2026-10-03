@@ -1,4 +1,4 @@
-// Other: Clawd walks up to a mystery box, pokes it, and walks back.
+// Mystery box: Clawd walks up to a mystery box, pokes it, and walks back.
 
 import { CLAWD_TOP, type Scene } from '../scene'
 import { blinking, BOX, every, lerp, QMARK } from './kit'
@@ -6,8 +6,8 @@ import { blinking, BOX, every, lerp, QMARK } from './kit'
 const walkX = (t: number) => (t < 1.5 ? lerp(6, 12, t / 1.5) : t < 4 ? 12 : lerp(12, 6, t - 4))
 const isPoking = (t: number) => t >= 1.5 && t < 4 && every(t, 0.3) % 2 === 1
 
-export const other: Scene = {
-  id: 'other',
+export const mysteryBox: Scene = {
+  id: 'mystery-box',
   loop: 5,
   focusX: 24,
   actors: [

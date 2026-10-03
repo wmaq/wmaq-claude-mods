@@ -3,7 +3,7 @@
 import { drawClawd, FABLE } from '../clawd'
 import { type PixelBuffer, setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type ReactionId, type ReactionSpec, STAGE_H, STAGE_W } from '../scene'
-import { FABLE_X } from './auditor'
+import { FABLE_X } from './fable-audit'
 import { BANG, C, every, lerp } from './kit'
 
 const CONFETTI = [C.gold, C.blue, C.green, C.red]

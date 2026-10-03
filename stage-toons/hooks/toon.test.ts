@@ -16,7 +16,7 @@ const exploding: Scene = {
     throw new Error('boom')
   },
 }
-const castWith = (scenes: Partial<Record<SceneId, Scene>>, breaks: string[] = []): Cast => ({
+const castWith = (scenes: Record<SceneId, Scene>, breaks: string[] = []): Cast => ({
   scenes: { ...SCENES, ...scenes },
   reactions: REACTIONS,
   broken: new Set(),
@@ -48,5 +48,5 @@ test('a scene that throws is replaced by idle and reported once', () => {
   const frame = composeFrame({ base: 'plan', wipe: null, reaction: null }, 0, 48, cast)
   composeFrame({ base: 'plan', wipe: null, reaction: null }, 100, 48, cast)
   expect(breaks).toEqual(['plan'])
-  expect([...frame.px]).toEqual([...renderScene(SCENES.idle, 0, 48).px])
+  expect([...frame.px]).toEqual([...renderScene(SCENES.standing!, 0, 48).px])
 })
