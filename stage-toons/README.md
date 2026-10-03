@@ -66,7 +66,7 @@ You can move it yourself with `/stage`:
 | `/stage hide` | Hide or show the bar and the cartoons |
 | `/stage demo [<stage> \| idle] [seconds]` | Play every scene, one stage's scenes (by id), or the idle routines, 10 s each (2 to 60); a bare number is the seconds |
 | `/stage demo stop` | End the demo |
-| `/stage workflow` | Show the workflow, where it came from, and each stage's scene |
+| `/stage workflow` | Show the workflow, where it came from, and each stage's scenes |
 | `/stage workflow init` | Write the default workflow to `.claude/stage-toons.json` to edit |
 | `/stage workflow reload` | Read `.claude/stage-toons.json` again and switch to it |
 
@@ -120,8 +120,9 @@ stepping-stones, proofread-checklist, bricklaying, test-tubes, gift,
 sweeping, bug-hunt, mystery-box, and the second scene of each default
 stage: stargazing, sticky-notes, blueprint, red-pen, dominoes, clipboard,
 terminal, control-panel, waiting-bench, dishes, flashlight, fishing.
-`/stage demo` plays them all; `/stage workflow` shows the current workflow
-and its scenes.
+`/stage demo` plays them all, and a 25th, fable-audit, which plays while a
+Fable subagent runs rather than for a stage; `/stage workflow` shows the
+current workflow and its scenes.
 
 Limits: 1 to 15 track stages, up to 5 side stages; ids are lowercase
 letters, digits and dashes. A mistake in the file is reported with where it

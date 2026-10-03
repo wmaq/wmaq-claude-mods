@@ -2,7 +2,7 @@ import { expect, test } from 'claude-code/testing'
 
 import { CLAWD_ORANGE, EYE_DARK } from './clawd'
 import { CLAWD_X, DOZE_MS, IDLE_COLS, IDLE_IDS, IDLE_ROWS, idleFrame, pickIdle, ROUTINES, Z_COLOR } from './idle'
-import type { PixelBuffer } from './pixels'
+import { createBuffer, EMPTY, type PixelBuffer } from './pixels'
 import { C } from './scenes/kit'
 
 const at = (seconds: number, routine = 'classic') => idleFrame(routine, seconds * 1000)
@@ -60,6 +60,16 @@ test('nyan: a six-stripe rainbow behind Clawd, its wave stepping, and stars rush
   const stars = (t: number) => where(at(t, 'nyan'), C.white)
   expect([0.1, 0.35, 0.6, 0.85].some(t => stars(t).length > 0)).toBe(true)
   for (let t = 0; t < 4; t += 0.05) expect(stars(t).every(p => p.y === 0 || p.y === 7)).toBe(true)
+})
+
+test('every routine draws inside the box: nothing past its last column', () => {
+  for (const id of IDLE_IDS) {
+    for (let t = 0; t < ROUTINES[id]!.loop; t += 0.05) {
+      const b = createBuffer(IDLE_COLS + 4, IDLE_ROWS * 2)
+      ROUTINES[id]!.draw(b, t)
+      expect([...b.px].filter((c, i) => c !== EMPTY && i % b.w >= IDLE_COLS)).toHaveLength(0)
+    }
+  }
 })
 
 test('after a minute every routine dozes the same way: sitting, eyes closed, z rising at his left', () => {

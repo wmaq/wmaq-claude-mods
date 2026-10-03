@@ -94,8 +94,10 @@ type Mod = {
   band: Site
   // When Claude last went idle: the session's start or the main turn's end.
   idleSince: number
-  // The idle routine on show, and routines that threw this session.
+  // The idle routine on show, the one picked for the next idle period, and
+  // routines that threw this session.
   idle: IdleId
+  nextIdle: IdleId
   brokenIdle: Set<IdleId>
   // Whether the band was last drawn while Claude worked, and what it was
   // last drawn in (null before it is first drawn).
@@ -122,6 +124,7 @@ const createMod = (): Mod => ({
   band: createSite('idle'),
   idleSince: 0,
   idle: 'classic',
+  nextIdle: 'classic',
   brokenIdle: new Set(),
   isBandWorking: false,
   lastBand: null,
@@ -415,6 +418,7 @@ export const register: Register = on => {
       routine = first
     }
     mod.idle = routine
+    mod.nextIdle = routine
     // A reload forgets which agents were Fable, so the auditor stands down.
     mod.auditors.clear()
     await update($, progressAtom, () => progress)
@@ -444,10 +448,12 @@ export const register: Register = on => {
   on('prompt.submit', async ($, e, next) => {
     // The routine for the idle period after this turn, leaving out the one
     // just shown. A prompt typed while a turn runs (turnId set) starts no
-    // idle period of its own, so it picks nothing.
+    // idle period of its own, so it picks nothing. The box keeps the routine
+    // on show until the idle clock restarts: switched here, it could paint
+    // the new one for a frame before the turn hides it.
     if (e.turnId === undefined) {
       const routine = pickIdle(mod.idle, Math.random())
-      mod.idle = routine
+      mod.nextIdle = routine
       await update($, idleAtom, () => routine)
     }
     // A turn starts: the toon under the spinner takes over from the demo.
@@ -576,6 +582,7 @@ export const register: Register = on => {
     }
     mod.toon.requestId = undefined
     mod.idleSince = await $.clock.now()
+    mod.idle = mod.nextIdle
     if (mod.auditors.size > 0) {
       try {
         for (const id of staleAuditors(mod.auditors, await $.agent.list())) mod.auditors.delete(id)
@@ -597,6 +604,7 @@ export const register: Register = on => {
     else if (mod.isBandWorking) {
       mod.isBandWorking = false
       mod.idleSince = now
+      mod.idle = mod.nextIdle
     }
     const site: BandSite = {
       surface: e.surface,

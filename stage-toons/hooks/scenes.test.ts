@@ -177,6 +177,19 @@ test('batch 1, part 3: each new scene shows what it is about', () => {
   expect(has('fishing', C.green, 7)).toBeGreaterThan(5)
 })
 
+test('the fishing ripples meet themselves at the loop point', () => {
+  // The scene wraps from t = 8 back to 0: the water must look the same at
+  // both, or the ripples jump there.
+  const scene = SCENES.fishing!
+  const water = (t: number) => {
+    const b = createBuffer(STAGE_W, STAGE_H)
+    scene.backdrop?.(b, t)
+
+    return [...b.px].slice(11 * STAGE_W, 12 * STAGE_W)
+  }
+  expect(water(scene.loop)).toEqual(water(0))
+})
+
 test('the kit never uses Clawd orange or Fable violet', () => {
   for (const color of Object.values(C)) expect([CLAWD_ORANGE, FABLE_VIOLET]).not.toContain(color)
 })

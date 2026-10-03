@@ -2,6 +2,7 @@ import { expect, test } from 'claude-code/testing'
 
 import { bandProps, blitsOf, colorInRows, endTurn, engine, mountBand, runStage, START } from './harness'
 import { Z_COLOR } from './idle'
+import { C } from './scenes/kit'
 
 const text = (answer: unknown) => (answer as { text?: string }).text ?? ''
 
@@ -202,6 +203,32 @@ test('the idle routine is picked at session start and again when a turn starts, 
   const ui = await mountBand($, 'terminal', bandProps(100, { isWorking: true }))
   await ui.redraw(bandProps(100))
   expect(picks).toHaveLength(2)
+})
+
+test('the routine picked at a prompt shows only from the next idle period, not at Enter', async ($, on) => {
+  // Session start finds classic; later reads see what the mod writes.
+  let isFirstRead = true
+  on('state.get', ($, e, next) => {
+    if (e.key !== 'idle' || !isFirstRead) return next(e)
+    isFirstRead = false
+
+    return { value: { value: 'classic', version: 0 } }
+  })
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  await mountBand($)
+  await clock.advance(500)
+  // Nyan's rainbow has the only orange of the two routines.
+  const isNyan = () => colorInRows(blitsOf(world, 'idle').at(-1), [0, 1, 2, 3], C.orange)
+  expect(isNyan()).toBe(false)
+  await $.prompt.submit({ text: 'hi', wait: false, origin: { kind: 'composer' } } as never)
+  const before = blitsOf(world, 'idle').length
+  await clock.advance(500)
+  expect(blitsOf(world, 'idle').length).toBeGreaterThan(before)
+  expect(isNyan()).toBe(false)
+  await endTurn($)
+  await clock.advance(500)
+  expect(isNyan()).toBe(true)
 })
 
 test('a hot reload keeps the idle routine', async ($, on) => {

@@ -36,7 +36,9 @@ export const fishing: Scene = {
     fillRect(b, 3, 10, 1, 4, C.woodDark)
     fillRect(b, 17, 10, 1, 4, C.woodDark)
     fillRect(b, 21, WATER, 27, 3, C.blue)
-    for (let k = 0; k < 3; k++) setPixel(b, 22 + ((k * 9 + every(t, 0.5)) % 25), WATER, C.glass)
+    // 25 steps a loop over the 25 columns of water: the ripples come back
+    // to where they started as the loop wraps.
+    for (let k = 0; k < 3; k++) setPixel(b, 22 + ((k * 9 + every(t, LOOP / 25)) % 25), WATER, C.glass)
   },
   actors: [
     {

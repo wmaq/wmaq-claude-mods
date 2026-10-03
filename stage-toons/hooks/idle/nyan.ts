@@ -22,7 +22,8 @@ function drawStars(b: PixelBuffer, t: number) {
     // Each star crosses the box once a loop, right to left, and twinkles:
     // half of them show at a time, trading every 0.25 s.
     if ((every(t, 0.25) + i) % 2 === 1) return
-    const x = Math.round((((s.x - (t / LOOP) * WIDTH) % WIDTH) + WIDTH) % WIDTH)
+    // Rounded up to WIDTH, a star wraps to column 0 rather than leave the box.
+    const x = Math.round((((s.x - (t / LOOP) * WIDTH) % WIDTH) + WIDTH) % WIDTH) % WIDTH
     setPixel(b, x, s.y, C.white)
   })
 }
@@ -39,6 +40,6 @@ export const nyan: IdleRoutine = {
       const drop = (Math.floor(x / 3) + flip) % 2
       STRIPES.forEach((color, i) => setPixel(b, x, 1 + drop + i, color))
     }
-    drawClawd(b, CLAWD_X, 0, { pose: 'walk', stride: every(t, 0.25) % 4, facing: 1, look: { x: 1, y: 0 }, arms: { left: 'down', right: 'out' } })
+    drawClawd(b, CLAWD_X, 0, { pose: 'walk', stride: every(t, 0.25) % 4, facing: 1, look: { x: 1, y: 0 }, arms: { left: 'down', right: 'down' } })
   },
 }
