@@ -106,12 +106,21 @@ Left as they are (from the reviews):
 - Some scenes reset visibly at the loop point (the dishes stacks), as
   bricklaying's wall does.
 
-Step 2 to come: a second batch of 12 scenes (treasure-map, thought-clouds,
-scroll, stamp, ladder, scales, workbench, crash-test, cake, recycling,
-bug-net, dice) and the idle routines coffee, reading and yo-yo.
-
 Possibly later: sharing stage-toons with the community, the way
 claude-toons was shared.
+
+### v0.4 step 2 (in progress)
+
+Plan: `docs/superpowers/plans/2026-10-03-stage-toons-scene-variety-step2.md`.
+- **12 more scenes**, each the third scene of a default stage:
+  treasure-map, thought-clouds, scroll, stamp, ladder, scales, workbench,
+  crash-test, cake, recycling, bug-net, dice. The library demo plays 37.
+- **Three more idle routines**: coffee, reading and yo-yo, picked with
+  classic and Nyan.
+- A `line` helper in the scenes' kit.
+- **Approved changes to the spec's concepts**: the cake is picked back up
+  and carried off, so the loop needs no jump; the bug-net bug stays caught
+  in the net as the next bug flies in; the dice always land on a double six.
 
 ### Later (ideas, up for discussion)
 

@@ -75,13 +75,14 @@ Claude is told about your moves.
 ## While Claude waits for you
 
 When Claude isn't working, a small Clawd stands left of the bar, in a box
-26 columns wide. He has two routines, the classic one (he blinks, glances at
-the prompt and the bar, taps a foot) and Nyan Clawd. One is picked each time
-a turn starts. Whichever it is, after a minute he sits down and dozes off.
+26 columns wide. He has five routines: the classic one (he blinks, glances
+at the prompt and the bar, taps a foot), Nyan Clawd, coffee (he sips from a
+steaming mug), reading (he turns the pages of a book) and yo-yo. One is
+picked each time a turn starts. Whichever it is, after a minute he sits down and dozes off.
 He shows in a terminal at least 78 columns wide; otherwise the bar is text
 alone.
 
-`/stage demo` plays all 25 scenes of the library in turn below the bar,
+`/stage demo` plays all 37 scenes of the library in turn below the bar,
 each named with the stage that plays it, so you can see them without
 waiting for the work to reach each stage. `/stage demo plan` plays only the
 scenes of one stage, and `/stage demo idle` the idle routines. A new prompt
@@ -113,14 +114,19 @@ status line, a `when` line telling Claude when to move there, and `scenes`:
 
 A stage lists 1 to 5 scenes. One is picked at random each time the work
 enters the stage, never the one it showed last when it has another. The
-older `"scene": "bug-hunt"` still works.
+older `"scene": "bug-hunt"` still works. A workflow file keeps its own
+lists: a file written by `/stage workflow init` before 0.4.1 names two
+scenes per stage, so add the new ones to it (or delete the file to use the
+default) to see them.
 
 Scenes: road-trip, light-bulbs, writing-desk, proofread-page,
 stepping-stones, proofread-checklist, bricklaying, test-tubes, gift,
-sweeping, bug-hunt, mystery-box, and the second scene of each default
-stage: stargazing, sticky-notes, blueprint, red-pen, dominoes, clipboard,
-terminal, control-panel, waiting-bench, dishes, flashlight, fishing.
-`/stage demo` plays them all, and a 25th, fable-audit, which plays while a
+sweeping, bug-hunt, mystery-box, and the second and third scene of each
+default stage: stargazing, sticky-notes, blueprint, red-pen, dominoes,
+clipboard, terminal, control-panel, waiting-bench, dishes, flashlight,
+fishing; treasure-map, thought-clouds, scroll, stamp, ladder, scales,
+workbench, crash-test, cake, recycling, bug-net, dice. `/stage demo` plays
+them all, and a 37th, fable-audit, which plays while a
 Fable subagent runs rather than for a stage; `/stage workflow` shows the
 current workflow and its scenes.
 
