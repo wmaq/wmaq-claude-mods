@@ -40,7 +40,7 @@ On a side stage the bar shows the stage instead of the track, and the track
 stage the work returns to:
 
 ```
- ? Debugging · login bug   ↩ 7/10 Develop
+ Debugging · login bug   ↩ 7/10 Develop
  Reproducing the failing login test
 ```
 

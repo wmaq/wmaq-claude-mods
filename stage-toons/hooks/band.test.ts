@@ -27,20 +27,20 @@ test('the wide band has the track, the label and the message', () => {
 test('a side stage hides the track and shows where the work returns', () => {
   const p = applyMove(W, plan, { stage: 'debugging', message: 'Reproducing the login bug', by: 'claude', at: 2 })
   const lines = bandLayout(W, p, false, 100)
-  expect(lines.map(text)).toEqual([' ? Debugging · stage-toons   ↩ 5/10 Plan', ' Reproducing the login bug'])
+  expect(lines.map(text)).toEqual([' Debugging · stage-toons   ↩ 5/10 Plan', ' Reproducing the login bug'])
   expect(lines[0]?.at(-1)).toEqual({ text: '   ↩ 5/10 Plan', tone: 'note' })
 })
 
 test('on a side stage the return note goes first, then the feature, then the label is cut', () => {
   const p = applyMove(W, plan, { stage: 'debugging', by: 'claude', at: 2 })
-  // " ? Debugging · " and 30 x's is 45 cells; the note adds 14.
+  // " Debugging · " and 30 x's is 43 cells; the note adds 14.
   const long = { ...p, feature: 'x'.repeat(30) }
-  expect(text(bandLayout(W, long, false, 100)[0])).toBe(` ? Debugging · ${'x'.repeat(30)}   ↩ 5/10 Plan`)
-  expect(text(bandLayout(W, long, false, 52)[0])).toBe(` ? Debugging · ${'x'.repeat(30)}`)
-  expect(text(bandLayout(W, { ...p, feature: 'x'.repeat(40) }, false, 52)[0])).toBe(' ? Debugging')
-  expect(bandLayout(W, p, false, 49).map(text)).toEqual(['? Debugging — Hunting a bug'])
+  expect(text(bandLayout(W, long, false, 100)[0])).toBe(` Debugging · ${'x'.repeat(30)}   ↩ 5/10 Plan`)
+  expect(text(bandLayout(W, long, false, 52)[0])).toBe(` Debugging · ${'x'.repeat(30)}`)
+  expect(text(bandLayout(W, { ...p, feature: 'x'.repeat(40) }, false, 52)[0])).toBe(' Debugging')
+  expect(bandLayout(W, p, false, 49).map(text)).toEqual(['Debugging — Hunting a bug'])
   const fresh = applyMove(W, freshProgress(0), { stage: 'other', by: 'user', at: 1 })
-  expect(text(bandLayout(W, fresh, false, 100)[0])).toBe(' ? Other')
+  expect(text(bandLayout(W, fresh, false, 100)[0])).toBe(' Other')
 })
 
 test('untracked is one line: the dim track, Not tracked yet and the feature', () => {

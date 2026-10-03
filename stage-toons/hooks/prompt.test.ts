@@ -17,6 +17,7 @@ test('the workflow section lists every stage, the tool, and the state at session
   const text = workflowText(W, p, 'mcp__stage-toons__set_stage')
   for (const id of stageIds(W)) expect(text).toContain(id)
   expect(text).toContain('mcp__stage-toons__set_stage')
+  expect(text).toContain('If mcp__stage-toons__set_stage is listed as a deferred tool, load it first with ToolSearch (query "select:mcp__stage-toons__set_stage").')
   expect(text.split('\n').at(-1)).toBe('At session start: 5/10 Plan · stage-toons · "Writing the implementation plan".')
   expect(workflowText(W, { ...p }, 'x')).toBe(workflowText(W, p, 'x'))
 })

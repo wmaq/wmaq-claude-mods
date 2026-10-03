@@ -107,7 +107,7 @@ function untrackedLayout(w: Workflow, p: Progress, isAuditing: boolean, columns:
 // note of the track stage the work returns to. Room runs out: the tag goes,
 // then the note, then the feature, then the label is cut.
 function sideLayout(w: Workflow, p: Progress, isAuditing: boolean, columns: number, width: number, message: string): Span[][] {
-  const head = `? ${stageOf(w, p.stage)?.label ?? p.stage}`
+  const head = `${stageOf(w, p.stage)?.label ?? p.stage}`
   if (columns < WIDE_MIN) return [[{ text: fitText(`${head} — ${message}`, width), tone: 'label' }]]
   const feature = p.feature ? ` · ${p.feature}` : ''
   const note = isTrack(w, p.lastTrackStage) ? `   ↩ ${stageLabel(w, p.lastTrackStage!)}` : ''

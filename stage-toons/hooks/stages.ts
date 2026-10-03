@@ -87,7 +87,7 @@ export function stageLabel(w: Workflow, stage: StageId): string {
   const def = stageOf(w, stage)
   if (!def) return `${stage} (no longer in the workflow)`
 
-  return isTrack(w, stage) ? `${rank(w, stage) + 1}/${w.track.length} ${def.label}` : `? ${def.label}`
+  return isTrack(w, stage) ? `${rank(w, stage) + 1}/${w.track.length} ${def.label}` : `${def.label} (side stage)`
 }
 
 export const position = (w: Workflow, p: Progress): string => (p.stage === null ? NOT_TRACKED : stageLabel(w, p.stage))

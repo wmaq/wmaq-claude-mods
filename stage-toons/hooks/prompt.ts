@@ -42,6 +42,7 @@ export function workflowText(w: Workflow, p: Progress, toolName: string): string
     'message. Also call it when the focus within a stage changes notably, but',
     'not more than every few minutes. Its result and any "[stage-toons]" note',
     'are the current state.',
+    `If ${toolName} is listed as a deferred tool, load it first with ToolSearch (query "select:${toolName}").`,
     `At session start: ${describe(w, p)}.`,
   )
 
