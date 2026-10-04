@@ -183,6 +183,35 @@ Left as they are (from Fable's final review, minor):
   Clawd at x 0 beside the seated helpers, no fresh walk aside; `/stage
   hide` during the walk back restarts the idle clock at the hide.
 
+### v0.6 (2026-10-04, on `claude/relaxed-ramanujan-2qv6ui`)
+
+Automatic stage moves and stage history, the first two "Later" ideas,
+built together in one cloud session. Spec:
+`docs/superpowers/specs/2026-10-04-stage-toons-auto-moves-history-design.md`.
+Plan: `docs/superpowers/plans/2026-10-04-stage-toons-auto-moves-history.md`.
+- **Rules move the bar.** A stage's `auto` list: `skill`, `write` (a
+  glob), `agent` (a model family) or `bash` (a regular expression), with
+  `from`. Only the main conversation's successful calls and spawns, only
+  forward on the track or into a side stage. The default workflow's
+  rules follow the superpowers skills and the Fable audits. Claude gets a
+  `[stage-toons]` note with the next tool result or prompt;
+  `/stage auto [on | off]`.
+- **History.** Entries record the feature, `by: auto` and why, and
+  Claude's working time (turn time, split at moves); 200 kept.
+  `/stage log [n]` and `/stage time`.
+- Every move runs on one queue in the module.
+
+Built like v0.5: drafted whole in a scratch copy, a plan embedding the
+code, Fable audits of the spec (17 of 18 findings applied) and of the
+plan (applied to a fresh copy; 11 of 11). Checked live in the cloud
+session: the module loads, a spec Write and a Fable spawn move the bar,
+a write behind the stage moves nothing, the notes reach Claude. The
+person's local test: the bar moving by itself, `/stage log`, `/stage time`.
+
+Departures from the spec: a spawn's note comes with the next result, not
+the Agent call's own (live finding); Spec audit also fires from
+Brainstorm, for specs written through Bash.
+
 ### Later (ideas, up for discussion)
 
 - **Scene authoring by others.** A data format for scenes (sprites and
@@ -192,13 +221,10 @@ Left as they are (from Fable's final review, minor):
   depend on the stage just completed, for example celebrating after a
   merge or holding the spec after the spec stage. Builds on v0.2's idle
   Clawd.
-- **Moving the stage automatically.** The bar depends on Claude
-  remembering `set_stage`. A `tool.call` hook could move it from what
-  happens: `superpowers:brainstorming` → brainstorm, `writing-plans` →
-  plan, an Agent with `model: fable` on spec or plan → that audit, a merge
-  to `main` → cleanup done. Claude would still call `set_stage` for the
-  message. The triggers could live in `.claude/stage-toons.json`, so a
-  custom workflow has its own.
+- **A "done" state after a merge.** Past the last stage: the track all
+  lit and the feature finished, set by a rule (a merge to `main`) or by
+  hand, so the history closes the feature. v0.6 left it out: it changes
+  the band's drawing.
 - **Configurable or dynamic canvas sizes.** The toon (under the spinner),
   the idle Clawd's box and the demo have fixed sizes; they could grow with
   the terminal, or be set in `.claude/stage-toons.json`, so scenes on a
@@ -213,6 +239,3 @@ Left as they are (from Fable's final review, minor):
   easy: Nyan's rainbow could start right behind Clawd's body instead of
   where his sprite box ends, and props could pass in front of or behind
   him.
-- **Stage history.** Time spent per stage and per feature, and
-  `/stage log` for a timeline. Progress is already saved per project, with
-  its recent moves.

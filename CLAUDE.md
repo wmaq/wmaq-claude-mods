@@ -6,7 +6,7 @@ the marketplace manifest `.claude-plugin/marketplace.json`.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner, an idle Clawd in an area below the bar, and a desk row of helpers there while Claude waits on agents | 0.5.0 (v0.5, the waiting toon); later ideas in `docs/roadmap.md` |
+| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner, an idle Clawd in an area below the bar, and a desk row of helpers there while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.6.0 (v0.6, automatic moves and history); later ideas in `docs/roadmap.md` |
 
 ## The workflow
 
@@ -141,6 +141,20 @@ Learned building stage-toons on 2.1.287 to 2.1.289:
   may lag `agent.spawn` and an agent's own `turn.complete`: stage-toons
   trusts the events over the list for 3 s (`LIST_LAG_MS`).
 
+- `context` added to core's own `tool.call` result (`{ ...result, context }`,
+  keeping its `ref`) reaches the model, shown as "tool.call hook
+  additional context" (checked on 2.1.289). A deny carries none.
+- A background Agent call's `tool.call` result comes back before what its
+  `agent.spawn` hook does after `next(e)` is done: a note queued there
+  rides on the next result instead.
+- Closures inside a hook that close over `$` and hand it to a top-level
+  function (`() => setStage($, mod, args)`) load fine; only a closure
+  taking `$` as its own parameter is refused.
+- `turn.start` is raised for main turns only; `turn.complete` carries
+  `durationMs`. `$.session.cwd()` follows a worktree.
+- `$.store` lives in `~/.claude/plugins/store/<plugin>_inline-<hash>.json`
+  (a hot-reloaded copy's): read it to check what a mod saved.
+
 ### The test kit (`claude-code/testing`)
 
 - Register every test hook before the test's first `$` call.
@@ -177,6 +191,9 @@ Learned building stage-toons on 2.1.287 to 2.1.289:
   `world.agents` and never ends it: set `world.agents` to end one, or the
   roster takes it back to work once `LIST_LAG_MS` has passed.
 - `expect` has no `toBeCloseTo`: round and compare with `toBe`.
+- Engine calls with no arguments answer from a test hook by name, as
+  `on('session.cwd', () => ({ value: '/proj' }))`; raised `turn.start`
+  needs `{ turnId }` beneath. `expect.stringContaining` exists.
 
 ## Working as a cloud agent
 
