@@ -6,7 +6,7 @@ the marketplace manifest `.claude-plugin/marketplace.json`.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner, an idle Clawd in an area below the bar, and a desk row of helpers there while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.6.2 (v0.6, automatic moves and history; 0.6.1 and 0.6.2 fixes); later ideas in `docs/roadmap.md` and `docs/research/`; the latest review in `docs/reviews/` |
+| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner, an idle Clawd in an area below the bar, and a desk row of helpers there while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.6.3 (v0.6, automatic moves and history; fixes up to 0.6.3, tested locally); later ideas in `docs/roadmap.md` and `docs/research/`; the latest review in `docs/reviews/` |
 
 ## The workflow
 
@@ -63,9 +63,11 @@ It names this session's hot-reload folder,
   process keeps watching the hot-reload folder it enabled, named by the
   session id from before `/clear`; the new session id's folder is empty.
   Refresh the copy that is loaded (`ls ~/.claude/dev-mods/*/`), not the new
-  folder: writing a mod there asks to enable it and loads a second copy. A
-  reload rewrites the copy's `.claude-plugin/types/`, so its timestamp
-  shows the reload happened.
+  folder: writing a mod there asks to enable it and loads a second copy.
+  The engine rewrites the copy's `.claude-plugin/types/` only when its
+  types change, so their timestamps don't show a reload. To force a
+  reload, change a file's content (a comment line, removed after); a
+  `touch` may not do it.
 - **Live-testing what agents do** (the waiting toon): start background
   agents on different models whose only job is to stay busy for a set time
   with `ping -n <seconds+1> 127.0.0.1 > /dev/null` (`sleep` is blocked), then

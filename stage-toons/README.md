@@ -188,9 +188,10 @@ Up to 8 rules a stage. A `bash` rule may not repeat a group that itself
 repeats or chooses (`(a+)*`, `(a|b)+`), which can take too long to
 match, and reads at most the first 500 characters of a command; a glob
 holds at most 8 `*`. The file's `when` lines are shown to Claude in the
-system prompt, as CLAUDE.md is. A workflow file without `auto` lists has no rules:
-one written by `/stage workflow init` before 0.6 needs them added (or the
-file deleted) to get the default's.
+system prompt, as CLAUDE.md is. A workflow file in which no stage has an
+`auto` field (as `/stage workflow init` wrote before 0.6) takes the
+default's rules for the stages it shares with the default by id; give any
+stage an `auto` list, even an empty one, and the file has only its own.
 
 A stage lists 1 to 5 scenes. One is picked at random each time the work
 enters the stage, never the one it showed last when it has another. The

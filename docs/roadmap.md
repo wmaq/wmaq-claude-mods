@@ -296,26 +296,34 @@ toon play as before, and come back moving after the band is collapsed
 and expanded. Not watched: C4 (whether a collapsed band's loop keeps
 restarting), which needs `claude --debug`.
 
-To fix after the test (approved, 0.6.3):
-- **A helper turns grey after a reload.** An agent already at work when
-  the mod reloads (a hot-reload refresh, a plugin update) shows as a grey
-  helper without the monocle until it ends: the roster lives in module
-  variables, which a reload starts over, and `$.agent.list()` gives an
-  agent's id and status but no model, so `reconcileRoster` joins it as
-  `unknown` (`agents.ts`). Fix: keep each agent's model kind in a session
-  `$.state` value keyed by agent id (a new key in `types/index.d.ts`),
-  written at `agent.spawn` and read when the list brings an agent the
-  roster lacks; a test drops the module's roster and checks the kind
-  comes back.
+Found, and fixed in 0.6.3: a helper turned grey after a reload, and a
+workflow file without rules turned automatic moves off silently. This
+project's own `.claude/stage-toons.json`, written by `/stage workflow
+init` before 0.6, had no `auto` lists, so no rule fired until it was
+deleted.
 
-Up for discussion:
-- **A workflow file without rules turns automatic moves off silently.**
-  This project's `.claude/stage-toons.json`, written by `/stage workflow
-  init` before 0.6, has no `auto` lists, so no rule fired until it was set
-  aside (`.claude/stage-toons.json.pre-0.6`, untracked). The README says so
-  and `/stage auto` would have told, but nothing points there. Options: a
-  one-time notice at load when automatic moves are on and the workflow has
-  no rules, or the default's rules for a file that lists none.
+### 0.6.3 (2026-10-04)
+
+From the person's local test of 0.6.2, designed in chat:
+- **A helper keeps its model's colour through a reload.** An agent
+  already at work when the mod reloaded (a hot-reload refresh, a plugin
+  update) came back as a grey helper without the monocle: the roster
+  lives in module variables, which a reload starts over, and
+  `$.agent.list()` gives an agent's id and status but no model. Each spawn
+  now leaves its agent's kind in the session's state (`agentKinds`, the
+  newest 32), and the list's agents join with it. Checked live: a Fable
+  reviewer's helper stayed violet through a reload.
+- **A workflow file that lists no rules takes the default's**, for the
+  stages it shares with the default by id. An `auto` field on any stage,
+  an empty list included, keeps the file's own rules alone.
+
+From Fable's review of the helper fix, left as they are (minor):
+`rememberKind`'s cap follows object key order, so an all-digit agent id
+would be dropped first rather than the oldest (only past 32 spawns in a
+session); its "same object for unknown" shortcut is never taken, the
+caller already skips unknown; a failing state read skips that roster
+refresh too, until the next poll; an id equal to an `Object.prototype`
+name would misread (agent ids are hex).
 
 ### Research (2026-10-04)
 
