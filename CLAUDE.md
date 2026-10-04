@@ -6,7 +6,7 @@ the marketplace manifest `.claude-plugin/marketplace.json`.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner, an idle Clawd in an area below the bar, and a desk row of helpers there while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.6.3 (v0.6, automatic moves and history; fixes up to 0.6.3, tested locally); later ideas in `docs/roadmap.md` and `docs/research/`; the latest review in `docs/reviews/` |
+| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner, an idle Clawd in an area below the bar, and a desk row of helpers there while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.6.4 (v0.6, automatic moves and history; fixes up to 0.6.3; 0.6.4 splits `register.tsx`, tested locally); the frame tool in `tools/frames/`; later ideas in `docs/roadmap.md` and `docs/research/`; the latest review in `docs/reviews/` |
 
 ## The workflow
 
@@ -54,7 +54,12 @@ It names this session's hot-reload folder,
 - **Hot reload uses a copy, not a link.** On Windows a directory junction
   into the hot-reload folder loads the mod once, but saves through it never
   trigger a reload. Copy the mod in and refresh the copy after every change:
-  `cp -r <mod>/.claude-plugin <mod>/hooks <mod>/types ~/.claude/dev-mods/<session id>/<mod>/`.
+  `mkdir -p <copy>/.claude-plugin && cp <mod>/.claude-plugin/plugin.json <copy>/.claude-plugin/ && cp -r <mod>/hooks <mod>/types <copy>/`,
+  `<copy>` being `~/.claude/dev-mods/<session id>/<mod>`. Copy
+  `plugin.json` alone, not the whole `.claude-plugin`: its `types/` is the
+  repository's git-ignored copy from whichever version last loaded there,
+  and copied over the hot-reload copy's it fails `tsc` (on `isTeammate`,
+  say) until the next reload rewrites it.
   The mod reloads when the turn that changed it ends. When files move
   (v0.4 turned `hooks/idle.ts` into `hooks/idle/`), replace the copy's
   `hooks` wholesale (`rm -rf` it first): a stale file shadows the new
@@ -80,6 +85,7 @@ It names this session's hot-reload folder,
   claude plugin validate .        # the marketplace manifest
   claude plugin test <mod>
   npx -y -p typescript@5 tsc -p <mod>
+  npx -y tsx --test "tools/frames/*.test.ts"   # the frame tool, when it or the drawing changed
   ```
   `tsc -p <mod>` needs `<mod>/.claude-plugin/types/`, which the engine
   writes when it loads the mod from that folder (git-ignored). The repo's
@@ -248,6 +254,14 @@ PC.
   system-prompt section). Don't start a second Claude Code (tmux,
   `--plugin-dir`) to look at the drawing: the session's permission check
   refuses it, so it needs the person's explicit permission first.
+- **Look at the drawing yourself first.** `tools/frames/` renders what
+  the mod draws to PNG contact sheets (its README lists the commands):
+  `scene <id>`, `idle <routine>`, `waiting --agents ...`, `band --stage
+  <id>`. Before handing over visual work, render sheets of what changed,
+  read them (the Read tool shows an image), and fix what looks wrong; the
+  hand-off names the sheets checked. Letterforms differ a little from the
+  person's terminal font; the cells, colours, layout and art are the
+  mod's own. The person's look in a terminal stays the final check.
 - **Handing over the visual check.** When the work needs eyes on the
   terminal (a scene, the band, a layout), push the branch and give the
   person what to check: the branch name, the commands to see it
@@ -268,5 +282,7 @@ PC.
 - `docs/reviews/`: code reviews (correctness, performance, security).
 - `docs/handoffs/`: what a cloud session did and what to check locally;
   read the latest before testing a cloud session's branch.
+- `tools/frames/`: the frame tool, stage-toons' drawing as PNG contact
+  sheets (a developer tool, not part of the mod).
 - `<mod>/README.md`: install and use. stage-toons' Clawd sprite comes from
   claude-toons (MIT); keep `stage-toons/NOTICE` with it.

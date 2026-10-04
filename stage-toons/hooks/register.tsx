@@ -9,44 +9,34 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { IdleId, Progress, ScenePick, SessionWorkflow, StageId, Workflow } from '../types'
+import type { Progress, ScenePick, SessionWorkflow, StageId, Workflow } from '../types'
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
-import { EMPTY_ROSTER, ended, reconcileRoster, rememberKind, type Roster, spawned } from './agents'
+import { ended, reconcileRoster, rememberKind, spawned } from './agents'
 import { autoMatch, hasRules, isWindowsPath, relativePath, type Signal, viaOf } from './auto'
-import { cropLeft, placeIdle } from './area'
-import { bandLayout, bandMode, type BandSite, type Tone, TOON_MIN } from './band'
+import { BAR_TONES, bandLayout, bandMode, type BandSite, TOON_MIN } from './band'
 import { autoText, moveFor, parseCommand, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
-import { type Demo, demoAt, demoLength, demoLine, demoStep, idleDemoAt, idleDemoLine, WAITING_DEMO_LINE } from './demo'
-import { createDirector, type Director, react, shot, tick, withAuditing, withScene } from './director'
-import { DEEP_SLEEP_MS, DOZE_MS, FALLBACK_ROUTINE, IDLE_IDS, idleFrame, pickIdle } from './idle'
+import { demoAt, demoFor, demoLine, demoStep, idleDemoAt, idleDemoLine, startDemo, WAITING_DEMO_LINE } from './demo'
+import { createDirector, react, withAuditing, withScene } from './director'
+import { siteCells } from './frames'
+import { pickIdle } from './idle'
+import { createMod, createSite, endDemo, type Mod, queued, reseat, stopToon } from './mod'
+import { animate, type Ports } from './paint'
 import { pickOne } from './pick'
-import { creditAt, currentEntry, type EntryKey, logText, timeText } from './history'
-import { encodeCells } from './pixels'
+import { creditAt, currentEntry, logText, timeText } from './history'
 import { type KV, loadProgress, PRUNE_EVERY_MS, saveProgress, staleKeys, storeKey, validate } from './progress'
-import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolNameFor, toolSchema, workflowText } from './prompt'
+import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolSchema, workflowText } from './prompt'
 import { type SceneId, STAGE_W } from './scene'
-import { DEMO_ORDER, REACTIONS, SCENES, STAGE_SCENES } from './scenes'
+import { STAGE_SCENES } from './scenes'
 import { applyMove, describe, freshProgress, isAdvance, reconcile, stageLabel } from './stages'
-import { type Cast, composeFrame, TOON_ROWS } from './toon'
-import { waitingFrame } from './waiting'
-import { WAITING_DEMO_MS, waitingDemoAt } from './waiting/demo'
-import { EMPTY_LOG, seat, type SeatLog } from './waiting/seats'
+import { TOON_ROWS } from './toon'
 import { DEFAULT_WORKFLOW, parseWorkflow, sameWorkflow, stageIds, stageList, stageOf, UNTRACKED_SCENE, withScenes, workflowJson } from './workflow'
 
-const PLUGIN = 'stage-toons'
 const HIDDEN_KEY = 'hidden'
 const AUTO_KEY = 'auto'
 const PRUNED_KEY = 'pruned-at'
 const UNSAVED = "stage-toons: couldn't save progress; it lasts for this session only"
 const NEWER = "stage-toons: a newer version saved this project's progress; this session won't save over it"
 const BAD_FILE = 'stage-toons: .claude/stage-toons.json has errors; using the default workflow. /stage workflow reload lists them.'
-// Refused blits in a row before the loop gives up: the spinner it painted is
-// gone, as when a background agent's row closes. Until a blit since the last
-// render has been taken, refusals are expected for a moment (after a resize
-// the old Raster stays mounted until the new one paints), so it waits longer.
-const MAX_REFUSED = 3
-const MAX_REFUSED_UNSEEN = 24
-
 // The engine reads each atom's plugin and key from the source, so they are
 // written out as literals.
 const progressAtom = atom({ plugin: 'stage-toons', key: 'progress' } as const, null)
@@ -72,153 +62,6 @@ const autoAtom = atom({ plugin: 'stage-toons', key: 'auto' } as const, true)
 // start the roster empty, so the list's agents keep their colours.
 const kindsAtom = atom({ plugin: 'stage-toons', key: 'agentKinds' } as const, {})
 
-const TONES: Record<Tone, { color?: string; bold?: boolean; dimColor?: boolean }> = {
-  done: { color: '#D97757' },
-  current: { color: '#D97757', bold: true },
-  future: { dimColor: true },
-  label: {},
-  tag: { color: '#8B7AE8' },
-  message: { dimColor: true },
-  note: { dimColor: true },
-}
-
-// A Raster the mod repaints: the toon under the spinner, or the band's
-// area. Its key is its kind.
-type SiteKind = 'toon' | 'area'
-// lastCells and blittedAt: the frame the Raster shows and when it was
-// sent; isAsleep: the area stopped on its still picture (P1).
-type Site = {
-  requestId: string | undefined
-  kind: SiteKind
-  columns: number
-  rows: number
-  isAnimating: boolean
-  isSeen: boolean
-  lastCells: string | null
-  blittedAt: number
-  isAsleep: boolean
-}
-
-// How often a site repaints: the idle Clawd is calm, and calmer dozing.
-function frameMs(mod: Mod, kind: SiteKind, now: number): number {
-  if (kind !== 'area' || mod.demo !== null || (mod.seats.since !== null && !mod.isWaitingBroken)) return 83
-
-  return now - mod.idleSince >= DOZE_MS ? 333 : 166
-}
-// How often the area checks the agent list while it knows of agents.
-const AGENT_POLL_MS = 2000
-
-const createSite = (kind: SiteKind): Site => ({ requestId: undefined, kind, columns: STAGE_W, rows: TOON_ROWS, isAnimating: false, isSeen: false, lastCells: null, blittedAt: 0, isAsleep: false })
-
-// A frame the same as the one shown is not sent again, but one is sent at
-// least this often: a blit is how the loop learns its Raster is gone.
-const RESEND_MS = 2000
-
-// Whether the idle Clawd is deep asleep: nothing else plays in the area,
-// and he has dozed for DEEP_SLEEP_MS.
-const isDeepAsleep = (mod: Mod, now: number): boolean =>
-  mod.demo === null && (mod.seats.since === null || mod.isWaitingBroken) && now - mod.idleSince >= DOZE_MS + DEEP_SLEEP_MS
-
-// The module's own state: made fresh by every load, so it starts over on a
-// reload. What must outlive a reload is in $.state.
-type Mod = {
-  key: string
-  // The session's workflow, and whether it came from the project's file.
-  workflow: Workflow
-  workflowSource: 'file' | 'default'
-  toolName: string
-  commandName: string
-  director: Director
-  auditors: Set<string>
-  lastFailureAt: number | null
-  isHidden: boolean
-  surface: string | null
-  // The toons under the spinners shown, by requestId: the main one, and a
-  // background agent's row's (its requestId is the agent's id). Each has
-  // its own paint loop.
-  toons: Map<string, Site>
-  band: Site
-  // When Claude last went idle: the session's start or the main turn's end.
-  idleSince: number
-  // The idle routine on show, the one picked for the next idle period, and
-  // routines that threw this session.
-  idle: IdleId
-  nextIdle: IdleId
-  brokenIdle: Set<IdleId>
-  // Whether the band was last drawn while Claude worked, and what it was
-  // last drawn in (null before it is first drawn).
-  isBandWorking: boolean
-  lastBand: BandSite | null
-  demo: Demo | null
-  // The demo scene the band's text line names.
-  demoLineIndex: number
-  broken: Set<SceneId>
-  // The agents known and their helpers at the desk row; whether the
-  // waiting toon threw (the idle routine stands in for the session).
-  roster: Roster
-  seats: SeatLog
-  isWaitingBroken: boolean
-  // Automatic moves: whether they are on, whether the project is on a
-  // Windows path (globs ignore case there), and the notes for Claude about
-  // moves it has not heard of yet.
-  isAuto: boolean
-  isWindows: boolean
-  notes: string[]
-  // Since when Claude's working time is counted for the current history
-  // entry: the main turn's start or the last move in it; null between turns.
-  workSince: number | null
-  // The history entry that time goes to, found again by stage and start
-  // in a copy another session saved.
-  workEntry: EntryKey | null
-  // Whether a newer version's progress is in the store: nothing is saved.
-  isReadOnly: boolean
-  // Every move runs in turn on this queue.
-  queue: Promise<unknown>
-}
-
-const createMod = (): Mod => ({
-  key: storeKey(''),
-  workflow: DEFAULT_WORKFLOW,
-  workflowSource: 'default',
-  toolName: toolNameFor(PLUGIN),
-  commandName: COMMAND,
-  director: createDirector('mystery-box', false),
-  auditors: new Set(),
-  lastFailureAt: null,
-  isHidden: false,
-  surface: 'terminal',
-  toons: new Map(),
-  band: createSite('area'),
-  idleSince: 0,
-  idle: 'classic',
-  nextIdle: 'classic',
-  brokenIdle: new Set(),
-  isBandWorking: false,
-  lastBand: null,
-  demo: null,
-  demoLineIndex: 0,
-  broken: new Set(),
-  roster: EMPTY_ROSTER,
-  seats: EMPTY_LOG,
-  isWaitingBroken: false,
-  isAuto: true,
-  isWindows: false,
-  notes: [],
-  workSince: null,
-  workEntry: null,
-  isReadOnly: false,
-  queue: Promise.resolve(),
-})
-
-// Runs a move after the moves before it, so each reads the progress the
-// last one left. A move that fails does not hold up the next.
-function queued<T>(mod: Mod, run: () => Promise<T>): Promise<T> {
-  const done = mod.queue.then(run, run)
-  mod.queue = done.catch(() => undefined)
-
-  return done
-}
-
 // A queued step of the mod's own (an automatic move, a turn's credit) that
 // must not fail the call or event it rides on: a failure goes to the debug log.
 function settle($: EngineInterface, what: string, done: Promise<unknown>): Promise<void> {
@@ -229,13 +72,12 @@ function settle($: EngineInterface, what: string, done: Promise<unknown>): Promi
 }
 
 // The progress with Claude's working time so far credited to the entry it
-// was spent in, and the count restarted: what every move starts from.
+// was spent in: what every move starts from. The count restarts only when
+// the move goes ahead (move).
 function credited(mod: Mod, p: Progress, now: number): Progress {
   if (mod.workSince === null) return p
-  const ms = now - mod.workSince
-  mod.workSince = now
 
-  return creditAt(p, mod.workEntry, ms)
+  return creditAt(p, mod.workEntry, now - mod.workSince)
 }
 
 // The working time of the turn under way, not yet credited.
@@ -321,6 +163,20 @@ async function commit($: EngineInterface, mod: Mod, before: Progress, after: Pro
   if (!mod.isReadOnly && !(await saveProgress(storeOf($), mod.key, after))) await warnUnsaved($)
 }
 
+// Reads the store's latest copy, credits the time so far, applies what
+// build makes of it, and commits; null from build moves nothing, and
+// leaves the working time counting as it was.
+async function move<P extends Progress | null>($: EngineInterface, mod: Mod, at: number, build: (from: Progress) => P): Promise<P> {
+  const { progress } = await latestProgress($, mod, at)
+  const before = credited(mod, progress, at)
+  const after = build(before)
+  if (after === null) return after
+  if (mod.workSince !== null) mod.workSince = at
+  await commit($, mod, before, after, at)
+
+  return after
+}
+
 async function setStage($: EngineInterface, mod: Mod, args: ToolArgs) {
   if (args.agentId !== undefined) return { deny: 'stage-toons: only the main conversation moves the workflow stage.' }
   const { stage, message, feature } = args
@@ -328,10 +184,7 @@ async function setStage($: EngineInterface, mod: Mod, args: ToolArgs) {
     return { deny: `stage-toons: set_stage needs "stage" (one of ${stageIds(mod.workflow).join(', ')}) and a non-empty "message".` }
   }
   const now = await $.clock.now()
-  const { progress } = await latestProgress($, mod, now)
-  const before = credited(mod, progress, now)
-  const after = applyMove(mod.workflow, before, { stage, message, feature: typeof feature === 'string' ? feature : undefined, by: 'claude', at: now })
-  await commit($, mod, before, after, now)
+  const after = await move($, mod, now, from => applyMove(mod.workflow, from, { stage, message, feature: typeof feature === 'string' ? feature : undefined, by: 'claude', at: now }))
   // Claude's own move supersedes what it has not heard of yet.
   mod.notes = []
 
@@ -370,14 +223,18 @@ async function autoMove($: EngineInterface, mod: Mod, signal: Signal) {
   const now = await $.clock.now()
   // Most calls move nothing: only a match on this session's copy reads the store.
   if (autoMatch(mod.workflow, await current($, now), signal, mod.isWindows) === null) return
-  const { progress: p } = await latestProgress($, mod, now)
-  const match = autoMatch(mod.workflow, p, signal, mod.isWindows)
-  if (match === null) return
-  const target = match.stage
-  const before = credited(mod, p, now)
-  const via = viaOf(signal, match.rule)
-  const after = applyMove(mod.workflow, before, { stage: target, by: 'auto', via, at: now })
-  await commit($, mod, before, after, now)
+  // Matched again on the store's copy, which another session may have moved.
+  let target: StageId = ''
+  let via = ''
+  const after = await move($, mod, now, from => {
+    const match = autoMatch(mod.workflow, from, signal, mod.isWindows)
+    if (match === null) return null
+    target = match.stage
+    via = viaOf(signal, match.rule)
+
+    return applyMove(mod.workflow, from, { stage: target, by: 'auto', via, at: now })
+  })
+  if (after === null) return
   mod.notes.push(
     `[stage-toons] The stage moved by itself to ${stageLabel(mod.workflow, target)} (${via}). Now: ${describe(mod.workflow, after)}. Call ${mod.toolName} if a more specific message or another stage fits.`,
   )
@@ -443,27 +300,20 @@ async function setAuditing($: EngineInterface, mod: Mod, isAuditing: boolean) {
   mod.director = withAuditing(mod.director, isAuditing, await $.clock.now())
 }
 
-function castOf($: EngineInterface, mod: Mod): Cast {
+// The engine as the paint loop and the frames reach it: closures over $,
+// built here, since no other file may take $.
+function portsOf($: EngineInterface, mod: Mod): Ports {
+  const log = (text: string) => $.ui.log(text, { to: 'debug' })
+
   return {
-    scenes: SCENES,
-    reactions: REACTIONS,
-    broken: mod.broken,
-    onBreak: (id, error) => $.ui.log(`stage-toons: scene ${id} failed and was replaced by the standing scene: ${String(error)}`, { to: 'debug' }),
+    now: () => $.clock.now(),
+    sleep: ms => $.clock.sleep(ms),
+    blit: frame => $.ui.blit(frame).catch(() => ({ deny: 'failed' })),
+    invalidate: () => $.ui.invalidate('ui.render'),
+    log,
+    pollAgents: () => checkAgents($, mod),
+    cells: (site, now) => siteCells(mod, site, now, log),
   }
-}
-
-// Whether the real waiting toon is on screen: the band's area mounted, no
-// demo over it, not hidden, and Claude not working.
-const isWaitingShown = (mod: Mod): boolean => mod.band.requestId !== undefined && mod.demo === null && !mod.isHidden && !mod.isBandWorking
-
-// The seat log moved on to now; a waiting period that ended restarts the
-// idle clock where it ended.
-function reseat(mod: Mod, now: number) {
-  const { log, endedAt } = seat(mod.seats, mod.roster, now, isWaitingShown(mod))
-  mod.seats = log
-  // Never backwards: a period that ended unseen may report an end before
-  // the main turn's own.
-  if (endedAt !== null) mod.idleSince = Math.max(mod.idleSince, endedAt)
 }
 
 // The roster as the agent list has it now. A list that fails leaves the
@@ -477,144 +327,6 @@ async function checkAgents($: EngineInterface, mod: Mod) {
   } catch {
     // Checked again at the next poll or turn's end.
   }
-}
-
-// The area's next frame, cut to its width, or null once the demo it plays
-// is over: a demo, else the waiting toon while a waiting period lasts,
-// else the idle routine.
-function areaCells($: EngineInterface, mod: Mod, columns: number, now: number): string | null {
-  const onBreak = (id: string, error: unknown) => $.ui.log(`stage-toons: idle routine ${id} failed and was replaced by classic: ${String(error)}`, { to: 'debug' })
-  const idleAt = (ms: number) => cropLeft(placeIdle(idleFrame(mod.idle, ms, mod.brokenIdle, onBreak)), columns)
-  const demo = mod.demo
-  if (demo?.kind === 'scenes') {
-    const frame = demoAt(demo, now)
-
-    return frame ? encodeCells(composeFrame(frame.shot, frame.sceneMs, columns, castOf($, mod))) : null
-  }
-  if (demo?.kind === 'idle') {
-    const f = idleDemoAt(demo, now)
-    if (!f) return null
-
-    return encodeCells(cropLeft(placeIdle(f.routine === null ? idleFrame(FALLBACK_ROUTINE, DOZE_MS + f.ms) : idleFrame(f.routine, f.ms, mod.brokenIdle, onBreak)), columns))
-  }
-  if (demo?.kind === 'waiting') {
-    if (!demoStep(demo, now)) return null
-    const at = waitingDemoAt(demo.at, now)
-
-    return encodeCells('log' in at ? cropLeft(waitingFrame(at.log, now), columns) : idleAt(at.idleMs))
-  }
-
-  reseat(mod, now)
-  if (mod.seats.since !== null && !mod.isWaitingBroken) {
-    try {
-      return encodeCells(cropLeft(waitingFrame(mod.seats, now), columns))
-    } catch (error) {
-      mod.isWaitingBroken = true
-      $.ui.log(`stage-toons: the waiting toon failed and was replaced by the idle routine: ${String(error)}`, { to: 'debug' })
-    }
-  }
-
-  return encodeCells(idleAt(now - mod.idleSince))
-}
-
-// A site's next frame, or null once the demo it plays is over.
-function siteCells($: EngineInterface, mod: Mod, site: Site, now: number): string | null {
-  if (site.kind === 'area') return areaCells($, mod, site.columns, now)
-  mod.director = tick(mod.director, now)
-
-  return encodeCells(composeFrame(shot(mod.director, now), now, site.columns, castOf($, mod)))
-}
-
-// Stops the toon under one spinner: its loop ends at its next frame.
-function stopToon(mod: Mod, id: string) {
-  const site = mod.toons.get(id)
-  if (!site) return
-  site.requestId = undefined
-  mod.toons.delete(id)
-}
-
-// Ends the demo and has the band drawn again without it.
-function endDemo($: EngineInterface, mod: Mod) {
-  mod.demo = null
-  $.ui.invalidate('ui.render')
-}
-
-// Repaints a site while it is mounted, detached from the render that
-// started it: a sleep inside a dispatch would spend its time budget. The
-// site's kind and size may change under it, as the band's do.
-function animate($: EngineInterface, mod: Mod, site: Site) {
-  if (site.isAnimating) return
-  site.isAnimating = true
-  site.isAsleep = false
-  void (async () => {
-    try {
-      let refused = 0
-      // The area checks the agent list before its first frame, so an agent
-      // that ended while it was away is not drawn seated, then every
-      // AGENT_POLL_MS while it knows of agents.
-      let polledAt = -Infinity
-      while (site.requestId !== undefined && !mod.isHidden && refused < (site.isSeen ? MAX_REFUSED : MAX_REFUSED_UNSEEN)) {
-        const { requestId, kind, columns, rows } = site
-        const now = await $.clock.now()
-        if (kind === 'area' && polledAt === -Infinity) {
-          polledAt = now
-          await checkAgents($, mod)
-        } else if (kind === 'area' && mod.roster.size > 0 && now - polledAt >= AGENT_POLL_MS) {
-          polledAt = now
-          void checkAgents($, mod)
-        }
-        const cells = siteCells($, mod, site, now)
-        if (cells === null) {
-          // The demo is over. Nothing is awaited from here to the loop's
-          // end, so the redraw that brings the band back finds it finished.
-          site.requestId = undefined
-          endDemo($, mod)
-          break
-        }
-        // A blit repaints the scene alone: the line naming it is text, so
-        // the band is drawn again when the demo moves on.
-        const step = kind !== 'toon' && mod.demo ? demoStep(mod.demo, now) : null
-        if (step && step.index !== mod.demoLineIndex) {
-          mod.demoLineIndex = step.index
-          $.ui.invalidate('ui.render')
-        }
-        // The frame the Raster already shows is not sent again, but for a
-        // resend now and then, which tells the loop whether it is still there.
-        if (cells !== site.lastCells || now - site.blittedAt >= RESEND_MS) {
-          const answer = await $.ui.blit({ requestId, key: kind, cells, columns, rows }).catch(() => ({ deny: 'failed' }))
-          if (answer.deny === undefined) {
-            refused = 0
-            site.isSeen = true
-            site.lastCells = cells
-            site.blittedAt = now
-          } else {
-            refused += 1
-            // Refused: every frame is sent until one is taken, so a Raster
-            // that is gone is noticed as quickly as before.
-            site.lastCells = null
-          }
-        }
-        // Deep asleep with the still picture shown: the loop stops, and the
-        // next render (a prompt, an agent, a redraw) starts it again.
-        if (kind === 'area' && site.lastCells === cells && isDeepAsleep(mod, now)) {
-          site.isAsleep = true
-          break
-        }
-        await $.clock.sleep(frameMs(mod, kind, now))
-      }
-      // Refused until it gave up, the band's Raster may be gone for good
-      // (the band collapsed) or for now: the hook decides again, and an
-      // expanded band repaints instead of standing still.
-      if (site.kind !== 'toon' && site.requestId !== undefined && !mod.isHidden && !site.isAsleep) {
-        site.requestId = undefined
-        $.ui.invalidate('ui.render')
-      }
-    } finally {
-      site.isAnimating = false
-    }
-  })().catch(() => {
-    // The environment unloaded mid-frame (a reload, the session's end).
-  })
 }
 
 // A workflow file is a few KB; anything far bigger is not one.
@@ -711,27 +423,6 @@ async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promis
   if (!isRegistered) lines.push("set_stage could not be registered again (the debug log says why): Claude's tool may still list the old stages.")
 
   return { text: lines.join('\n'), context: [`[stage-toons] The workflow changed: ${stageList(mod.workflow)}. Now: ${describe(mod.workflow, progress)}`] }
-}
-
-// Whether the band last drawn has room for the area under a bar of
-// barLines lines (the bar with the demo's line).
-const hasRoom = (mod: Mod, barLines: number): boolean =>
-  !mod.lastBand || bandMode({ ...mod.lastBand, hasSurvey: false, isAgentView: false, isHidden: false, hasDemo: true, barLines }) === 'area'
-
-// Starts the demo, or says why not. label names what plays; barLines is
-// how many lines the bar takes with the demo's line.
-function startDemo(mod: Mod, demo: Demo, label: string, now: number, isHidden: boolean, barLines: number): string {
-  if (isHidden) return 'stage-toons is hidden; /stage hide shows it.'
-  if (mod.surface !== 'terminal') return 'The demo plays in the terminal only.'
-  if (!hasRoom(mod, barLines)) return `The band has no room for the demo: it needs 30 columns and ${barLines + TOON_ROWS} rows.`
-  const isRestart = mod.demo !== null && demoStep(mod.demo, now) !== null
-  mod.demo = demo
-  const playing = `${isRestart ? 'Restarting the demo: p' : 'P'}laying`
-  if (demo.kind === 'waiting') return `${playing} ${label} (about ${Math.round(WAITING_DEMO_MS / 1000)} s). /stage demo stop ends it.`
-  const total = demoLength(demo) * demo.seconds
-  const length = total < 60 ? 'under a minute' : `about ${Math.round(total / 60)} min`
-
-  return `${playing} ${label}, ${demo.seconds} s each (${length}). /stage demo stop ends it.`
 }
 
 export const register: Register = on => {
@@ -831,7 +522,7 @@ export const register: Register = on => {
       await update($, idleAtom, () => routine)
     }
     // A turn starts: the toon under the spinner takes over from the demo.
-    if (mod.demo) endDemo($, mod)
+    if (mod.demo) endDemo(mod, portsOf($, mod).invalidate)
     // Another session on this project may have moved the stage. On the move
     // queue, so a move still running is not overwritten.
     // Fitted to this session's workflow in memory; saved back only with this
@@ -899,22 +590,7 @@ export const register: Register = on => {
     }
     if (cmd.kind === 'usage') return { text: usage(mod.workflow) }
     if (cmd.kind === 'demo' || cmd.kind === 'demo-idle' || cmd.kind === 'demo-waiting') {
-      const stage = cmd.kind === 'demo' && cmd.stage !== null ? stageOf(mod.workflow, cmd.stage) : undefined
-      const demo: Demo =
-        cmd.kind === 'demo-waiting'
-          ? { kind: 'waiting', at: now }
-          : cmd.kind === 'demo-idle'
-            ? { kind: 'idle', at: now, seconds: cmd.seconds }
-            : { kind: 'scenes', at: now, seconds: cmd.seconds, scenes: stage?.scenes ?? DEMO_ORDER }
-      const n = demoLength(demo)
-      const label =
-        cmd.kind === 'demo-waiting'
-          ? 'the waiting toon'
-          : cmd.kind === 'demo-idle'
-            ? `${IDLE_IDS.length} idle routines and the doze`
-            : stage
-              ? `${n} scene${n === 1 ? '' : 's'} of ${stage.label}`
-              : `${n} scenes`
+      const { demo, label } = demoFor(cmd, mod.workflow, now)
       // The bar's lines with the demo's line under it, at the band's width.
       const barLines = bandLayout(mod.workflow, before, false, mod.lastBand?.columns ?? 100, 'demo').length
       const text = startDemo(mod, demo, label, now, await read($, hiddenAtom), barLines)
@@ -925,7 +601,7 @@ export const register: Register = on => {
     }
     if (cmd.kind === 'demo-stop') {
       if (!mod.demo) return { text: 'No demo is playing.' }
-      endDemo($, mod)
+      endDemo(mod, portsOf($, mod).invalidate)
 
       return { text: 'Demo stopped.' }
     }
@@ -950,10 +626,7 @@ export const register: Register = on => {
     return queued(mod, async () => {
       // Read when its turn on the queue comes: a move queued before it may have run.
       const at = await $.clock.now()
-      const { progress: base } = await latestProgress($, mod, at)
-      const from = credited(mod, base, at)
-      const after = moveFor(mod.workflow, from, cmd, at)
-      await commit($, mod, from, after, at)
+      const after = await move($, mod, at, from => moveFor(mod.workflow, from, cmd, at))
 
       return { text: `Stage ${describe(mod.workflow, after)}`, context: [`[stage-toons] The user set the stage: ${describe(mod.workflow, after)}`] }
     })
@@ -1095,7 +768,7 @@ export const register: Register = on => {
         {lines.map((spans, i) => (
           <Box key={`line-${i}`} flexDirection="row">
             {spans.map((span, j) => (
-              <Text key={`span-${i}-${j}`} wrap="truncate-end" {...TONES[span.tone]}>
+              <Text key={`span-${i}-${j}`} wrap="truncate-end" {...BAR_TONES[span.tone]}>
                 {span.text}
               </Text>
             ))}
@@ -1123,11 +796,11 @@ export const register: Register = on => {
     // Shown again: an agent may have ended, or started, while the area was
     // away (a paint loop still running from before polls on its own time).
     if (!wasShown) void checkAgents($, mod)
-    const cells = siteCells($, mod, band, now) ?? ''
+    const cells = siteCells(mod, band, now, portsOf($, mod).log) ?? ''
     // The Raster mounts showing these.
     band.lastCells = cells
     band.blittedAt = now
-    animate($, mod, band)
+    animate(portsOf($, mod), mod, band)
     const { Raster } = $.ui.resolve(e)
 
     return (
@@ -1159,10 +832,10 @@ export const register: Register = on => {
     toon.columns = Math.min(STAGE_W, viewport - 6)
     toon.isSeen = false
     const shownAt = await $.clock.now()
-    const cells = siteCells($, mod, toon, shownAt) ?? ''
+    const cells = siteCells(mod, toon, shownAt, portsOf($, mod).log) ?? ''
     toon.lastCells = cells
     toon.blittedAt = shownAt
-    if (id !== undefined) animate($, mod, toon)
+    if (id !== undefined) animate(portsOf($, mod), mod, toon)
     const { Box, Raster } = $.ui.resolve(e)
 
     return (

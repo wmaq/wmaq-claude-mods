@@ -337,10 +337,13 @@ parts of the plugin API, with the notes behind it in
 `docs/research/2026-10-04-notes/`. Its Tier 0 (fixes) is 0.6.1; what
 comes of the rest is in "The plan after the frame tool" below.
 
-### Next: the register split and the frame tool (designed 2026-10-04)
+### 0.6.4 (2026-10-04): the register split and the frame tool
 
-Designed and approved with the person, for Cloudie to build (brief:
-`docs/handoffs/2026-10-04-for-cloudie.md`), in this order:
+Designed and approved with the person, built by Cloudie (brief:
+`docs/handoffs/2026-10-04-for-cloudie.md`; what was done, the rulings and
+the deferred minor findings: `docs/handoffs/2026-10-04-cloud-session-split-frames.md`),
+tested locally on 2026-10-04: the demos, `/stage next` and `/stage log`
+as on 0.6.3, the frame tool's band and scene sheets right. In order:
 - **The register.tsx split** (research #23, review D1), a pure refactor:
   `mod.ts`, `frames.ts` and `paint.ts` out of `register.tsx`, the demo
   set-up into `demo.ts`, one `move()`; 1,175 lines to 858. Spec and plan
@@ -351,8 +354,12 @@ Designed and approved with the person, for Cloudie to build (brief:
   `2026-10-04-stage-toons-frame-tool`.
 
 Both plans were drafted in a scratch copy, replayed on a fresh copy of
-`main` and replayed again by Fable; the split's refactored module was
-also loaded live once, and the engine accepted it.
+`main` and replayed again by Fable; every edit script then applied
+without a mismatch. Fable's final reviews: nothing blocking in the split;
+two findings in the frame tool, fixed (an unknown option is an error,
+`frames-*.png` is git-ignored). Eleven minor findings are deferred, listed
+in the hand-off. The only change inside the mod beyond the split: the
+bar's tones moved to `band.ts` as `BAR_TONES`.
 
 ### The plan after the frame tool (agreed 2026-10-04)
 

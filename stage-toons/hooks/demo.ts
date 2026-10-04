@@ -4,10 +4,16 @@
 // wiping in over the one before.
 
 import type { IdleId, Workflow } from '../types'
+import { bandMode, type BandSite } from './band'
+import type { Command } from './command'
 import { type Shot, WIPE_MS } from './director'
 import { IDLE_IDS } from './idle'
+import type { Mod } from './mod'
 import { FABLE_SCENE, type SceneId } from './scene'
+import { DEMO_ORDER } from './scenes'
+import { TOON_ROWS } from './toon'
 import { WAITING_DEMO_MS } from './waiting/demo'
+import { stageOf } from './workflow'
 
 export const DEMO_SECONDS = 10
 export const DEMO_MIN = 2
@@ -69,3 +75,46 @@ export const demoLine = (f: DemoFrame, demo: Demo, w: Workflow): string =>
 export const idleDemoLine = (f: IdleDemoFrame): string => `Idle demo ${f.index + 1}/${IDLE_DEMO_LENGTH}: ${f.routine ?? 'doze'} · /stage demo stop ends it`
 
 export const WAITING_DEMO_LINE = 'Waiting demo · /stage demo stop ends it'
+
+// The demo a /stage demo command asks for, and what its answer calls it.
+export function demoFor(cmd: Extract<Command, { kind: 'demo' | 'demo-idle' | 'demo-waiting' }>, w: Workflow, now: number): { demo: Demo; label: string } {
+  const stage = cmd.kind === 'demo' && cmd.stage !== null ? stageOf(w, cmd.stage) : undefined
+  const demo: Demo =
+    cmd.kind === 'demo-waiting'
+      ? { kind: 'waiting', at: now }
+      : cmd.kind === 'demo-idle'
+        ? { kind: 'idle', at: now, seconds: cmd.seconds }
+        : { kind: 'scenes', at: now, seconds: cmd.seconds, scenes: stage?.scenes ?? DEMO_ORDER }
+  const n = demoLength(demo)
+  const label =
+    cmd.kind === 'demo-waiting'
+      ? 'the waiting toon'
+      : cmd.kind === 'demo-idle'
+        ? `${IDLE_IDS.length} idle routines and the doze`
+        : stage
+          ? `${n} scene${n === 1 ? '' : 's'} of ${stage.label}`
+          : `${n} scenes`
+
+  return { demo, label }
+}
+
+// Whether the band last drawn has room for the area under a bar of
+// barLines lines (the bar with the demo's line).
+export const hasRoom = (lastBand: BandSite | null, barLines: number): boolean =>
+  !lastBand || bandMode({ ...lastBand, hasSurvey: false, isAgentView: false, isHidden: false, hasDemo: true, barLines }) === 'area'
+
+// Starts the demo, or says why not. label names what plays; barLines is
+// how many lines the bar takes with the demo's line.
+export function startDemo(mod: Mod, demo: Demo, label: string, now: number, isHidden: boolean, barLines: number): string {
+  if (isHidden) return 'stage-toons is hidden; /stage hide shows it.'
+  if (mod.surface !== 'terminal') return 'The demo plays in the terminal only.'
+  if (!hasRoom(mod.lastBand, barLines)) return `The band has no room for the demo: it needs 30 columns and ${barLines + TOON_ROWS} rows.`
+  const isRestart = mod.demo !== null && demoStep(mod.demo, now) !== null
+  mod.demo = demo
+  const playing = `${isRestart ? 'Restarting the demo: p' : 'P'}laying`
+  if (demo.kind === 'waiting') return `${playing} ${label} (about ${Math.round(WAITING_DEMO_MS / 1000)} s). /stage demo stop ends it.`
+  const total = demoLength(demo) * demo.seconds
+  const length = total < 60 ? 'under a minute' : `about ${Math.round(total / 60)} min`
+
+  return `${playing} ${label}, ${demo.seconds} s each (${length}). /stage demo stop ends it.`
+}

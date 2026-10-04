@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { type Demo, demoAt, demoLine, IDLE_DEMO_LENGTH, idleDemoAt, idleDemoLine } from './demo'
+import { type Demo, demoAt, demoFor, demoLine, hasRoom, IDLE_DEMO_LENGTH, idleDemoAt, idleDemoLine } from './demo'
 import { WIPE_MS } from './director'
 import { IDLE_IDS } from './idle'
 import { DEMO_ORDER, STAGE_SCENES } from './scenes'
@@ -44,4 +44,25 @@ test('the idle demo plays each routine, then the doze', () => {
   expect(idleDemoLine(idleDemoAt(idle, 3_500)!)).toBe('Idle demo 2/6: nyan · /stage demo stop ends it')
   expect(idleDemoLine(idleDemoAt(idle, 15_000)!)).toBe('Idle demo 6/6: doze · /stage demo stop ends it')
   expect(demoAt(idle, 0)).toBeNull()
+})
+
+test('demoFor builds the demo a /stage demo command asks for, and names it', () => {
+  const plan = DEFAULT_WORKFLOW.track.find(s => s.id === 'plan')!
+  expect(demoFor({ kind: 'demo', seconds: 5, stage: 'plan' }, DEFAULT_WORKFLOW, 7)).toEqual({
+    demo: { kind: 'scenes', at: 7, seconds: 5, scenes: plan.scenes },
+    label: `${plan.scenes.length} scenes of Plan`,
+  })
+  expect(demoFor({ kind: 'demo', seconds: 10, stage: null }, DEFAULT_WORKFLOW, 7)).toEqual({
+    demo: { kind: 'scenes', at: 7, seconds: 10, scenes: DEMO_ORDER },
+    label: `${DEMO_ORDER.length} scenes`,
+  })
+  expect(demoFor({ kind: 'demo-idle', seconds: 3 }, DEFAULT_WORKFLOW, 7)).toEqual({
+    demo: { kind: 'idle', at: 7, seconds: 3 },
+    label: `${IDLE_IDS.length} idle routines and the doze`,
+  })
+  expect(demoFor({ kind: 'demo-waiting' }, DEFAULT_WORKFLOW, 7)).toEqual({ demo: { kind: 'waiting', at: 7 }, label: 'the waiting toon' })
+})
+
+test('a band not drawn yet has room for the demo', () => {
+  expect(hasRoom(null, 3)).toBe(true)
 })
