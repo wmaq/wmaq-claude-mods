@@ -212,6 +212,25 @@ Departures from the spec: a spawn's note comes with the next result, not
 the Agent call's own (live finding); Spec audit also fires from
 Brainstorm, for specs written through Bash.
 
+### 0.6.1 (2026-10-04)
+
+The research's Tier 0, designed in chat:
+- **Two sessions on one project no longer lose moves.** v0.6's turn-end
+  credit (and every move) saved this session's whole progress over the
+  store's; every change now starts from the store's copy when another
+  session saved since (`latestProgress`, on the move queue), and working
+  time goes to the entry it was spent in, found by stage and start.
+- Leftovers fixed: `/stage workflow init` catches a failing `fs.exists`;
+  the idle clock only moves forward; `/stage workflow reload` says when
+  `set_stage` could not be registered again; an idle teammate the list
+  finds after a reload is adopted.
+- The band measures its lines in terminal cells: wide characters (CJK,
+  emoji) count two, so they no longer run past the edge.
+- The progress of projects untouched for 180 days is pruned, at most
+  weekly (never the session's own, never one this version can't read).
+- The walk-in test raises the main turn's end; the README's costs name
+  v0.6's notes.
+
 ### Research (2026-10-04)
 
 `docs/research/2026-10-04-stage-toons-improvement-ideas.md` ranks 30

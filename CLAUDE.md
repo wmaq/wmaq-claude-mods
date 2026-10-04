@@ -6,7 +6,7 @@ the marketplace manifest `.claude-plugin/marketplace.json`.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner, an idle Clawd in an area below the bar, and a desk row of helpers there while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.6.0 (v0.6, automatic moves and history); later ideas in `docs/roadmap.md` |
+| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner, an idle Clawd in an area below the bar, and a desk row of helpers there while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.6.1 (v0.6, automatic moves and history; 0.6.1 fixes); later ideas in `docs/roadmap.md` and `docs/research/` |
 
 ## The workflow
 
@@ -103,7 +103,10 @@ Learned building stage-toons on 2.1.287 to 2.1.289:
     file; closures inside `register` may not take `$`;
   - a noun of `$` such as `$.store` is passed as a value: spell every call
     `$.noun.method(...)` where it is made;
-  - an `atom`'s `plugin` and `key` are not string literals.
+  - an `atom`'s `plugin` and `key` are not string literals;
+  - a function handed `$` shares its name with anything else declared in
+    the file, a local `const` in another hook included ("declared more
+    than once").
 - A tool registered with `$.tool.register` must answer `{ result }` with a
   string, an array or nothing. An object such as `{ content: [...] }` is
   refused at runtime, although the types say `unknown` and the test kit
