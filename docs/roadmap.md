@@ -431,11 +431,12 @@ lets a cloud session check.
   always lives in one place; both canvases are already 48 x 14 pixels.
   The person's ruling: a stage scene shows in the area the way a demo
   shows there now, and the bar behaves exactly as it does today; only
-  where the scene plays changes. Left to settle in its design: what the
-  spinner shows afterwards, whether a background agent's row keeps its
-  own toon (0.6.2's C1), and Fable's arrival and the reactions moving
-  along with the scenes. It comes first because the rest of this phase
-  draws into the canvas it settles.
+  where the scene plays changes. Also decided: the spinner keeps only
+  Claude Code's own line (no toon under it); background agents' spinner
+  rows lose their toons too (0.6.2's C1), since the waiting toon's desk
+  row already shows the agents; Fable's arrival and the reactions move
+  with the scene and look the same. It comes first because the rest of
+  this phase draws into the canvas it settles.
 - **Z layers** for scenes: a depth per actor and prop instead of the fixed
   paint order (backdrop, actors, front), so Nyan's rainbow starts right
   behind Clawd's body and props pass in front of or behind him.
