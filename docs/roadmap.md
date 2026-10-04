@@ -336,6 +336,23 @@ improvement ideas from claude-toons, comparable tools and the unused
 parts of the plugin API, with the notes behind it in
 `docs/research/2026-10-04-notes/`. Its Tier 0 (fixes) is 0.6.1.
 
+### Next: the register split and the frame tool (designed 2026-10-04)
+
+Designed and approved with the person, for Cloudie to build (brief:
+`docs/handoffs/2026-10-04-for-cloudie.md`), in this order:
+- **The register.tsx split** (research #23, review D1), a pure refactor:
+  `mod.ts`, `frames.ts` and `paint.ts` out of `register.tsx`, the demo
+  set-up into `demo.ts`, one `move()`; 1,175 lines to 858. Spec and plan
+  `2026-10-04-stage-toons-register-split`.
+- **The frame tool** (research #16): `tools/frames/` renders the drawing
+  (scenes, the idle Clawd, the waiting toon, the whole band) to PNG
+  contact sheets, so a cloud session can see what it draws. Spec and plan
+  `2026-10-04-stage-toons-frame-tool`.
+
+Both plans were drafted in a scratch copy, replayed on a fresh copy of
+`main` and replayed again by Fable; the split's refactored module was
+also loaded live once, and the engine accepted it.
+
 ### Later (ideas, up for discussion)
 
 - **Scene authoring by others.** A data format for scenes (sprites and
