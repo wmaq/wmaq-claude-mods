@@ -256,5 +256,7 @@ PC.
 - `docs/research/`: research reports (ranked improvement ideas, with the
   notes behind them).
 - `docs/reviews/`: code reviews (correctness, performance, security).
+- `docs/handoffs/`: what a cloud session did and what to check locally;
+  read the latest before testing a cloud session's branch.
 - `<mod>/README.md`: install and use. stage-toons' Clawd sprite comes from
   claude-toons (MIT); keep `stage-toons/NOTICE` with it.
