@@ -28,6 +28,49 @@ export function fitText(text: string, width: number): string {
   return width < 1 ? '' : `${chars.slice(0, width - 1).join('')}…`
 }
 
+// Terminal cells, as the band measures its lines: wide characters (CJK,
+// fullwidth forms, emoji shown as pictures) take two, combining marks,
+// joiners and variation selectors none, the rest one. The track's dots and
+// lines (U+25xx, U+2500 box drawing) take one.
+const WIDE: readonly [number, number][] = [
+  [0x1100, 0x115f], [0x231a, 0x231b], [0x23e9, 0x23ec], [0x23f0, 0x23f0], [0x23f3, 0x23f3], [0x25fd, 0x25fe], [0x2614, 0x2615],
+  [0x2648, 0x2653], [0x267f, 0x267f], [0x2693, 0x2693], [0x26a1, 0x26a1], [0x26aa, 0x26ab], [0x26bd, 0x26be], [0x26c4, 0x26c5],
+  [0x26ce, 0x26ce], [0x26d4, 0x26d4], [0x26ea, 0x26ea], [0x26f2, 0x26f3], [0x26f5, 0x26f5], [0x26fa, 0x26fa], [0x26fd, 0x26fd],
+  [0x2705, 0x2705], [0x270a, 0x270b], [0x2728, 0x2728], [0x274c, 0x274c], [0x274e, 0x274e], [0x2753, 0x2755], [0x2757, 0x2757],
+  [0x2795, 0x2797], [0x27b0, 0x27b0], [0x27bf, 0x27bf], [0x2b1b, 0x2b1c], [0x2b50, 0x2b50], [0x2b55, 0x2b55],
+  [0x2e80, 0x303e], [0x3041, 0x33ff], [0x3400, 0x4dbf], [0x4e00, 0x9fff], [0xa000, 0xa4cf], [0xac00, 0xd7a3], [0xf900, 0xfaff],
+  [0xfe30, 0xfe4f], [0xff00, 0xff60], [0xffe0, 0xffe6], [0x1f004, 0x1f004], [0x1f0cf, 0x1f0cf], [0x1f18e, 0x1f18e], [0x1f191, 0x1f19a],
+  [0x1f200, 0x1f2ff], [0x1f300, 0x1f64f], [0x1f680, 0x1f6ff], [0x1f7e0, 0x1f7eb], [0x1f900, 0x1f9ff], [0x1fa70, 0x1faff], [0x20000, 0x3fffd],
+]
+const NONE: readonly [number, number][] = [[0x0300, 0x036f], [0x200b, 0x200f], [0x20d0, 0x20ff], [0xfe00, 0xfe0f], [0x1f3fb, 0x1f3ff], [0xe0020, 0xe007f]]
+
+const within = (ranges: readonly [number, number][], code: number): boolean => ranges.some(([from, to]) => code >= from && code <= to)
+
+export function cellsOf(char: string): number {
+  const code = char.codePointAt(0) ?? 0
+  if (within(NONE, code)) return 0
+
+  return within(WIDE, code) ? 2 : 1
+}
+
+export const cellWidth = (text: string): number => Array.from(text).reduce((n, ch) => n + cellsOf(ch), 0)
+
+// Text cut to fit width cells, an ellipsis (one cell) where it was cut;
+// never through a character.
+export function fitCells(text: string, width: number): string {
+  if (cellWidth(text) <= width) return text
+  if (width < 1) return ''
+  let used = 0
+  let kept = ''
+  for (const ch of Array.from(text)) {
+    if (used + cellsOf(ch) > width - 1) break
+    used += cellsOf(ch)
+    kept += ch
+  }
+
+  return `${kept}…`
+}
+
 // A stage as /stage takes it: its number on the track, its id, or 0 or ?
 // for the workflow's zero stage (Other, else its first side stage).
 export function parseStage(w: Workflow, arg: string): StageId | undefined {

@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Progress, StageId } from '../types'
-import { applyMove, backStage, cut, describe, freshProgress, isAdvance, nextStage, parseStage, reconcile, stageLabel } from './stages'
+import { applyMove, backStage, cellWidth, cut, describe, fitCells, freshProgress, isAdvance, nextStage, parseStage, reconcile, stageLabel } from './stages'
 import { DEFAULT_WORKFLOW as W, type Workflow } from './workflow'
 
 const at = (stage: StageId, extra: Partial<Progress> = {}): Progress => ({
@@ -169,4 +169,17 @@ test("reconcile: a last track stage that is now a side stage is forgotten, so ba
   const p = { ...freshProgress(0), stage: 'debugging', lastTrackStage: 'debugging' }
   expect(reconcile(SMALL, p)).toEqual({ progress: { ...p, lastTrackStage: null }, moved: null })
   expect(backStage(SMALL, reconcile(SMALL, p).progress)).toBe('debugging')
+})
+
+test('text is measured in terminal cells: wide characters two, marks and joiners none', () => {
+  expect(cellWidth('ab')).toBe(2)
+  expect(cellWidth('🚀')).toBe(2)
+  expect(cellWidth('日本')).toBe(4)
+  expect(cellWidth(`e${String.fromCodePoint(0x301)}`)).toBe(1)
+  expect(cellWidth('●━◉─○')).toBe(5)
+  expect(cellWidth('✅')).toBe(2)
+  expect(fitCells('日本語', 4)).toBe('日…')
+  expect(fitCells('日本語', 6)).toBe('日本語')
+  expect(fitCells('ab🚀cd', 4)).toBe('ab…')
+  expect(fitCells('abc', 0)).toBe('')
 })

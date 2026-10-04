@@ -1,9 +1,10 @@
 // The progress bar above the prompt, as lines of styled spans: the stepped
 // track, where the work stands and the feature, the Fable tag while an
-// auditor runs, and the message. Sized to the band so nothing wraps.
+// auditor runs, and the message. Sized to the band in terminal cells, so
+// nothing wraps.
 
 import type { Progress, Workflow } from '../types'
-import { charCount, fitText, NOT_TRACKED, position, stageLabel } from './stages'
+import { cellWidth, fitCells, NOT_TRACKED, position, stageLabel } from './stages'
 import { TOON_ROWS } from './toon'
 import { isTrack, rank, stageOf } from './workflow'
 
@@ -58,7 +59,7 @@ export function trackSpans(w: Workflow, p: Progress): Span[] {
   return spans
 }
 
-const lengthOf = (spans: Span[]) => spans.reduce((n, s) => n + charCount(s.text), 0)
+const lengthOf = (spans: Span[]) => spans.reduce((n, s) => n + cellWidth(s.text), 0)
 
 // message, when given, stands in for the progress's own (the demo's line).
 export function bandLayout(w: Workflow, p: Progress, isAuditing: boolean, columns: number, message?: string): Span[][] {
@@ -67,30 +68,30 @@ export function bandLayout(w: Workflow, p: Progress, isAuditing: boolean, column
   if (p.stage === null) return untrackedLayout(w, p, isAuditing, columns, width, message)
   if (!isTrack(w, p.stage)) return sideLayout(w, p, isAuditing, columns, width, message ?? p.message)
   const line = message ?? p.message
-  if (columns < WIDE_MIN) return [[{ text: fitText(`${position(w, p)} — ${line}`, width), tone: 'label' }]]
+  if (columns < WIDE_MIN) return [[{ text: fitCells(`${position(w, p)} — ${line}`, width), tone: 'label' }]]
   const track: Span[] = [{ text: ' ', tone: 'label' }, ...trackSpans(w, p)]
   const room = width - lengthOf(track)
   const withFeature = `  ${position(w, p)}${p.feature ? ` · ${p.feature}` : ''}`
   const tag = isAuditing ? `  ${TAG}` : ''
   // The tag goes first, then the feature; what still overflows is cut.
-  const label = charCount(withFeature) <= room ? withFeature : `  ${position(w, p)}`
-  const line1: Span[] = [...track, { text: fitText(label, room), tone: 'label' }]
-  if (tag && charCount(label) + charCount(tag) <= room) line1.push({ text: tag, tone: 'tag' })
+  const label = cellWidth(withFeature) <= room ? withFeature : `  ${position(w, p)}`
+  const line1: Span[] = [...track, { text: fitCells(label, room), tone: 'label' }]
+  if (tag && cellWidth(label) + cellWidth(tag) <= room) line1.push({ text: tag, tone: 'tag' })
 
-  return [line1, [{ text: fitText(` ${line}`, width), tone: 'message' }]]
+  return [line1, [{ text: fitCells(` ${line}`, width), tone: 'message' }]]
 }
 
 // Untracked: the dim track, Not tracked yet and the Fable tag when it fits,
 // on one line, and the demo's line under it while one plays.
 function untrackedLayout(w: Workflow, p: Progress, isAuditing: boolean, columns: number, width: number, message?: string): Span[][] {
   const label = `${NOT_TRACKED}${p.feature ? ` · ${p.feature}` : ''}`
-  const demo: Span[][] = message === undefined ? [] : [[{ text: fitText(` ${message}`, width), tone: 'message' }]]
-  if (columns < WIDE_MIN) return [[{ text: fitText(label, width), tone: 'label' }], ...demo]
+  const demo: Span[][] = message === undefined ? [] : [[{ text: fitCells(` ${message}`, width), tone: 'message' }]]
+  if (columns < WIDE_MIN) return [[{ text: fitCells(label, width), tone: 'label' }], ...demo]
   const track: Span[] = [{ text: ' ', tone: 'label' }, ...trackSpans(w, p)]
   const room = width - lengthOf(track)
-  const line1: Span[] = [...track, { text: fitText(`  ${label}`, room), tone: 'label' }]
+  const line1: Span[] = [...track, { text: fitCells(`  ${label}`, room), tone: 'label' }]
   const tag = `  ${TAG}`
-  if (isAuditing && charCount(`  ${label}`) + charCount(tag) <= room) line1.push({ text: tag, tone: 'tag' })
+  if (isAuditing && cellWidth(`  ${label}`) + cellWidth(tag) <= room) line1.push({ text: tag, tone: 'tag' })
 
   return [line1, ...demo]
 }
@@ -100,20 +101,20 @@ function untrackedLayout(w: Workflow, p: Progress, isAuditing: boolean, columns:
 // then the note, then the feature, then the label is cut.
 function sideLayout(w: Workflow, p: Progress, isAuditing: boolean, columns: number, width: number, message: string): Span[][] {
   const head = `${stageOf(w, p.stage)?.label ?? p.stage}`
-  if (columns < WIDE_MIN) return [[{ text: fitText(`${head} — ${message}`, width), tone: 'label' }]]
+  if (columns < WIDE_MIN) return [[{ text: fitCells(`${head} — ${message}`, width), tone: 'label' }]]
   const feature = p.feature ? ` · ${p.feature}` : ''
   const note = isTrack(w, p.lastTrackStage) ? `   ↩ ${stageLabel(w, p.lastTrackStage!)}` : ''
   const tag = isAuditing ? `  ${TAG}` : ''
   const full = ` ${head}${feature}`
-  const label = charCount(full) <= width ? full : ` ${head}`
-  const line1: Span[] = [{ text: fitText(label, width), tone: 'label' }]
-  let used = charCount(label)
+  const label = cellWidth(full) <= width ? full : ` ${head}`
+  const line1: Span[] = [{ text: fitCells(label, width), tone: 'label' }]
+  let used = cellWidth(label)
   // The note goes before the feature does: with the feature dropped, no note.
-  if (note && label === full && used + charCount(note) <= width) {
+  if (note && label === full && used + cellWidth(note) <= width) {
     line1.push({ text: note, tone: 'note' })
-    used += charCount(note)
+    used += cellWidth(note)
   }
-  if (tag && used + charCount(tag) <= width) line1.push({ text: tag, tone: 'tag' })
+  if (tag && used + cellWidth(tag) <= width) line1.push({ text: tag, tone: 'tag' })
 
-  return [line1, [{ text: fitText(` ${message}`, width), tone: 'message' }]]
+  return [line1, [{ text: fitCells(` ${message}`, width), tone: 'message' }]]
 }

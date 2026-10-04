@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { bandLayout, bandMode, type Span, trackSpans } from './band'
-import { applyMove, freshProgress } from './stages'
+import { applyMove, cellWidth, freshProgress } from './stages'
 import { DEFAULT_WORKFLOW } from './workflow'
 
 const W = DEFAULT_WORKFLOW
@@ -107,6 +107,16 @@ test('the band cuts its lines between characters, never through an emoji', () =>
     for (const line of bandLayout(DEFAULT_WORKFLOW, p, false, columns)) {
       const t = text(line)
       expect(Array.from(t).some(ch => ch.length === 1 && ch.charCodeAt(0) >= 0xd800 && ch.charCodeAt(0) <= 0xdfff)).toBe(false)
+    }
+  }
+})
+
+test('wide characters fit the band by terminal cells: no line runs past its last column', () => {
+  const p = applyMove(DEFAULT_WORKFLOW, freshProgress(0), { stage: 'plan', message: '🚀 '.repeat(30), feature: '日本語の機能をテストする', by: 'claude', at: 1 })
+  const side = applyMove(DEFAULT_WORKFLOW, p, { stage: 'debugging', by: 'claude', at: 2 })
+  for (const progress of [p, side]) {
+    for (const columns of [30, 49, 50, 61, 80]) {
+      for (const line of bandLayout(DEFAULT_WORKFLOW, progress, true, columns)) expect(cellWidth(text(line))).toBeLessThanOrEqual(columns - 1)
     }
   }
 })
