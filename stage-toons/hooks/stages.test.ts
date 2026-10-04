@@ -34,12 +34,14 @@ test("a move to a new stage takes that stage's message unless given one, and is 
   expect(p.stage).toBe('plan')
   expect(p.message).toBe('Writing the implementation plan')
   expect(p.lastTrackStage).toBe('plan')
-  expect(p.history).toEqual([{ stage: 'plan', at: 10, by: 'user' }])
+  expect(p.history).toEqual([{ stage: 'plan', at: 10, by: 'user', feature: null }])
   expect(p.updatedAt).toBe(10)
   const q = applyMove(W, p, { stage: 'plan', message: 'Splitting task 3', feature: 'stage-toons', by: 'claude', at: 20 })
   expect(q.message).toBe('Splitting task 3')
   expect(q.feature).toBe('stage-toons')
-  expect(q.history).toHaveLength(1)
+  // The feature changed: an entry for the same stage.
+  expect(q.history).toEqual([...p.history, { stage: 'plan', at: 20, by: 'claude', feature: 'stage-toons' }])
+  expect(applyMove(W, q, { stage: 'plan', message: 'Task 4', by: 'claude', at: 30 }).history).toHaveLength(2)
 })
 
 test('Other remembers the last track stage', () => {
@@ -59,11 +61,29 @@ test('next and back stop at the ends of the track', () => {
   expect(nextStage(W, at('other', { lastTrackStage: 'cleanup' }))).toBe('cleanup')
 })
 
-test('history keeps the last 50 moves', () => {
+test('history keeps the last 200 moves', () => {
   let p = freshProgress(0)
-  for (let i = 0; i < 60; i++) p = applyMove(W, p, { stage: i % 2 === 0 ? 'plan' : 'develop', by: 'claude', at: i })
-  expect(p.history).toHaveLength(50)
-  expect(p.history[49]?.at).toBe(59)
+  for (let i = 0; i < 230; i++) p = applyMove(W, p, { stage: i % 2 === 0 ? 'plan' : 'develop', by: 'claude', at: i })
+  expect(p.history).toHaveLength(200)
+  expect(p.history[199]?.at).toBe(229)
+})
+
+test('a change of feature alone is recorded in the stage; a message alone, or untracked, is not', () => {
+  let p = applyMove(W, freshProgress(0), { stage: 'plan', feature: 'login', by: 'claude', at: 1 })
+  p = applyMove(W, p, { stage: 'plan', message: 'Task 2', by: 'claude', at: 2 })
+  p = applyMove(W, p, { stage: 'plan', feature: 'signup', by: 'user', at: 3 })
+  p = applyMove(W, p, { stage: 'plan', feature: 'signup', by: 'user', at: 4 })
+  expect(p.history).toEqual([
+    { stage: 'plan', at: 1, by: 'claude', feature: 'login' },
+    { stage: 'plan', at: 3, by: 'user', feature: 'signup' },
+  ])
+  expect(applyMove(W, freshProgress(0), { stage: null, feature: 'x', by: 'user', at: 1 }).history).toEqual([])
+})
+
+test('an automatic move is recorded by auto, with why, cut to 60', () => {
+  const p = applyMove(W, freshProgress(0), { stage: 'spec', by: 'auto', via: `wrote ${'x'.repeat(70)}`, at: 5 })
+  expect(p.history).toEqual([{ stage: 'spec', at: 5, by: 'auto', feature: null, via: `wrote ${'x'.repeat(53)}…` }])
+  expect(p.message).toBe('Writing the spec')
 })
 
 test('an advance is a move to a later track stage', () => {

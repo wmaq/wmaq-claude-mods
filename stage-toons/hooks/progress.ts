@@ -4,7 +4,8 @@
 // workflow elsewhere.
 
 import type { HistoryEntry, Progress, StageId } from '../types'
-import { cut, FEATURE_MAX, freshProgress, MESSAGE_MAX, NOT_TRACKED } from './stages'
+import { VIA_MAX } from './auto'
+import { cut, FEATURE_MAX, freshProgress, HISTORY_MAX, MESSAGE_MAX, NOT_TRACKED } from './stages'
 
 export type KV = {
   get: (key: string) => Promise<unknown>
@@ -21,11 +22,18 @@ export function storeKey(cwd: string): string {
   return `progress:${dir}`
 }
 
-const isEntry = (h: unknown): h is HistoryEntry => {
-  if (typeof h !== 'object' || h === null) return false
+// A history entry as saved, or null: the fields this version knows, each
+// checked; feature, via and workMs are optional (older versions wrote none).
+function entryOf(h: unknown): HistoryEntry | null {
+  if (typeof h !== 'object' || h === null) return null
   const e = h as Record<string, unknown>
+  if (typeof e.stage !== 'string' || !Number.isFinite(e.at) || (e.by !== 'claude' && e.by !== 'user' && e.by !== 'auto')) return null
+  const entry: HistoryEntry = { stage: e.stage, at: e.at as number, by: e.by }
+  if (e.feature === null || typeof e.feature === 'string') entry.feature = e.feature === null ? null : cut(e.feature, FEATURE_MAX) || null
+  if (typeof e.via === 'string' && e.via.trim() !== '') entry.via = cut(e.via, VIA_MAX)
+  if (typeof e.workMs === 'number' && Number.isFinite(e.workMs) && e.workMs >= 0) entry.workMs = e.workMs
 
-  return typeof e.stage === 'string' && Number.isFinite(e.at) && (e.by === 'claude' || e.by === 'user')
+  return entry
 }
 
 export function validate(x: unknown): Progress | null {
@@ -48,7 +56,10 @@ export function validate(x: unknown): Progress | null {
     lastTrackStage: last as StageId | null,
     feature: p.feature === null ? null : cut(p.feature as string, FEATURE_MAX),
     message: cut(p.message, MESSAGE_MAX),
-    history: p.history.filter(isEntry),
+    history: p.history
+      .map(entryOf)
+      .filter((h): h is HistoryEntry => h !== null)
+      .slice(-HISTORY_MAX),
     updatedAt: p.updatedAt,
   }
 }

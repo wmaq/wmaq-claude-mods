@@ -2,12 +2,13 @@
 // the progress reads, for any workflow (workflow.ts).
 
 import type { HistoryEntry, Progress, StageId } from '../types'
+import { VIA_MAX } from './auto'
 import { isTrack, rank, stageIds, stageOf, type Workflow, zeroStage } from './workflow'
 
 export const MESSAGE_MAX = 80
 export const FEATURE_MAX = 40
 export const NOT_TRACKED = 'Not tracked yet'
-const HISTORY_MAX = 50
+export const HISTORY_MAX = 200
 
 // One line, whitespace collapsed, cut with an ellipsis to at most max.
 export function cut(text: string, max: number): string {
@@ -46,16 +47,21 @@ export function freshProgress(now: number): Progress {
 }
 
 // A move to a stage, or, for a feature or message move, to the stage the
-// work is in, which may be untracked.
-export type Move = { stage: StageId | null; message?: string; feature?: string; by: 'claude' | 'user'; at: number }
+// work is in, which may be untracked. via: why an automatic move happened.
+export type Move = { stage: StageId | null; message?: string; feature?: string; by: HistoryEntry['by']; via?: string; at: number }
 
+// A move to another stage, or a change of feature in the stage the work is
+// in, adds an entry with the feature it leaves; a message alone, or any
+// move while untracked, adds none.
 export function applyMove(w: Workflow, p: Progress, m: Move): Progress {
   const isNewStage = m.stage !== p.stage
   const entered = stageOf(w, m.stage)?.message ?? p.message
   const message = m.message !== undefined ? cut(m.message, MESSAGE_MAX) : isNewStage ? entered : p.message
   const feature = m.feature !== undefined ? cut(m.feature, FEATURE_MAX) || null : p.feature
   const lastTrackStage = isTrack(w, m.stage) ? m.stage : p.lastTrackStage
-  const history: HistoryEntry[] = isNewStage && m.stage !== null ? [...p.history, { stage: m.stage, at: m.at, by: m.by }].slice(-HISTORY_MAX) : p.history
+  const entry: HistoryEntry = { stage: m.stage ?? '', at: m.at, by: m.by, feature, ...(m.via ? { via: cut(m.via, VIA_MAX) } : {}) }
+  const isRecorded = m.stage !== null && (isNewStage || feature !== p.feature)
+  const history: HistoryEntry[] = isRecorded ? [...p.history, entry].slice(-HISTORY_MAX) : p.history
 
   return { ...p, v: 2, stage: m.stage, lastTrackStage, feature, message, history, updatedAt: m.at }
 }
