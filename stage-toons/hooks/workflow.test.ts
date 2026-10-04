@@ -25,11 +25,11 @@ test('the default workflow is the ten stages on the track and Debugging and Othe
 })
 
 test('a stage lists its scenes; the old single scene still reads, as a list of one', () => {
-  const both = parse({ track: [stage('plan'), { ...stage('build'), scene: undefined, scenes: ['bricklaying', ' gift '] }] })
+  const both = parse({ track: [stage('outline'), { ...stage('build'), scene: undefined, scenes: ['bricklaying', ' gift '] }] })
   expect(both).toEqual({
     workflow: {
       track: [
-        { id: 'plan', label: 'L', message: 'M', when: 'W', scenes: ['gift'] },
+        { id: 'outline', label: 'L', message: 'M', when: 'W', scenes: ['gift'] },
         { id: 'build', label: 'L', message: 'M', when: 'W', scenes: ['bricklaying', 'gift'] },
       ],
       side: [],
@@ -99,8 +99,8 @@ test('what init writes parses back to the default workflow', () => {
 })
 
 test('a small workflow parses; side stages are optional; text is trimmed', () => {
-  const r = parse({ track: [stage('plan', { label: '  Plan ' })] })
-  expect(r).toEqual({ workflow: { track: [{ id: 'plan', label: 'Plan', message: 'M', when: 'W', scenes: ['gift'] }], side: [] } })
+  const r = parse({ track: [stage('outline', { label: '  Plan ' })] })
+  expect(r).toEqual({ workflow: { track: [{ id: 'outline', label: 'Plan', message: 'M', when: 'W', scenes: ['gift'] }], side: [] } })
 })
 
 test('a byte-order mark and Windows line endings are fine', () => {
@@ -166,4 +166,21 @@ test('the default workflow has rules, and init writes them', () => {
   expect(W.track.find(s => s.id === 'spec-audit')?.auto).toEqual([{ agent: 'fable', from: ['brainstorm', 'spec'] }])
   expect(W.track.find(s => s.id === 'roadmap')?.auto).toBeUndefined()
   expect(workflowJson(W)).toContain('"skill": "superpowers:brainstorming"')
+})
+
+test("a file that lists no rules takes the default's, for the stages it shares with it by id", () => {
+  // A file /stage workflow init wrote before 0.6: the default without its rules.
+  const old = { track: W.track.map(({ auto: _, ...s }) => s), side: W.side.map(({ auto: _, ...s }) => s) }
+  const r = parse(old)
+  expect('workflow' in r && sameWorkflow(r.workflow, W)).toBe(true)
+  // A stage of its own gets none.
+  const own = parse({ track: [stage('plan'), stage('review')] })
+  expect('workflow' in own && own.workflow.track.map(s => s.auto)).toEqual([W.track.find(s => s.id === 'plan')!.auto, undefined])
+})
+
+test('a file that gives any stage an "auto" list, even an empty one, keeps its own rules alone', () => {
+  const none = parse({ track: [stage('plan'), stage('develop', { auto: [] })] })
+  expect('workflow' in none && none.workflow.track.map(s => s.auto)).toEqual([undefined, undefined])
+  const own = parse({ track: [stage('plan'), stage('develop', { auto: [{ bash: '^make' }] })] })
+  expect('workflow' in own && own.workflow.track.map(s => s.auto)).toEqual([undefined, [{ bash: '^make' }]])
 })

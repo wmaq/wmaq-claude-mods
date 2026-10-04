@@ -203,8 +203,28 @@ export function parseWorkflow(json: string, sceneNames: readonly string[]): { wo
   }
   const ids = [...seen]
   for (const { path, stage } of [...track, ...side]) errors.push(...unknownFrom(stage.auto ?? [], `${path}.auto`, ids))
+  if (errors.length > 0) return { errors }
+  const workflow = { track: track.map(f => f.stage), side: side.map(f => f.stage) }
 
-  return errors.length > 0 ? { errors } : { workflow: { track: track.map(f => f.stage), side: side.map(f => f.stage) } }
+  return { workflow: listsRules(top) ? workflow : withDefaultRules(workflow) }
+}
+
+// Whether any stage of the file has an "auto" field, an empty list
+// included: a file that has none (as /stage workflow init wrote before
+// 0.6) takes the default's rules.
+const listsRules = (top: Record<string, unknown>): boolean =>
+  [top.track, top.side].some(list => Array.isArray(list) && list.some(item => typeof item === 'object' && item !== null && 'auto' in item))
+
+// Each stage the default has by id, with the default's rules; the file's
+// own stages get none.
+function withDefaultRules(w: Workflow): Workflow {
+  const ruled = (s: StageDef): StageDef => {
+    const auto = stageOf(DEFAULT_WORKFLOW, s.id)?.auto
+
+    return auto ? { ...s, auto } : s
+  }
+
+  return { track: w.track.map(ruled), side: w.side.map(ruled) }
 }
 
 // The file /stage workflow init writes: two-space JSON, a trailing newline.
