@@ -1,10 +1,11 @@
 import { expect, test } from 'claude-code/testing'
 
-import { bandProps, type Blit, blitsOf, colorInRows, endTurn, engine, mountBand, spawnAgent, START, type World } from './harness'
+import { bandProps, type Blit, blitsOf, colorInRows, endTurn, engine, mountBand, runStage, spawnAgent, START, type World } from './harness'
 import { Z_COLOR } from './idle'
 import { HELPER_COLORS } from './waiting'
 
 const ALL_ROWS = [0, 1, 2, 3, 4, 5, 6]
+const text = (answer: unknown) => (answer as { text?: string }).text ?? ''
 const shows = (blit: Blit | undefined, kind: keyof typeof HELPER_COLORS) => colorInRows(blit, ALL_ROWS, HELPER_COLORS[kind])
 const lastArea = (world: World) => blitsOf(world, 'area').at(-1)
 
@@ -120,4 +121,38 @@ test('an idle teammate that works again gets its helper back within a poll', asy
   world.agents = [{ id: 'agent-1', description: 'Mate', type: 'teammate', status: 'running' }]
   await clock.advance(3_500)
   expect(shows(lastArea(world), 'haiku')).toBe(true)
+})
+test('/stage demo waiting plays the desk row, then the idle routine, then ends; it takes no seconds', async ($, on) => {
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  const ui = await mountBand($)
+  expect(text(await runStage($, 'demo waiting'))).toBe('Playing the waiting toon (about 25 s). /stage demo stop ends it.')
+  await ui.redraw()
+  expect((await ui.find({ key: 'stage-toons' }))?.text).toContain('Waiting demo · /stage demo stop ends it')
+  await clock.advance(9_000)
+  for (const kind of ['sonnet', 'opus', 'fable', 'haiku'] as const) expect(shows(lastArea(world), kind)).toBe(true)
+  await clock.advance(14_000)
+  expect(shows(lastArea(world), 'unknown')).toBe(false)
+  await clock.advance(3_000)
+  await ui.redraw()
+  expect((await ui.find({ key: 'stage-toons' }))?.text).not.toContain('Waiting demo')
+  expect(text(await runStage($, 'demo waiting 5'))).toContain('Usage')
+})
+
+test('agents that arrive during /stage demo waiting walk in after it', async ($, on) => {
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  const ui = await mountBand($)
+  await runStage($, 'demo waiting')
+  await ui.redraw()
+  await clock.advance(22_000)
+  world.spawnModel = 'claude-sonnet-5-5'
+  await spawnAgent($)
+  await clock.advance(1_000)
+  // The demo's idle tail: no real helper drawn over it.
+  expect(shows(lastArea(world), 'sonnet')).toBe(false)
+  await clock.advance(3_000)
+  await ui.redraw()
+  await clock.advance(2_000)
+  expect(shows(lastArea(world), 'sonnet')).toBe(true)
 })

@@ -29,10 +29,13 @@ test('/stage demo takes the library, a stage by id, or idle, with seconds per it
   expect(parseCommand(W, 'demo idle')).toEqual({ kind: 'demo-idle', seconds: 10 })
   expect(parseCommand(W, 'demo idle 5')).toEqual({ kind: 'demo-idle', seconds: 5 })
   expect(parseCommand(W, 'demo stop')).toEqual({ kind: 'demo-stop' })
-  for (const bad of ['demo 1', 'demo 61', 'demo 2.5', 'demo x', 'demo 5 6', 'demo -3', 'demo nope', 'demo develop 1', 'demo idle x', 'demo stop now', 'demo develop 5 6']) {
+  expect(parseCommand(W, 'demo waiting')).toEqual({ kind: 'demo-waiting' })
+  expect(parseCommand(W, 'Demo Waiting')).toEqual({ kind: 'demo-waiting' })
+  for (const bad of ['demo 1', 'demo 61', 'demo 2.5', 'demo x', 'demo 5 6', 'demo -3', 'demo nope', 'demo develop 1', 'demo idle x', 'demo stop now', 'demo develop 5 6', 'demo waiting 5', 'demo waiting now']) {
     expect(parseCommand(W, bad)).toEqual({ kind: 'usage' })
   }
   expect(usage(W)).toContain('/stage demo [<stage> | idle] [seconds]')
+  expect(usage(W)).toContain('/stage demo waiting')
 })
 
 test('commands move the progress as the user', () => {

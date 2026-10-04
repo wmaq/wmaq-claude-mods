@@ -15,6 +15,7 @@ export type Command =
   | { kind: 'hide' }
   | { kind: 'demo'; seconds: number; stage: StageId | null }
   | { kind: 'demo-idle'; seconds: number }
+  | { kind: 'demo-waiting' }
   | { kind: 'demo-stop' }
   | { kind: 'workflow' }
   | { kind: 'workflow-init' }
@@ -28,7 +29,7 @@ export function usage(w: Workflow): string {
   const stages = [...w.track.map((s, i) => `${i + 1} ${s.id}`), ...w.side.map(s => (s === zero ? `0 ${s.id}` : s.id))]
 
   return [
-    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | workflow [init | reload]]',
+    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo waiting | workflow [init | reload]]',
     '  /stage                  show the current stage and the recent moves',
     `  /stage 5, /stage plan   move to a stage${zero ? ` (0 or ? for ${zero.label})` : ''}`,
     '  /stage next, /stage back',
@@ -36,6 +37,7 @@ export function usage(w: Workflow): string {
     '  /stage message <text>   set the status message',
     '  /stage hide             hide or show the bar and the cartoons',
     `  /stage demo [<stage> | idle] [seconds]  play every scene, one stage's scenes, or the idle routines, ${DEMO_SECONDS} s each (${DEMO_MIN} to ${DEMO_MAX}); /stage demo stop ends it`,
+    '  /stage demo waiting     play the toon shown while Claude waits on agents, about 25 s',
     '  /stage workflow [init | reload]  show the workflow; write the default to .claude/stage-toons.json; read the file again',
     `Stages: ${stages.join(', ')}`,
   ].join('\n')
@@ -73,12 +75,13 @@ function secondsOf(word: string | undefined): number | null {
   return seconds >= DEMO_MIN && seconds <= DEMO_MAX ? seconds : null
 }
 
-// demo [<stage id> | idle] [seconds], or demo stop. A bare number is the
-// seconds: stages are named by id only.
+// demo [<stage id> | idle] [seconds], demo waiting, or demo stop. A bare
+// number is the seconds: stages are named by id only.
 function parseDemo(w: Workflow, arg: string): Command {
   const [first, second, ...rest] = arg === '' ? [] : arg.split(/\s+/)
   if (rest.length > 0) return { kind: 'usage' }
   if (first === 'stop') return second === undefined ? { kind: 'demo-stop' } : { kind: 'usage' }
+  if (first === 'waiting') return second === undefined ? { kind: 'demo-waiting' } : { kind: 'usage' }
   if (first === undefined || /^\d+$/.test(first)) {
     const seconds = second === undefined ? secondsOf(first) : null
 

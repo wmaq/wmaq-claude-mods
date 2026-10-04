@@ -15,7 +15,7 @@ import { EMPTY_ROSTER, ended, reconcileRoster, type Roster, spawned } from './ag
 import { cropLeft, placeIdle } from './area'
 import { bandLayout, bandMode, type BandSite, type Tone, TOON_MIN } from './band'
 import { moveFor, parseCommand, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
-import { type Demo, demoAt, demoLength, demoLine, demoStep, idleDemoAt, idleDemoLine } from './demo'
+import { type Demo, demoAt, demoLength, demoLine, demoStep, idleDemoAt, idleDemoLine, WAITING_DEMO_LINE } from './demo'
 import { createDirector, type Director, react, shot, tick, withAuditing, withScene } from './director'
 import { DOZE_MS, FALLBACK_ROUTINE, IDLE_IDS, idleFrame, pickIdle } from './idle'
 import { pickOne } from './pick'
@@ -27,6 +27,7 @@ import { DEMO_ORDER, REACTIONS, SCENES, STAGE_SCENES } from './scenes'
 import { applyMove, describe, freshProgress, isAdvance, reconcile } from './stages'
 import { type Cast, composeFrame, TOON_ROWS } from './toon'
 import { waitingFrame } from './waiting'
+import { WAITING_DEMO_MS, waitingDemoAt } from './waiting/demo'
 import { EMPTY_LOG, seat, type SeatLog } from './waiting/seats'
 import { DEFAULT_WORKFLOW, parseWorkflow, sameWorkflow, stageIds, stageList, stageOf, UNTRACKED_SCENE, withScenes, workflowJson } from './workflow'
 
@@ -260,6 +261,12 @@ function areaCells($: EngineInterface, mod: Mod, columns: number, now: number): 
 
     return encodeCells(cropLeft(placeIdle(f.routine === null ? idleFrame(FALLBACK_ROUTINE, DOZE_MS + f.ms) : idleFrame(f.routine, f.ms, mod.brokenIdle, onBreak)), columns))
   }
+  if (demo?.kind === 'waiting') {
+    if (!demoStep(demo, now)) return null
+    const at = waitingDemoAt(demo.at, now)
+
+    return encodeCells('log' in at ? cropLeft(waitingFrame(at.log, now), columns) : idleAt(at.idleMs))
+  }
 
   reseat(mod, now)
   if (mod.seats.since !== null && !mod.isWaitingBroken) {
@@ -435,10 +442,12 @@ function startDemo(mod: Mod, demo: Demo, label: string, now: number, isHidden: b
   if (!hasRoom(mod, barLines)) return `The band has no room for the demo: it needs 30 columns and ${barLines + TOON_ROWS} rows.`
   const isRestart = mod.demo !== null && demoStep(mod.demo, now) !== null
   mod.demo = demo
+  const playing = `${isRestart ? 'Restarting the demo: p' : 'P'}laying`
+  if (demo.kind === 'waiting') return `${playing} ${label} (about ${Math.round(WAITING_DEMO_MS / 1000)} s). /stage demo stop ends it.`
   const total = demoLength(demo) * demo.seconds
   const length = total < 60 ? 'under a minute' : `about ${Math.round(total / 60)} min`
 
-  return `${isRestart ? 'Restarting the demo: p' : 'P'}laying ${label}, ${demo.seconds} s each (${length}). /stage demo stop ends it.`
+  return `${playing} ${label}, ${demo.seconds} s each (${length}). /stage demo stop ends it.`
 }
 
 export const register: Register = on => {
@@ -489,8 +498,8 @@ export const register: Register = on => {
       mod.commandName = (
         await $.command.register({
           name: COMMAND,
-          description: 'Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene, a stage\'s scenes or the idle routines; /stage workflow shows or reloads the workflow',
-          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo stop | workflow [init | reload]]',
+          description: 'Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene, a stage\'s scenes, the idle routines or the waiting toon; /stage workflow shows or reloads the workflow',
+          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo waiting | demo stop | workflow [init | reload]]',
           immediate: true,
         })
       ).command
@@ -558,11 +567,23 @@ export const register: Register = on => {
     const before = await current($, now)
     if (cmd.kind === 'show') return { text: showText(mod.workflow, before, now) }
     if (cmd.kind === 'usage') return { text: usage(mod.workflow) }
-    if (cmd.kind === 'demo' || cmd.kind === 'demo-idle') {
+    if (cmd.kind === 'demo' || cmd.kind === 'demo-idle' || cmd.kind === 'demo-waiting') {
       const stage = cmd.kind === 'demo' && cmd.stage !== null ? stageOf(mod.workflow, cmd.stage) : undefined
-      const demo: Demo = cmd.kind === 'demo-idle' ? { kind: 'idle', at: now, seconds: cmd.seconds } : { kind: 'scenes', at: now, seconds: cmd.seconds, scenes: stage?.scenes ?? DEMO_ORDER }
+      const demo: Demo =
+        cmd.kind === 'demo-waiting'
+          ? { kind: 'waiting', at: now }
+          : cmd.kind === 'demo-idle'
+            ? { kind: 'idle', at: now, seconds: cmd.seconds }
+            : { kind: 'scenes', at: now, seconds: cmd.seconds, scenes: stage?.scenes ?? DEMO_ORDER }
       const n = demoLength(demo)
-      const label = cmd.kind === 'demo-idle' ? `${IDLE_IDS.length} idle routines and the doze` : stage ? `${n} scene${n === 1 ? '' : 's'} of ${stage.label}` : `${n} scenes`
+      const label =
+        cmd.kind === 'demo-waiting'
+          ? 'the waiting toon'
+          : cmd.kind === 'demo-idle'
+            ? `${IDLE_IDS.length} idle routines and the doze`
+            : stage
+              ? `${n} scene${n === 1 ? '' : 's'} of ${stage.label}`
+              : `${n} scenes`
       // The bar's lines with the demo's line under it, at the band's width.
       const barLines = bandLayout(mod.workflow, before, false, mod.lastBand?.columns ?? 100, 'demo').length
       const text = startDemo(mod, demo, label, now, await read($, hiddenAtom), barLines)
@@ -690,7 +711,8 @@ export const register: Register = on => {
     const idleFrameOfDemo = mod.demo?.kind === 'idle' ? idleDemoAt(mod.demo, now) : null
     if (sceneFrame) mod.demoLineIndex = sceneFrame.index
     if (idleFrameOfDemo) mod.demoLineIndex = idleFrameOfDemo.index
-    const demoText = sceneFrame && mod.demo ? demoLine(sceneFrame, mod.demo, mod.workflow) : idleFrameOfDemo ? idleDemoLine(idleFrameOfDemo) : undefined
+    const demoText =
+      sceneFrame && mod.demo ? demoLine(sceneFrame, mod.demo, mod.workflow) : idleFrameOfDemo ? idleDemoLine(idleFrameOfDemo) : mod.demo?.kind === 'waiting' ? WAITING_DEMO_LINE : undefined
     const lines = progress === null ? [] : bandLayout(mod.workflow, progress, await read($, auditingAtom), columns, demoText)
     const site: BandSite = {
       surface: e.surface,
