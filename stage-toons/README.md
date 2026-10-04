@@ -265,10 +265,14 @@ text.
 
 ## What it costs
 
-The cartoons are drawn locally: the mod makes no model requests. Its only
-cost is a short section in the system prompt (about 250 tokens, kept the same
-for a whole session so the prompt cache holds) and Claude's occasional
-`set_stage` calls.
+The cartoons are drawn locally: the mod makes no model requests. What it
+adds to Claude's context:
+
+- a short section in the system prompt (about 270 tokens, kept the same
+  for a whole session so the prompt cache holds);
+- Claude's occasional `set_stage` calls and their one-line answers;
+- a one-line `[stage-toons]` note when the stage moves by itself or you
+  move it with `/stage`.
 
 ## Development
 

@@ -34,7 +34,7 @@ export function usage(w: Workflow): string {
   const stages = [...w.track.map((s, i) => `${i + 1} ${s.id}`), ...w.side.map(s => (s === zero ? `0 ${s.id}` : s.id))]
 
   return [
-    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo waiting | workflow [init | reload] | auto [on | off] | log [n] | time]',
+    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo waiting | demo stop | workflow [init | reload] | auto [on | off] | log [n] | time]',
     '  /stage                  show the current stage and the recent moves',
     `  /stage 5, /stage plan   move to a stage${zero ? ` (0 or ? for ${zero.label})` : ''}`,
     '  /stage next, /stage back',

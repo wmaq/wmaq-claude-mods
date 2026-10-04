@@ -74,6 +74,8 @@ test('an agent spawned while Claude works walks in when the turn ends', async ($
   await spawnAgent($)
   await clock.advance(1_000)
   expect(await ui.find({ key: 'area' })).toBeUndefined()
+  // The main turn ends, then the band draws Claude idle, as the engine does.
+  await endTurn($)
   await ui.redraw(bandProps(100))
   await clock.advance(200)
   // Walking in from the right edge: not at its seat yet.
