@@ -106,10 +106,15 @@ export function engine(on: On, preset: { store?: Record<string, unknown> } = {})
     return { value: { command: e.name } }
   })
   on('agent.list', () => ({ value: world.agents }))
+  // A spawned agent runs: the list shows it until a test says otherwise.
+  // Its row stays running after its turn ends, so a helper comes back once
+  // the mod's LIST_LAG_MS has passed: set world.agents to end it for good.
   on('agent.spawn', () => {
     world.spawned += 1
+    const agentId = `agent-${world.spawned}`
+    world.agents = [...world.agents, { id: agentId, description: 'Audit', type: 'general-purpose', status: 'running' }]
 
-    return { model: world.spawnModel, agentId: `agent-${world.spawned}` }
+    return { model: world.spawnModel, agentId }
   })
   on('ui.toast', ($, e) => {
     world.toasts.push(e.text)
@@ -153,9 +158,9 @@ export function answerText(answer: unknown): string | undefined {
 }
 
 // A subagent spawn as the Agent tool raises it. The test's agent.spawn hook
-// answers with world.spawnModel.
+// answers with world.spawnModel. extra adds to the input (parentAgentId).
 let spawns = 0
-export function spawnAgent($: Engine, model?: string, parentModel = 'claude-opus-5-5') {
+export function spawnAgent($: Engine, model?: string, parentModel = 'claude-opus-5-5', extra: Record<string, unknown> = {}) {
   spawns += 1
 
   return $.agent.spawn({
@@ -168,6 +173,7 @@ export function spawnAgent($: Engine, model?: string, parentModel = 'claude-opus
     background: false,
     fork: false,
     ...(model === undefined ? {} : { model }),
+    ...extra,
   })
 }
 

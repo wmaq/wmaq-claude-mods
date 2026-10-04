@@ -11,6 +11,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { IdleId, Progress, ScenePick, SessionWorkflow, StageId, Workflow } from '../types'
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
+import { EMPTY_ROSTER, ended, reconcileRoster, type Roster, spawned } from './agents'
 import { cropLeft, placeIdle } from './area'
 import { bandLayout, bandMode, type BandSite, type Tone, TOON_MIN } from './band'
 import { moveFor, parseCommand, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
@@ -25,6 +26,8 @@ import { type SceneId, STAGE_W } from './scene'
 import { DEMO_ORDER, REACTIONS, SCENES, STAGE_SCENES } from './scenes'
 import { applyMove, describe, freshProgress, isAdvance, reconcile } from './stages'
 import { type Cast, composeFrame, TOON_ROWS } from './toon'
+import { waitingFrame } from './waiting'
+import { EMPTY_LOG, seat, type SeatLog } from './waiting/seats'
 import { DEFAULT_WORKFLOW, parseWorkflow, sameWorkflow, stageIds, stageList, stageOf, UNTRACKED_SCENE, withScenes, workflowJson } from './workflow'
 
 const PLUGIN = 'stage-toons'
@@ -73,7 +76,9 @@ type SiteKind = 'toon' | 'area'
 type Site = { requestId: string | undefined; kind: SiteKind; columns: number; rows: number; isAnimating: boolean; isSeen: boolean }
 
 // How often a site repaints: the idle Clawd is calm.
-const frameMs = (mod: Mod, kind: SiteKind): number => (kind === 'area' && mod.demo === null ? 166 : 83)
+const frameMs = (mod: Mod, kind: SiteKind): number => (kind === 'area' && mod.demo === null && mod.seats.since === null ? 166 : 83)
+// How often the area checks the agent list while it knows of agents.
+const AGENT_POLL_MS = 2000
 
 const createSite = (kind: SiteKind): Site => ({ requestId: undefined, kind, columns: STAGE_W, rows: TOON_ROWS, isAnimating: false, isSeen: false })
 
@@ -108,6 +113,11 @@ type Mod = {
   // The demo scene the band's text line names.
   demoLineIndex: number
   broken: Set<SceneId>
+  // The agents known and their helpers at the desk row; whether the
+  // waiting toon threw (the idle routine stands in for the session).
+  roster: Roster
+  seats: SeatLog
+  isWaitingBroken: boolean
 }
 
 const createMod = (): Mod => ({
@@ -132,6 +142,9 @@ const createMod = (): Mod => ({
   demo: null,
   demoLineIndex: 0,
   broken: new Set(),
+  roster: EMPTY_ROSTER,
+  seats: EMPTY_LOG,
+  isWaitingBroken: false,
 })
 
 type ToolArgs = { agentId?: string } & Record<string, unknown>
@@ -204,8 +217,34 @@ function castOf($: EngineInterface, mod: Mod): Cast {
   }
 }
 
+// Whether the real waiting toon is on screen: the band's area mounted, no
+// demo over it, not hidden, and Claude not working.
+const isWaitingShown = (mod: Mod): boolean => mod.band.requestId !== undefined && mod.demo === null && !mod.isHidden && !mod.isBandWorking
+
+// The seat log moved on to now; a waiting period that ended restarts the
+// idle clock where it ended.
+function reseat(mod: Mod, now: number) {
+  const { log, endedAt } = seat(mod.seats, mod.roster, now, isWaitingShown(mod))
+  mod.seats = log
+  if (endedAt !== null) mod.idleSince = endedAt
+}
+
+// The roster as the agent list has it now. A list that fails leaves the
+// roster as it was: the next check tries again.
+async function checkAgents($: EngineInterface, mod: Mod) {
+  try {
+    const list = await $.agent.list()
+    const now = await $.clock.now()
+    mod.roster = reconcileRoster(mod.roster, list, now)
+    reseat(mod, now)
+  } catch {
+    // Checked again at the next poll or turn's end.
+  }
+}
+
 // The area's next frame, cut to its width, or null once the demo it plays
-// is over: a demo, else the idle routine.
+// is over: a demo, else the waiting toon while a waiting period lasts,
+// else the idle routine.
 function areaCells($: EngineInterface, mod: Mod, columns: number, now: number): string | null {
   const onBreak = (id: string, error: unknown) => $.ui.log(`stage-toons: idle routine ${id} failed and was replaced by classic: ${String(error)}`, { to: 'debug' })
   const idleAt = (ms: number) => cropLeft(placeIdle(idleFrame(mod.idle, ms, mod.brokenIdle, onBreak)), columns)
@@ -220,6 +259,16 @@ function areaCells($: EngineInterface, mod: Mod, columns: number, now: number): 
     if (!f) return null
 
     return encodeCells(cropLeft(placeIdle(f.routine === null ? idleFrame(FALLBACK_ROUTINE, DOZE_MS + f.ms) : idleFrame(f.routine, f.ms, mod.brokenIdle, onBreak)), columns))
+  }
+
+  reseat(mod, now)
+  if (mod.seats.since !== null && !mod.isWaitingBroken) {
+    try {
+      return encodeCells(cropLeft(waitingFrame(mod.seats, now), columns))
+    } catch (error) {
+      mod.isWaitingBroken = true
+      $.ui.log(`stage-toons: the waiting toon failed and was replaced by the idle routine: ${String(error)}`, { to: 'debug' })
+    }
   }
 
   return encodeCells(idleAt(now - mod.idleSince))
@@ -248,9 +297,20 @@ function animate($: EngineInterface, mod: Mod, site: Site) {
   void (async () => {
     try {
       let refused = 0
+      // The area checks the agent list before its first frame, so an agent
+      // that ended while it was away is not drawn seated, then every
+      // AGENT_POLL_MS while it knows of agents.
+      let polledAt = -Infinity
       while (site.requestId !== undefined && !mod.isHidden && refused < (site.isSeen ? MAX_REFUSED : MAX_REFUSED_UNSEEN)) {
         const { requestId, kind, columns, rows } = site
         const now = await $.clock.now()
+        if (kind === 'area' && polledAt === -Infinity) {
+          polledAt = now
+          await checkAgents($, mod)
+        } else if (kind === 'area' && mod.roster.size > 0 && now - polledAt >= AGENT_POLL_MS) {
+          polledAt = now
+          void checkAgents($, mod)
+        }
         const cells = siteCells($, mod, site, now)
         if (cells === null) {
           // The demo is over. Nothing is awaited from here to the loop's
@@ -440,6 +500,9 @@ export const register: Register = on => {
     // Computed once per session and kept across reloads: the section sits
     // in the cached part of the prompt.
     if ((await read($, sectionAtom)) === null) await update($, sectionAtom, () => workflowText(mod.workflow, progress, mod.toolName))
+    // Agents at work before a reload: the roster starts empty, and the list
+    // finds them (their models are lost: grey helpers).
+    await checkAgents($, mod)
 
     return result
   })
@@ -563,11 +626,16 @@ export const register: Register = on => {
 
   on('agent.spawn', async ($, e, next) => {
     const result = await next(e)
-    if (result.deny === undefined && result.agentId !== undefined && isAuditorSpawn(e, result.model)) {
+    if (result.deny !== undefined || result.agentId === undefined) return result
+    if (isAuditorSpawn(e, result.model)) {
       const wasIdle = mod.auditors.size === 0
       mod.auditors.add(result.agentId)
       if (wasIdle) await setAuditing($, mod, true)
     }
+    // Every agent gets a helper at the desk row, in its model's colour.
+    const now = await $.clock.now()
+    mod.roster = spawned(mod.roster, result.agentId, result.model, now)
+    reseat(mod, now)
 
     return result
   })
@@ -575,22 +643,31 @@ export const register: Register = on => {
   on('turn.complete', async ($, e, next) => {
     if (e.agentId !== undefined) {
       // A subagent's turn: the end of an auditor, perhaps, and of the
-      // spinner on its row, which carries the agent's id.
+      // spinner on its row, which carries the agent's id. Its helper gets
+      // up at once, whatever the list says yet.
       if (mod.toon.requestId === e.agentId) mod.toon.requestId = undefined
       if (mod.auditors.delete(e.agentId) && mod.auditors.size === 0) await setAuditing($, mod, false)
+      const now = await $.clock.now()
+      mod.roster = ended(mod.roster, e.agentId, now)
+      reseat(mod, now)
+      await checkAgents($, mod)
 
       return next(e)
     }
     mod.toon.requestId = undefined
-    mod.idleSince = await $.clock.now()
+    const now = await $.clock.now()
+    mod.idleSince = now
     mod.idle = mod.nextIdle
-    if (mod.auditors.size > 0) {
-      try {
-        for (const id of staleAuditors(mod.auditors, await $.agent.list())) mod.auditors.delete(id)
+    try {
+      const list = await $.agent.list()
+      if (mod.auditors.size > 0) {
+        for (const id of staleAuditors(mod.auditors, list)) mod.auditors.delete(id)
         if (mod.auditors.size === 0) await setAuditing($, mod, false)
-      } catch {
-        // Checked again at the next turn's end.
       }
+      mod.roster = reconcileRoster(mod.roster, list, now)
+      reseat(mod, now)
+    } catch {
+      // Checked again at the next turn's end, or the area's next poll.
     }
 
     return next(e)
@@ -631,6 +708,7 @@ export const register: Register = on => {
     const { band } = mod
     if (mode === 'none' || progress === null) {
       band.requestId = undefined
+      reseat(mod, now)
 
       return next(e)
     }
@@ -652,6 +730,7 @@ export const register: Register = on => {
     )
     if (mode === 'text' || e.requestId === undefined || e.surface !== 'terminal') {
       band.requestId = undefined
+      reseat(mod, now)
 
       return (
         <Box flexDirection="column">
@@ -660,11 +739,15 @@ export const register: Register = on => {
         </Box>
       )
     }
+    const wasShown = band.requestId !== undefined
     band.requestId = e.requestId
     band.kind = 'area'
     band.columns = Math.min(STAGE_W, columns - 1)
     band.rows = TOON_ROWS
     band.isSeen = false
+    // Shown again: an agent may have ended, or started, while the area was
+    // away (a paint loop still running from before polls on its own time).
+    if (!wasShown) void checkAgents($, mod)
     const cells = siteCells($, mod, band, now) ?? ''
     animate($, mod, band)
     const { Raster } = $.ui.resolve(e)
