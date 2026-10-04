@@ -11,7 +11,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { IdleId, Progress, ScenePick, SessionWorkflow, StageId, Workflow } from '../types'
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
-import { EMPTY_ROSTER, ended, reconcileRoster, type Roster, spawned } from './agents'
+import { EMPTY_ROSTER, ended, reconcileRoster, rememberKind, type Roster, spawned } from './agents'
 import { autoMatch, hasRules, isWindowsPath, relativePath, type Signal, viaOf } from './auto'
 import { cropLeft, placeIdle } from './area'
 import { bandLayout, bandMode, type BandSite, type Tone, TOON_MIN } from './band'
@@ -68,6 +68,9 @@ const sceneAtom = atom({ plugin: 'stage-toons', key: 'scene' } as const, null)
 // Whether rules move the stage by itself: mirrors the store, so a reload
 // keeps it when the store fails.
 const autoAtom = atom({ plugin: 'stage-toons', key: 'auto' } as const, true)
+// Each agent's kind, as its spawn told it: kept across reloads, which
+// start the roster empty, so the list's agents keep their colours.
+const kindsAtom = atom({ plugin: 'stage-toons', key: 'agentKinds' } as const, {})
 
 const TONES: Record<Tone, { color?: string; bold?: boolean; dimColor?: boolean }> = {
   done: { color: '#D97757' },
@@ -469,7 +472,7 @@ async function checkAgents($: EngineInterface, mod: Mod) {
   try {
     const list = await $.agent.list()
     const now = await $.clock.now()
-    mod.roster = reconcileRoster(mod.roster, list, now)
+    mod.roster = reconcileRoster(mod.roster, list, now, await read($, kindsAtom))
     reseat(mod, now)
   } catch {
     // Checked again at the next poll or turn's end.
@@ -808,7 +811,7 @@ export const register: Register = on => {
     // in the cached part of the prompt.
     if ((await read($, sectionAtom)) === null) await update($, sectionAtom, () => workflowText(mod.workflow, progress, mod.toolName))
     // Agents at work before a reload: the roster starts empty, and the list
-    // finds them (their models are lost: grey helpers).
+    // finds them, in the colours their spawns left (grey for one unseen).
     await checkAgents($, mod)
     // Last, so the tool and the command are there first.
     if (loaded.isAvailable) await pruneStore($, mod, now)
@@ -990,8 +993,11 @@ export const register: Register = on => {
     }
     // Every agent gets a helper at the desk row, in its model's colour.
     const now = await $.clock.now()
-    mod.roster = spawned(mod.roster, result.agentId, result.model, now)
+    const agentId = result.agentId
+    mod.roster = spawned(mod.roster, agentId, result.model, now)
     reseat(mod, now)
+    const kind = mod.roster.get(agentId)?.kind ?? 'unknown'
+    if (kind !== 'unknown') await update($, kindsAtom, kinds => rememberKind(kinds, agentId, kind))
     // Clawd deep asleep: the area wakes to seat the helper.
     if (mod.band.isAsleep) {
       mod.band.isAsleep = false
@@ -1032,7 +1038,7 @@ export const register: Register = on => {
         for (const id of staleAuditors(mod.auditors, list)) mod.auditors.delete(id)
         if (mod.auditors.size === 0) await setAuditing($, mod, false)
       }
-      mod.roster = reconcileRoster(mod.roster, list, now)
+      mod.roster = reconcileRoster(mod.roster, list, now, await read($, kindsAtom))
       reseat(mod, now)
     } catch {
       // Checked again at the next turn's end, or the area's next poll.

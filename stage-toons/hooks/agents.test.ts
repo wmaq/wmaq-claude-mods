@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { atWork, EMPTY_ROSTER, ended, LIST_LAG_MS, modelKind, reconcileRoster, type Roster, spawned } from './agents'
+import { atWork, EMPTY_ROSTER, ended, KINDS_KEPT, LIST_LAG_MS, modelKind, reconcileRoster, rememberKind, type Roster, spawned } from './agents'
 
 const ids = (r: Roster) => atWork(r).map(a => a.id)
 // Long after any spawn or turn's end, so the list's lag does not apply.
@@ -82,4 +82,20 @@ test('a fresh spawn the list does not show yet keeps its place and colour; after
   r = reconcileRoster(r, [{ id: 'a', status: 'running' }], LATER + LIST_LAG_MS)
   expect(r.get('a')).toMatchObject({ kind: 'sonnet', isAtWork: true })
   expect(reconcileRoster(spawned(EMPTY_ROSTER, 'b', 'opus', LATER), [], LATER + LIST_LAG_MS).size).toBe(0)
+})
+
+test('an agent the roster lacks (from before a reload) joins with the kind remembered for it; unknown without one', () => {
+  const roster = reconcileRoster(EMPTY_ROSTER, [{ id: 'a', status: 'running' }, { id: 'b', status: 'idle' }, { id: 'c', status: 'running' }], LATER, { a: 'fable', b: 'haiku' })
+  expect(roster.get('a')?.kind).toBe('fable')
+  expect(roster.get('b')?.kind).toBe('haiku')
+  expect(roster.get('c')?.kind).toBe('unknown')
+})
+
+test('a kind is remembered by agent id, unknown ones not at all, the newest few kept', () => {
+  expect(rememberKind({}, 'a', 'unknown')).toEqual({})
+  expect(rememberKind({ a: 'opus' }, 'b', 'fable')).toEqual({ a: 'opus', b: 'fable' })
+  let kinds = {}
+  for (let i = 0; i <= KINDS_KEPT; i++) kinds = rememberKind(kinds, `agent-${i}`, 'sonnet')
+  expect(Object.keys(kinds).length).toBe(KINDS_KEPT)
+  expect(Object.keys(kinds)[0]).toBe('agent-1')
 })

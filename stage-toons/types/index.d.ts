@@ -49,6 +49,9 @@ export type ScenePick = { stage: StageId | null; scene: string; lastByStage: Rec
 // An idle routine's name (hooks/idle/).
 export type IdleId = string
 
+// The model family an agent runs on, which colours its helper (hooks/agents.ts).
+export type ModelKind = 'sonnet' | 'opus' | 'fable' | 'haiku' | 'unknown'
+
 declare module 'claude-code' {
   interface PluginState {
     'stage-toons': {
@@ -61,6 +64,9 @@ declare module 'claude-code' {
       scene: ScenePick | null
       idle: IdleId | null
       auto: boolean
+      // Each agent's kind, by id, as its spawn told it: a reload's roster
+      // starts empty, and the agent list names no model.
+      agentKinds: Record<string, ModelKind>
     }
   }
 }

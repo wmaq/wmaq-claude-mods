@@ -111,6 +111,32 @@ test('after a reload, agents still at work are found and walk in as grey helpers
   expect(shows(lastArea(world), 'unknown')).toBe(true)
 })
 
+test('after a reload, an agent whose spawn this session saw keeps its colour', async ($, on) => {
+  on('state.get', ($, e, next) => (e.key === 'agentKinds' ? { value: { value: { 'old-1': 'fable' }, version: 1 } } : next(e)))
+  const { world, clock } = engine(on)
+  world.agents = [{ id: 'old-1', description: 'Review', type: 'general-purpose', status: 'running' }]
+  await $.session.start(START)
+  await mountBand($)
+  await clock.advance(2_000)
+  expect(shows(lastArea(world), 'fable')).toBe(true)
+  expect(shows(lastArea(world), 'unknown')).toBe(false)
+})
+
+test("a spawn keeps its agent's kind in the session's state, where a reload finds it", async ($, on) => {
+  const writes: unknown[] = []
+  on('state.set', ($, e, next) => {
+    const write = e as unknown as { key: string; value: unknown }
+    if (write.key === 'agentKinds') writes.push(write.value)
+
+    return next(e)
+  })
+  const { world } = engine(on)
+  await $.session.start(START)
+  world.spawnModel = 'claude-fable-5-1'
+  await spawnAgent($)
+  expect(writes.at(-1)).toEqual({ 'agent-1': 'fable' })
+})
+
 test('an idle teammate that works again gets its helper back within a poll', async ($, on) => {
   const { world, clock } = engine(on)
   await $.session.start(START)
