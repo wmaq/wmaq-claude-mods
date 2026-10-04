@@ -1,8 +1,10 @@
 // /stage: what its arguments ask for, the move it makes, and what it shows.
 
-import type { Progress, StageId, Workflow } from '../types'
+import type { Progress, StageDef, StageId, Workflow } from '../types'
+import { ruleText } from './auto'
 import { DEMO_MAX, DEMO_MIN, DEMO_SECONDS } from './demo'
-import { applyMove, backStage, describe, nextStage, parseStage, stageLabel } from './stages'
+import { ago, LOG_DEFAULT } from './history'
+import { applyMove, backStage, describe, HISTORY_MAX, nextStage, parseStage, stageLabel } from './stages'
 import { stageIds, zeroStage } from './workflow'
 
 export type Command =
@@ -20,6 +22,9 @@ export type Command =
   | { kind: 'workflow' }
   | { kind: 'workflow-init' }
   | { kind: 'workflow-reload' }
+  | { kind: 'auto'; isOn: boolean | null }
+  | { kind: 'log'; count: number }
+  | { kind: 'time' }
   | { kind: 'usage' }
 
 export const WORKFLOW_FILE = '.claude/stage-toons.json'
@@ -29,7 +34,7 @@ export function usage(w: Workflow): string {
   const stages = [...w.track.map((s, i) => `${i + 1} ${s.id}`), ...w.side.map(s => (s === zero ? `0 ${s.id}` : s.id))]
 
   return [
-    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo waiting | workflow [init | reload]]',
+    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo waiting | workflow [init | reload] | auto [on | off] | log [n] | time]',
     '  /stage                  show the current stage and the recent moves',
     `  /stage 5, /stage plan   move to a stage${zero ? ` (0 or ? for ${zero.label})` : ''}`,
     '  /stage next, /stage back',
@@ -39,6 +44,9 @@ export function usage(w: Workflow): string {
     `  /stage demo [<stage> | idle] [seconds]  play every scene, one stage's scenes, or the idle routines, ${DEMO_SECONDS} s each (${DEMO_MIN} to ${DEMO_MAX}); /stage demo stop ends it`,
     '  /stage demo waiting     play the toon shown while Claude waits on agents, about 25 s',
     '  /stage workflow [init | reload]  show the workflow; write the default to .claude/stage-toons.json; read the file again',
+    "  /stage auto [on | off]  show the workflow's rules for moving the stage by itself; turn them on or off",
+    `  /stage log [n]          the last n moves (${LOG_DEFAULT}; up to ${HISTORY_MAX}) with how long each stage lasted`,
+    '  /stage time             time per feature and per stage, wall-clock and Claude working',
     `Stages: ${stages.join(', ')}`,
   ].join('\n')
 }
@@ -52,6 +60,18 @@ export function parseCommand(w: Workflow, args: string): Command {
   if (word === 'feature') return tail ? { kind: 'feature', name: tail } : { kind: 'usage' }
   if (word === 'message') return tail ? { kind: 'message', text: tail } : { kind: 'usage' }
   if (word === 'demo') return parseDemo(w, tail.toLowerCase())
+  if (word === 'auto') {
+    const sub = tail.toLowerCase()
+    if (sub === '') return { kind: 'auto', isOn: null }
+
+    return sub === 'on' || sub === 'off' ? { kind: 'auto', isOn: sub === 'on' } : { kind: 'usage' }
+  }
+  if (word === 'log') {
+    if (tail === '') return { kind: 'log', count: LOG_DEFAULT }
+    const count = /^\d+$/.test(tail) ? Number(tail) : NaN
+
+    return count >= 1 && count <= HISTORY_MAX ? { kind: 'log', count } : { kind: 'usage' }
+  }
   if (word === 'workflow') {
     const sub = tail.toLowerCase()
     if (sub === '') return { kind: 'workflow' }
@@ -62,6 +82,7 @@ export function parseCommand(w: Workflow, args: string): Command {
   }
   if (tail !== '') return { kind: 'usage' }
   if (word === 'next' || word === 'back' || word === 'hide') return { kind: word }
+  if (word === 'time') return { kind: 'time' }
   const stage = parseStage(w, word)
 
   return stage ? { kind: 'move', stage } : { kind: 'usage' }
@@ -115,13 +136,10 @@ export function moveFor(w: Workflow, p: Progress, cmd: Command, now: number): Pr
   }
 }
 
-const ago = (ms: number): string =>
-  ms < 60_000 ? 'just now' : ms < 3_600_000 ? `${Math.floor(ms / 60_000)}m ago` : ms < 86_400_000 ? `${Math.floor(ms / 3_600_000)}h ago` : `${Math.floor(ms / 86_400_000)}d ago`
-
 export function showText(w: Workflow, p: Progress, now: number): string {
   const lines = [`Stage ${describe(w, p)}`]
   const recent = p.history.slice(-5).reverse()
-  if (recent.length > 0) lines.push('Recent moves:', ...recent.map(h => `  ${stageLabel(w, h.stage)} by ${h.by}, ${ago(now - h.at)}`))
+  if (recent.length > 0) lines.push('Recent moves:', ...recent.map(h => `  ${stageLabel(w, h.stage)} by ${h.by}${h.via ? ` (${h.via})` : ''}, ${ago(now - h.at)}`))
 
   return lines.join('\n')
 }
@@ -131,9 +149,21 @@ export function workflowSummary(w: Workflow, source: 'file' | 'default'): string
   const lines = [
     source === 'file' ? `Workflow: from ${WORKFLOW_FILE}` : `Workflow: the default (no ${WORKFLOW_FILE}; /stage workflow init writes it there to edit)`,
     'Track:',
-    ...w.track.map((s, i) => `  ${i + 1} ${s.id}: ${s.label} (${s.scenes.join(', ')})`),
+    ...w.track.map((s, i) => `  ${i + 1} ${s.id}: ${s.label} (${s.scenes.join(', ')})${rulesOf(s)}`),
   ]
-  if (w.side.length > 0) lines.push('Side:', ...w.side.map(s => `  ${s === zero ? '0 ' : ''}${s.id}: ${s.label} (${s.scenes.join(', ')})`))
+  if (w.side.length > 0) lines.push('Side:', ...w.side.map(s => `  ${s === zero ? '0 ' : ''}${s.id}: ${s.label} (${s.scenes.join(', ')})${rulesOf(s)}`))
 
   return lines.join('\n')
+}
+
+const rulesOf = (s: StageDef): string => (s.auto && s.auto.length > 0 ? ` · auto: ${s.auto.map(ruleText).join('; ')}` : '')
+
+// /stage auto: whether the stage moves by itself, and on what.
+export function autoText(w: Workflow, isOn: boolean): string {
+  const stages = [...w.track, ...w.side].filter(s => s.auto && s.auto.length > 0)
+  const head = isOn ? 'Automatic moves are on: /stage auto off turns them off.' : 'Automatic moves are off: /stage auto on turns them on.'
+  if (stages.length === 0) return [head, `This workflow has no rules: give a stage an "auto" list in ${WORKFLOW_FILE}.`].join('\n')
+  const rows = stages.map(s => `  ${s.id}: ${s.auto!.map(ruleText).join('; ')}`)
+
+  return [head, 'Rules, by the stage they move the work to (only forward on the track, or into a side stage):', ...rows].join('\n')
 }

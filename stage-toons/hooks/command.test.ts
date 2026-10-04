@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { moveFor, parseCommand, showText, usage, workflowSummary } from './command'
+import { autoText, moveFor, parseCommand, showText, usage, workflowSummary } from './command'
 import { applyMove, freshProgress } from './stages'
 import { DEFAULT_WORKFLOW } from './workflow'
 
@@ -83,8 +83,37 @@ test('/stage workflow shows, inits or reloads the workflow', () => {
 test('the workflow summary says where it came from and lists the stages with their scenes', () => {
   const lines = workflowSummary(W, 'default').split('\n')
   expect(lines[0]).toBe('Workflow: the default (no .claude/stage-toons.json; /stage workflow init writes it there to edit)')
-  expect(lines).toContain(`  7 develop: Develop (${W.track[6]!.scenes.join(', ')})`)
+  expect(lines).toContain(`  7 develop: Develop (${W.track[6]!.scenes.join(', ')}) · auto: skill superpowers:executing-plans; skill superpowers:subagent-driven-development`)
   expect(lines).toContain(`  0 other: Other (${W.side[1]!.scenes.join(', ')})`)
   const two = { track: [{ ...W.track[0]!, scenes: ['road-trip', 'gift'] }], side: [] }
   expect(workflowSummary(two, 'file').split('\n')).toEqual(['Workflow: from .claude/stage-toons.json', 'Track:', '  1 roadmap: Roadmap (road-trip, gift)'])
+})
+
+test('/stage auto, log and time parse', () => {
+  expect(parseCommand(W, 'auto')).toEqual({ kind: 'auto', isOn: null })
+  expect(parseCommand(W, 'Auto OFF')).toEqual({ kind: 'auto', isOn: false })
+  expect(parseCommand(W, 'auto on')).toEqual({ kind: 'auto', isOn: true })
+  expect(parseCommand(W, 'log')).toEqual({ kind: 'log', count: 15 })
+  expect(parseCommand(W, 'log 200')).toEqual({ kind: 'log', count: 200 })
+  expect(parseCommand(W, 'time')).toEqual({ kind: 'time' })
+  for (const bad of ['auto maybe', 'log 0', 'log 201', 'log x', 'time now']) expect(parseCommand(W, bad)).toEqual({ kind: 'usage' })
+  expect(usage(W)).toContain('/stage auto [on | off]')
+  expect(usage(W)).toContain('/stage log [n]')
+  expect(usage(W)).toContain('/stage time')
+})
+
+test('/stage auto lists the rules by the stage they move to; a workflow without rules says how to add them', () => {
+  const text = autoText(W, true)
+  expect(text).toContain('Automatic moves are on: /stage auto off turns them off.')
+  expect(text).toContain('  spec-audit: agent fable from brainstorm, spec')
+  expect(text).toContain('  plan: skill superpowers:writing-plans; write docs/superpowers/plans/**')
+  expect(text).not.toContain('roadmap:')
+  const bare = { track: W.track.map(({ auto: _, ...s }) => s), side: [] }
+  expect(autoText(bare, false)).toBe(['Automatic moves are off: /stage auto on turns them on.', 'This workflow has no rules: give a stage an "auto" list in .claude/stage-toons.json.'].join(String.fromCharCode(10)))
+})
+
+test('/stage shows why an automatic move happened; the summary lists rules', () => {
+  const p = applyMove(W, freshProgress(0), { stage: 'spec', by: 'auto', via: 'wrote docs/superpowers/specs/a.md', at: 0 })
+  expect(showText(W, p, 0)).toContain('3/10 Spec by auto (wrote docs/superpowers/specs/a.md), just now')
+  expect(workflowSummary(W, 'default')).toContain('  2 brainstorm: Brainstorm (light-bulbs, sticky-notes, thought-clouds) · auto: skill superpowers:brainstorming')
 })
