@@ -279,6 +279,37 @@ cycling; check live first), C7, D1-D2, D5, P5b-d, P6, P8, P9, A1.
 3. scenes and the idle routines look as before (no stutter from skipped
    frames), and collapsing and expanding the band brings it back moving.
 
+### Found in the person's local test (2026-10-04)
+
+Testing 0.6.2 on Windows with a throwaway feature (a violet bar, reverted
+after the test) run through the superpowers skills. Seen working: every
+rule from Roadmap to Develop and into Debugging moved the bar, with its
+note to Claude; a background Fable spawn's note came with the next
+prompt; writing a spec or ticking the plan's checkboxes behind the stage
+moved nothing; a Fable review during Develop moved nothing; the desk row
+showed a Fable helper for the audits.
+
+To fix after the test (approved, 0.6.3):
+- **A helper turns grey after a reload.** An agent already at work when
+  the mod reloads (a hot-reload refresh, a plugin update) shows as a grey
+  helper without the monocle until it ends: the roster lives in module
+  variables, which a reload starts over, and `$.agent.list()` gives an
+  agent's id and status but no model, so `reconcileRoster` joins it as
+  `unknown` (`agents.ts`). Fix: keep each agent's model kind in a session
+  `$.state` value keyed by agent id (a new key in `types/index.d.ts`),
+  written at `agent.spawn` and read when the list brings an agent the
+  roster lacks; a test drops the module's roster and checks the kind
+  comes back.
+
+Up for discussion:
+- **A workflow file without rules turns automatic moves off silently.**
+  This project's `.claude/stage-toons.json`, written by `/stage workflow
+  init` before 0.6, has no `auto` lists, so no rule fired until it was set
+  aside (`.claude/stage-toons.json.pre-0.6`, untracked). The README says so
+  and `/stage auto` would have told, but nothing points there. Options: a
+  one-time notice at load when automatic moves are on and the workflow has
+  no rules, or the default's rules for a file that lists none.
+
 ### Research (2026-10-04)
 
 `docs/research/2026-10-04-stage-toons-improvement-ideas.md` ranks 30
