@@ -6,7 +6,7 @@ the marketplace manifest `.claude-plugin/marketplace.json`.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner and an idle Clawd beside the bar | 0.4.2 (v0.4 and a fix for 2.1.289's agent statuses); later ideas in `docs/roadmap.md` |
+| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner, an idle Clawd in an area below the bar, and a desk row of helpers there while Claude waits on agents | 0.5.0 (v0.5, the waiting toon); later ideas in `docs/roadmap.md` |
 
 ## The workflow
 
@@ -59,6 +59,17 @@ It names this session's hot-reload folder,
   (v0.4 turned `hooks/idle.ts` into `hooks/idle/`), replace the copy's
   `hooks` wholesale (`rm -rf` it first): a stale file shadows the new
   folder.
+- **After `/clear` the mod still loads from the old session's folder.** The
+  process keeps watching the hot-reload folder it enabled, named by the
+  session id from before `/clear`; the new session id's folder is empty.
+  Refresh the copy that is loaded (`ls ~/.claude/dev-mods/*/`), not the new
+  folder: writing a mod there asks to enable it and loads a second copy. A
+  reload rewrites the copy's `.claude-plugin/types/`, so its timestamp
+  shows the reload happened.
+- **Live-testing what agents do** (the waiting toon): start background
+  agents on different models whose only job is to stay busy for a set time
+  with `ping -n <seconds+1> 127.0.0.1 > /dev/null` (`sleep` is blocked), then
+  end the turn and let the person watch the band.
 - **Git Bash rewrites a commit subject that starts with `/stage`** into a
   Windows path; start the subject with another word.
 - **Checks**, from the repository root:
@@ -123,6 +134,12 @@ Learned building stage-toons on 2.1.287 to 2.1.289:
 - Since 2.1.289 a `ui.render` answer that throws while the terminal draws it
   costs that site alone: the engine draws its own there and the session goes
   on.
+- `$.agent.list()` may be called from a `ui.render` hook (fire and forget,
+  errors caught): 0.5's band does so each time its area shows again. The
+  list keeps ended agents for a while ("until the engine drops its task"),
+  so a roster built from it must drop `completed`/`failed`/`killed`, and it
+  may lag `agent.spawn` and an agent's own `turn.complete`: stage-toons
+  trusts the events over the list for 3 s (`LIST_LAG_MS`).
 
 ### The test kit (`claude-code/testing`)
 
@@ -156,7 +173,10 @@ Learned building stage-toons on 2.1.287 to 2.1.289:
 - Build backslashes in test strings with `String.fromCharCode(92)`; a
   `'\\'` literal broke the kit's parser.
 - `stage-toons/hooks/harness.tsx` is a working set of engine stand-ins to
-  copy from.
+  copy from. Its `agent.spawn` lists each spawned agent `running` in
+  `world.agents` and never ends it: set `world.agents` to end one, or the
+  roster takes it back to work once `LIST_LAG_MS` has passed.
+- `expect` has no `toBeCloseTo`: round and compare with `toBe`.
 
 ## Where things are
 

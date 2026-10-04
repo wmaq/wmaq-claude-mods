@@ -140,7 +140,7 @@ check took anything but `running` as finished, so Fable could leave the
 stage while still auditing. An auditor is now gone only when the list shows
 it ended (`completed`, `failed`, `killed`) or no longer shows it.
 
-### v0.5 (in progress)
+### v0.5 (2026-10-04, merged)
 
 The waiting toon. Spec:
 `docs/superpowers/specs/2026-10-04-stage-toons-waiting-toon-design.md`.
@@ -155,6 +155,33 @@ Plan: `docs/superpowers/plans/2026-10-04-stage-toons-waiting-toon.md`.
   are tracked by `agent.spawn`, their own `turn.complete`, and a 2 s poll
   of `$.agent.list()` while the area shows.
 - **`/stage demo waiting`** plays it with pretend agents.
+
+Built by drafting all of it in a scratch copy of the mod first (254 tests
+green there), then a plan that embeds that code, audited by Fable by
+applying every task to fresh copies. Checked live with three background
+agents (Sonnet, Haiku, Fable) and the demos; the user's test passed.
+
+Departures from the spec, approved: the list may lag the events by 3 s
+both ways (`LIST_LAG_MS`); idle teammates stay in the roster, ended agents
+leave it; a 2 x 2 cup instead of the coffee mug; Clawd glances along the
+row instead of swaying; the area checks the agent list before its first
+frame whatever the roster holds.
+
+Left as they are (from Fable's final review, minor):
+- The idle clock can move backwards when a waiting period that ended
+  unseen reports an end before the main turn's end (masked by the band's
+  own reset when Claude stops); only moving it forward would fix it.
+- With the waiting toon broken (it threw), the idle routine stands in and
+  can doze while agents still work.
+- An idle teammate found by the list after a reload is not adopted, so it
+  is not polled until a turn ends or the area shows again.
+- The test "an agent spawned while Claude works walks in when the turn
+  ends" raises no `turn.complete`; it exercises the band's `isWorking` flip.
+- The demo's script has no queue: the grey helper simply arrives when the
+  first seat frees (the picture is the same).
+- `/stage demo waiting` started during a real waiting period ends with
+  Clawd at x 0 beside the seated helpers, no fresh walk aside; `/stage
+  hide` during the walk back restarts the idle clock at the hide.
 
 ### Later (ideas, up for discussion)
 
