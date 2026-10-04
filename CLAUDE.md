@@ -6,7 +6,7 @@ the marketplace manifest `.claude-plugin/marketplace.json`.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner, an idle Clawd in an area below the bar, and a desk row of helpers there while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.6.1 (v0.6, automatic moves and history; 0.6.1 fixes); later ideas in `docs/roadmap.md` and `docs/research/` |
+| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner, an idle Clawd in an area below the bar, and a desk row of helpers there while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.6.2 (v0.6, automatic moves and history; 0.6.1 and 0.6.2 fixes); later ideas in `docs/roadmap.md` and `docs/research/`; the latest review in `docs/reviews/` |
 
 ## The workflow
 
@@ -255,5 +255,6 @@ PC.
 - `docs/superpowers/specs/`, `docs/superpowers/plans/`: specs and plans.
 - `docs/research/`: research reports (ranked improvement ideas, with the
   notes behind them).
+- `docs/reviews/`: code reviews (correctness, performance, security).
 - `<mod>/README.md`: install and use. stage-toons' Clawd sprite comes from
   claude-toons (MIT); keep `stage-toons/NOTICE` with it.

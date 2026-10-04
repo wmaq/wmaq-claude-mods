@@ -240,6 +240,45 @@ the store and saving, a few awaits apart, two sessions can still race
 (one credit or one entry lost); closing it would need history merged by
 time.
 
+### 0.6.2 (2026-10-04)
+
+From the code review (`docs/reviews/2026-10-04-code-review.md`), one
+commit each:
+- **Workflow-file rules can't hang the plugin** (S1): a `bash` rule that
+  repeats a group holding a repeat or a choice is refused; rules compile
+  once; a rule reads at most 500 characters of a command; a glob holds at
+  most 8 `*`. The history names a command by its rule, not its text (S2).
+- **Fewer store reads** (P4): a call reads the store only when a rule of
+  its kind matches; an older stored copy isn't checked whole.
+- **A newer version's progress is never saved over** (C3), and unknown
+  entry fields are kept; a mid-turn `/stage workflow reload` keeps the
+  turn's time (C2).
+- **Frames encode with the native base64**, no per-cell arrays (P2).
+- **Pruning** runs after registration and keeps at most 50 projects (C5,
+  P5a).
+- Nits: C6, S3, S4 (64 KB file cap), D3, D4, T5; a CLAUDE.md lesson.
+
+Needing the person's terminal:
+- **The idle area sleeps** (P1, P3): dozing it paints at 333 ms; after
+  five minutes of doze it shows one still picture and stops until a
+  render, prompt or agent wakes it. No frame is sent twice (a resend
+  every 2 s, and every frame after a refusal, keep a gone Raster noticed).
+- **Each spinner animates its own toon** (C1).
+
+Declined: P7 (a slower poll while only idle teammates are known): an
+idle teammate that works again raises no event, so the poll is what
+brings its helper back. Left for later: C4 (a collapsed band's loop
+cycling; check live first), C7, D1-D2, D5, P5b-d, P6, P8, P9, A1.
+
+**The person's check:** with the branch loaded in a terminal,
+1. leave Claude idle: Clawd dozes after a minute and, about five minutes
+   later, holds still (the z stops halfway up); a new prompt wakes it;
+2. start a background agent and watch both the main spinner's toon and
+   the agent row's: both animate; when the main turn ends only the
+   agent's goes on;
+3. scenes and the idle routines look as before (no stutter from skipped
+   frames), and collapsing and expanding the band brings it back moving.
+
 ### Research (2026-10-04)
 
 `docs/research/2026-10-04-stage-toons-improvement-ideas.md` ranks 30
