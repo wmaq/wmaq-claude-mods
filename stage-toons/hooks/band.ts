@@ -11,6 +11,18 @@ import { isTrack, rank, stageOf } from './workflow'
 export type Tone = 'done' | 'current' | 'future' | 'label' | 'tag' | 'message' | 'note'
 export type Span = { text: string; tone: Tone }
 
+// How each tone is drawn: the props of its Text (the band's hook), and the
+// frame tool's colours.
+export const BAR_TONES: Record<Tone, { color?: string; bold?: boolean; dimColor?: boolean }> = {
+  done: { color: '#D97757' },
+  current: { color: '#D97757', bold: true },
+  future: { dimColor: true },
+  label: {},
+  tag: { color: '#8B7AE8' },
+  message: { dimColor: true },
+  note: { dimColor: true },
+}
+
 // Below this many columns the band is one line.
 export const WIDE_MIN = 50
 export const TAG = '⌕ Fable reviewing'

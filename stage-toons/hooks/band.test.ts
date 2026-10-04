@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { bandLayout, bandMode, type Span, trackSpans } from './band'
+import { BAR_TONES, bandLayout, bandMode, type Span, trackSpans } from './band'
 import { applyMove, cellWidth, freshProgress } from './stages'
 import { DEFAULT_WORKFLOW } from './workflow'
 
@@ -140,4 +140,16 @@ test('the track has as many dots as the workflow has track stages', () => {
   const small = { track: DEFAULT_WORKFLOW.track.slice(0, 3), side: DEFAULT_WORKFLOW.side }
   const p = applyMove(small, freshProgress(0), { stage: 'brainstorm', by: 'claude', at: 1 })
   expect(text(bandLayout(small, p, false, 100)[0])).toBe(' ●━◉─○  2/3 Brainstorm')
+})
+
+test('the bar draws its tones as before: Clawd orange lit, the current stage bold, the Fable tag violet, the rest dim', () => {
+  expect(BAR_TONES).toEqual({
+    done: { color: '#D97757' },
+    current: { color: '#D97757', bold: true },
+    future: { dimColor: true },
+    label: {},
+    tag: { color: '#8B7AE8' },
+    message: { dimColor: true },
+    note: { dimColor: true },
+  })
 })

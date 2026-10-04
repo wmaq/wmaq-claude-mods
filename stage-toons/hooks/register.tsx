@@ -13,7 +13,7 @@ import type { Progress, ScenePick, SessionWorkflow, StageId, Workflow } from '..
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { ended, reconcileRoster, rememberKind, spawned } from './agents'
 import { autoMatch, hasRules, isWindowsPath, relativePath, type Signal, viaOf } from './auto'
-import { bandLayout, bandMode, type BandSite, type Tone, TOON_MIN } from './band'
+import { BAR_TONES, bandLayout, bandMode, type BandSite, TOON_MIN } from './band'
 import { autoText, moveFor, parseCommand, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { demoAt, demoFor, demoLine, demoStep, idleDemoAt, idleDemoLine, startDemo, WAITING_DEMO_LINE } from './demo'
 import { createDirector, react, withAuditing, withScene } from './director'
@@ -61,16 +61,6 @@ const autoAtom = atom({ plugin: 'stage-toons', key: 'auto' } as const, true)
 // Each agent's kind, as its spawn told it: kept across reloads, which
 // start the roster empty, so the list's agents keep their colours.
 const kindsAtom = atom({ plugin: 'stage-toons', key: 'agentKinds' } as const, {})
-
-const TONES: Record<Tone, { color?: string; bold?: boolean; dimColor?: boolean }> = {
-  done: { color: '#D97757' },
-  current: { color: '#D97757', bold: true },
-  future: { dimColor: true },
-  label: {},
-  tag: { color: '#8B7AE8' },
-  message: { dimColor: true },
-  note: { dimColor: true },
-}
 
 // A queued step of the mod's own (an automatic move, a turn's credit) that
 // must not fail the call or event it rides on: a failure goes to the debug log.
@@ -778,7 +768,7 @@ export const register: Register = on => {
         {lines.map((spans, i) => (
           <Box key={`line-${i}`} flexDirection="row">
             {spans.map((span, j) => (
-              <Text key={`span-${i}-${j}`} wrap="truncate-end" {...TONES[span.tone]}>
+              <Text key={`span-${i}-${j}`} wrap="truncate-end" {...BAR_TONES[span.tone]}>
                 {span.text}
               </Text>
             ))}
