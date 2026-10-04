@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { base64, createBuffer, EMPTY, encodeCells, fillRect, getPixel, hex, setPixel, TERMINAL_DEFAULT, toWords } from './pixels'
+import { base64, base64Loop, createBuffer, EMPTY, encodeCells, fillRect, getPixel, hex, setPixel, TERMINAL_DEFAULT, toWords } from './pixels'
 
 const decode = (cells: string) => new Uint32Array(Uint8Array.from(atob(cells), c => c.charCodeAt(0)).buffer)
 
@@ -46,4 +46,12 @@ test('cells encode as base64 and decode back', () => {
 
 test('hex colors parse', () => {
   expect(hex('#D97757')).toBe(0xd97757)
+})
+
+test('the native encoder and the loop give the same text, for every length', () => {
+  for (let n = 0; n < 40; n++) {
+    const bytes = Uint8Array.from({ length: n }, (_, i) => (i * 37 + n * 11) % 256)
+    expect(base64(bytes)).toBe(base64Loop(bytes))
+    expect(base64Loop(bytes)).toBe(btoa(String.fromCharCode(...bytes)))
+  }
 })

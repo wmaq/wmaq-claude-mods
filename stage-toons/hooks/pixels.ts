@@ -40,11 +40,25 @@ export function toWords(b: PixelBuffer): Uint32Array {
     for (let col = 0; col < b.w; col++) {
       const top = getPixel(b, col, row * 2)
       const bottom = getPixel(b, col, row * 2 + 1)
+      // Written by index: a frame allocates no arrays per cell.
       const i = (row * b.w + col) * 3
-      if (top === EMPTY && bottom === EMPTY) words.set([SPACE, TERMINAL_DEFAULT, TERMINAL_DEFAULT], i)
-      else if (bottom === EMPTY) words.set([UPPER, top, TERMINAL_DEFAULT], i)
-      else if (top === EMPTY) words.set([LOWER, bottom, TERMINAL_DEFAULT], i)
-      else words.set([UPPER, top, bottom], i)
+      if (top === EMPTY && bottom === EMPTY) {
+        words[i] = SPACE
+        words[i + 1] = TERMINAL_DEFAULT
+        words[i + 2] = TERMINAL_DEFAULT
+      } else if (bottom === EMPTY) {
+        words[i] = UPPER
+        words[i + 1] = top
+        words[i + 2] = TERMINAL_DEFAULT
+      } else if (top === EMPTY) {
+        words[i] = LOWER
+        words[i + 1] = bottom
+        words[i + 2] = TERMINAL_DEFAULT
+      } else {
+        words[i] = UPPER
+        words[i + 1] = top
+        words[i + 2] = bottom
+      }
     }
   }
 
@@ -53,7 +67,16 @@ export function toWords(b: PixelBuffer): Uint32Array {
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 
+// The engine's own Uint8Array.prototype.toBase64 when it has one (the
+// plugin environment does: about 40 times faster, little garbage), else
+// the loop below; both give the same text.
 export function base64(bytes: Uint8Array): string {
+  const native = (bytes as Uint8Array & { toBase64?: () => string }).toBase64
+
+  return typeof native === 'function' ? native.call(bytes) : base64Loop(bytes)
+}
+
+export function base64Loop(bytes: Uint8Array): string {
   let out = ''
   for (let i = 0; i < bytes.length; i += 3) {
     const a = bytes[i]!
