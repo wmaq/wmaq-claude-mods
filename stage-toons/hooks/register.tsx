@@ -15,10 +15,10 @@ import { ended, reconcileRoster, rememberKind, spawned } from './agents'
 import { autoMatch, hasRules, isWindowsPath, relativePath, type Signal, viaOf } from './auto'
 import { bandLayout, bandMode, type BandSite, type Tone, TOON_MIN } from './band'
 import { autoText, moveFor, parseCommand, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
-import { type Demo, demoAt, demoLength, demoLine, demoStep, idleDemoAt, idleDemoLine, WAITING_DEMO_LINE } from './demo'
+import { demoAt, demoFor, demoLine, demoStep, idleDemoAt, idleDemoLine, startDemo, WAITING_DEMO_LINE } from './demo'
 import { createDirector, react, withAuditing, withScene } from './director'
 import { siteCells } from './frames'
-import { IDLE_IDS, pickIdle } from './idle'
+import { pickIdle } from './idle'
 import { createMod, createSite, endDemo, type Mod, queued, reseat, stopToon } from './mod'
 import { animate, type Ports } from './paint'
 import { pickOne } from './pick'
@@ -26,10 +26,9 @@ import { creditAt, currentEntry, logText, timeText } from './history'
 import { type KV, loadProgress, PRUNE_EVERY_MS, saveProgress, staleKeys, storeKey, validate } from './progress'
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolSchema, workflowText } from './prompt'
 import { type SceneId, STAGE_W } from './scene'
-import { DEMO_ORDER, STAGE_SCENES } from './scenes'
+import { STAGE_SCENES } from './scenes'
 import { applyMove, describe, freshProgress, isAdvance, reconcile, stageLabel } from './stages'
 import { TOON_ROWS } from './toon'
-import { WAITING_DEMO_MS } from './waiting/demo'
 import { DEFAULT_WORKFLOW, parseWorkflow, sameWorkflow, stageIds, stageList, stageOf, UNTRACKED_SCENE, withScenes, workflowJson } from './workflow'
 
 const HIDDEN_KEY = 'hidden'
@@ -422,27 +421,6 @@ async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promis
   return { text: lines.join('\n'), context: [`[stage-toons] The workflow changed: ${stageList(mod.workflow)}. Now: ${describe(mod.workflow, progress)}`] }
 }
 
-// Whether the band last drawn has room for the area under a bar of
-// barLines lines (the bar with the demo's line).
-const hasRoom = (mod: Mod, barLines: number): boolean =>
-  !mod.lastBand || bandMode({ ...mod.lastBand, hasSurvey: false, isAgentView: false, isHidden: false, hasDemo: true, barLines }) === 'area'
-
-// Starts the demo, or says why not. label names what plays; barLines is
-// how many lines the bar takes with the demo's line.
-function startDemo(mod: Mod, demo: Demo, label: string, now: number, isHidden: boolean, barLines: number): string {
-  if (isHidden) return 'stage-toons is hidden; /stage hide shows it.'
-  if (mod.surface !== 'terminal') return 'The demo plays in the terminal only.'
-  if (!hasRoom(mod, barLines)) return `The band has no room for the demo: it needs 30 columns and ${barLines + TOON_ROWS} rows.`
-  const isRestart = mod.demo !== null && demoStep(mod.demo, now) !== null
-  mod.demo = demo
-  const playing = `${isRestart ? 'Restarting the demo: p' : 'P'}laying`
-  if (demo.kind === 'waiting') return `${playing} ${label} (about ${Math.round(WAITING_DEMO_MS / 1000)} s). /stage demo stop ends it.`
-  const total = demoLength(demo) * demo.seconds
-  const length = total < 60 ? 'under a minute' : `about ${Math.round(total / 60)} min`
-
-  return `${playing} ${label}, ${demo.seconds} s each (${length}). /stage demo stop ends it.`
-}
-
 export const register: Register = on => {
   const mod = createMod()
 
@@ -608,22 +586,7 @@ export const register: Register = on => {
     }
     if (cmd.kind === 'usage') return { text: usage(mod.workflow) }
     if (cmd.kind === 'demo' || cmd.kind === 'demo-idle' || cmd.kind === 'demo-waiting') {
-      const stage = cmd.kind === 'demo' && cmd.stage !== null ? stageOf(mod.workflow, cmd.stage) : undefined
-      const demo: Demo =
-        cmd.kind === 'demo-waiting'
-          ? { kind: 'waiting', at: now }
-          : cmd.kind === 'demo-idle'
-            ? { kind: 'idle', at: now, seconds: cmd.seconds }
-            : { kind: 'scenes', at: now, seconds: cmd.seconds, scenes: stage?.scenes ?? DEMO_ORDER }
-      const n = demoLength(demo)
-      const label =
-        cmd.kind === 'demo-waiting'
-          ? 'the waiting toon'
-          : cmd.kind === 'demo-idle'
-            ? `${IDLE_IDS.length} idle routines and the doze`
-            : stage
-              ? `${n} scene${n === 1 ? '' : 's'} of ${stage.label}`
-              : `${n} scenes`
+      const { demo, label } = demoFor(cmd, mod.workflow, now)
       // The bar's lines with the demo's line under it, at the band's width.
       const barLines = bandLayout(mod.workflow, before, false, mod.lastBand?.columns ?? 100, 'demo').length
       const text = startDemo(mod, demo, label, now, await read($, hiddenAtom), barLines)
