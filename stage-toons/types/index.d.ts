@@ -1,7 +1,18 @@
 // A stage's id, as the workflow names it (StageDef.id).
 export type StageId = string
 
-export type HistoryEntry = { stage: StageId; at: number; by: 'claude' | 'user' }
+// A move in the history: the stage entered (or the feature changed in it),
+// when, by whom, the feature it left, why an automatic move happened, and
+// Claude's working time while it was the current entry. Entries an older
+// version wrote have no feature, via or workMs.
+export type HistoryEntry = {
+  stage: StageId
+  at: number
+  by: 'claude' | 'user' | 'auto'
+  feature?: string | null
+  via?: string
+  workMs?: number
+}
 
 export type Progress = {
   v: 2
@@ -14,11 +25,15 @@ export type Progress = {
   updatedAt: number
 }
 
+// A rule that moves the work into a stage by itself (hooks/auto.ts): one
+// kind, and perhaps the stages it fires from.
+export type AutoRule = ({ skill: string } | { write: string } | { agent: string } | { bash: string }) & { from?: readonly StageId[] }
+
 // One stage of a workflow (hooks/workflow.ts): what set_stage and /stage
 // take, what the bar shows, the status line on entering it, the line that
-// tells Claude when to move here, and the scenes it may play (one is picked
-// each time the work enters it).
-export type StageDef = { id: string; label: string; message: string; when: string; scenes: readonly string[] }
+// tells Claude when to move here, the scenes it may play (one is picked
+// each time the work enters it), and the rules that move the work here.
+export type StageDef = { id: string; label: string; message: string; when: string; scenes: readonly string[]; auto?: readonly AutoRule[] }
 
 // The stages the work moves through: the track, in order, and the side
 // stages, entered from any point and left again.
@@ -45,6 +60,7 @@ declare module 'claude-code' {
       warned: boolean
       scene: ScenePick | null
       idle: IdleId | null
+      auto: boolean
     }
   }
 }
