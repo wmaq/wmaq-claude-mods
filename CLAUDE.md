@@ -6,7 +6,7 @@ the marketplace manifest `.claude-plugin/marketplace.json`.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner, an idle Clawd in an area below the bar, and a desk row of helpers there while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.6.3 (v0.6, automatic moves and history; fixes up to 0.6.3, tested locally); later ideas in `docs/roadmap.md` and `docs/research/`; the latest review in `docs/reviews/` |
+| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner, an idle Clawd in an area below the bar, and a desk row of helpers there while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.6.4 (v0.6, automatic moves and history; fixes up to 0.6.3; 0.6.4 splits `register.tsx`, tested locally); the frame tool in `tools/frames/`; later ideas in `docs/roadmap.md` and `docs/research/`; the latest review in `docs/reviews/` |
 
 ## The workflow
 
@@ -54,7 +54,12 @@ It names this session's hot-reload folder,
 - **Hot reload uses a copy, not a link.** On Windows a directory junction
   into the hot-reload folder loads the mod once, but saves through it never
   trigger a reload. Copy the mod in and refresh the copy after every change:
-  `cp -r <mod>/.claude-plugin <mod>/hooks <mod>/types ~/.claude/dev-mods/<session id>/<mod>/`.
+  `mkdir -p <copy>/.claude-plugin && cp <mod>/.claude-plugin/plugin.json <copy>/.claude-plugin/ && cp -r <mod>/hooks <mod>/types <copy>/`,
+  `<copy>` being `~/.claude/dev-mods/<session id>/<mod>`. Copy
+  `plugin.json` alone, not the whole `.claude-plugin`: its `types/` is the
+  repository's git-ignored copy from whichever version last loaded there,
+  and copied over the hot-reload copy's it fails `tsc` (on `isTeammate`,
+  say) until the next reload rewrites it.
   The mod reloads when the turn that changed it ends. When files move
   (v0.4 turned `hooks/idle.ts` into `hooks/idle/`), replace the copy's
   `hooks` wholesale (`rm -rf` it first): a stale file shadows the new
