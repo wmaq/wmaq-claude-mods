@@ -293,8 +293,12 @@ and CJK feature name fits the bar; Clawd dozes and then holds still; the
 main spinner's toon and a background agent's animate together, the
 agent's alone after the main turn; the scenes, idle routines and waiting
 toon play as before, and come back moving after the band is collapsed
-and expanded. Not watched: C4 (whether a collapsed band's loop keeps
-restarting), which needs `claude --debug`.
+and expanded. C4, checked under `claude --debug`: a collapsed band is
+redrawn every 4 s (every 8 s once Clawd dozes), as the review suspected,
+but the cycle is bounded. The deep sleep five minutes into the doze ends
+it, and expanding the band brings the drawing back. While agents work
+(no doze) it lasts as long as they do. Each redraw takes 2 to 4 ms: left
+as it is.
 
 Found, and fixed in 0.6.3: a helper turned grey after a reload, and a
 workflow file without rules turned automatic moves off silently. This

@@ -110,6 +110,9 @@ raw entry, then override the checked fields).
 
 **C4. Low (unverified live). A collapsed band may restart its loop every
 4 s, indefinitely.**
+*Checked live on 2026-10-04 (0.6.3, `--debug`): it does cycle, every 4 s
+and every 8 s once Clawd dozes, but 0.6.2's deep sleep ends it five
+minutes into the doze. Left as it is; see the roadmap.*
 Evidence: when blits are refused 24 times (`MAX_REFUSED_UNSEEN` × 166 ms ≈
 4 s), the area loop invalidates (`register.tsx:530-533`). The render then
 mounts a Raster and restarts the loop, and the first iteration polls the
