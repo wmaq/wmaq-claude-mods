@@ -158,3 +158,22 @@ test('a Bash call under a workflow without bash rules reads nothing from the sto
   await callTool($, 'Write', { file_path: 'C:/Dev/proj/src/a.ts', content: 'x' })
   expect(world.storeReads).toBe(before)
 })
+
+test("an automatic move that no longer matches on the store's copy leaves the turn's working time whole", async ($, on) => {
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  await setStage($, { stage: 'roadmap', message: 'Picking' })
+  const start = saved(world.store).history[0]!.at
+  await startTurn($)
+  await clock.advance(5 * MIN)
+  // Another session has moved on to Spec: the brainstorming rule matches
+  // this session's copy, not the store's, so nothing moves.
+  theirMove(world.store, 'spec', start + 5 * MIN)
+  await callTool($, 'Skill', { skill: 'superpowers:brainstorming' })
+  await clock.advance(5 * MIN)
+  await endTurn($)
+  expect(saved(world.store).history.map(h => [h.stage, h.by, h.workMs])).toEqual([
+    ['roadmap', 'claude', 10 * MIN],
+    ['spec', 'user', undefined],
+  ])
+})
