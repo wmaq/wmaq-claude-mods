@@ -45,6 +45,22 @@ test('the bar keeps the full width while Claude waits', async ($, on) => {
   expect((await ui.find({ key: 'stage-toons' }))?.text).toContain(`5/10 Plan · ${'f'.repeat(40)}`)
 })
 
+test('the lit stages are violet, the current one bold', async ($, on) => {
+  engine(on)
+  await $.session.start(START)
+  await setStage($, { stage: 'plan', message: 'Planning' })
+  const ui = await mountBand($)
+  const done = await ui.findAll({ type: 'Text', text: '●' })
+  expect(done.length).toBe(4)
+  for (const span of done) {
+    expect(span.props).toMatchObject({ color: '#C084FC' })
+    expect((span.props as { bold?: boolean }).bold).toBeUndefined()
+  }
+  const current = await ui.findAll({ type: 'Text', text: '◉' })
+  expect(current.length).toBe(1)
+  expect(current[0]!.props).toMatchObject({ color: '#C084FC', bold: true })
+})
+
 test('no idle Clawd while Claude works, in a narrow band, on the desktop, or hidden', async ($, on) => {
   engine(on)
   await $.session.start(START)

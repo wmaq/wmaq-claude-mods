@@ -69,9 +69,12 @@ const sceneAtom = atom({ plugin: 'stage-toons', key: 'scene' } as const, null)
 // keeps it when the store fails.
 const autoAtom = atom({ plugin: 'stage-toons', key: 'auto' } as const, true)
 
+// The lit stages' colour (a throwaway violet, to be reverted).
+const BAR_COLOR = '#C084FC'
+
 const TONES: Record<Tone, { color?: string; bold?: boolean; dimColor?: boolean }> = {
-  done: { color: '#D97757' },
-  current: { color: '#D97757', bold: true },
+  done: { color: BAR_COLOR },
+  current: { color: BAR_COLOR, bold: true },
   future: { dimColor: true },
   label: {},
   tag: { color: '#8B7AE8' },
