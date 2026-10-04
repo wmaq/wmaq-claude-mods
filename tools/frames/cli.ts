@@ -27,6 +27,16 @@ common: --from MS (0) --every MS (250) --count N (16) --columns-per-row N (4)
 
 const FLAGS = new Set(['auditing', 'doze', 'working'])
 
+// The options each command takes, beside the common ones: anything else is
+// an error, so a mistyped option is not drawn with its default.
+const COMMON = ['from', 'every', 'count', 'columns-per-row', 'scale', 'out']
+const OPTIONS: Record<string, readonly string[]> = {
+  scene: ['reaction', 'auditing', 'width'],
+  idle: ['doze'],
+  waiting: ['agents'],
+  band: ['stage', 'feature', 'message', 'columns', 'max-rows', 'agents', 'auditing', 'working', 'workflow'],
+}
+
 type Args = { what: string; id: string | undefined; opts: Map<string, string> }
 
 export function parseArgs(argv: readonly string[]): Args {
@@ -81,6 +91,12 @@ function workflowOpt(opts: Map<string, string>): Workflow | undefined {
 // The frames a request asks for, and the file they go to by default.
 function render(args: Args, times: readonly number[]): { frames: Canvas[]; name: string } {
   const { what, id, opts } = args
+  const known = OPTIONS[what]
+  if (known !== undefined) {
+    for (const name of opts.keys()) {
+      if (!known.includes(name) && !COMMON.includes(name)) throw new Error(`unknown option --${name} for ${what}\n${USAGE}`)
+    }
+  }
   const need = () => {
     if (id === undefined) throw new Error(`${what} needs an id\n${USAGE}`)
 

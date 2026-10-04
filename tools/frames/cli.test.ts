@@ -43,3 +43,9 @@ test('the command line reads an id, flags and values', () => {
   assert.throws(() => main(['paint', 'x']), /unknown "paint"/)
   assert.throws(() => main(['scene', 'dice', '--reaction', 'cheer']), /--reaction is advance or failure/)
 })
+
+test('an option the command does not take is an error, so a typo is not drawn with defaults', () => {
+  assert.throws(() => main(['band', '--stage', 'plan', '--column', '29']), /unknown option --column for band/)
+  assert.throws(() => main(['scene', 'dice', '--bogus', '1']), /unknown option --bogus for scene/)
+  assert.throws(() => main(['idle', 'classic', '--agents', 'fable']), /unknown option --agents for idle/)
+})
