@@ -11,11 +11,12 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { IdleId, Progress, ScenePick, SessionWorkflow, StageId, Workflow } from '../types'
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
-import { bandLayout, bandMode, type BandSite, IDLE_GAP, type Tone, TOON_MIN } from './band'
+import { cropLeft, placeIdle } from './area'
+import { bandLayout, bandMode, type BandSite, type Tone, TOON_MIN } from './band'
 import { moveFor, parseCommand, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { type Demo, demoAt, demoLength, demoLine, demoStep, idleDemoAt, idleDemoLine } from './demo'
 import { createDirector, type Director, react, shot, tick, withAuditing, withScene } from './director'
-import { DOZE_MS, FALLBACK_ROUTINE, IDLE_COLS, IDLE_IDS, IDLE_ROWS, idleFrame, pickIdle } from './idle'
+import { DOZE_MS, FALLBACK_ROUTINE, IDLE_IDS, idleFrame, pickIdle } from './idle'
 import { pickOne } from './pick'
 import { encodeCells } from './pixels'
 import { type KV, loadProgress, saveProgress, storeKey, validate } from './progress'
@@ -67,12 +68,12 @@ const TONES: Record<Tone, { color?: string; bold?: boolean; dimColor?: boolean }
 }
 
 // A Raster the mod repaints: the toon under the spinner, or the band's
-// idle Clawd or demo. Its key is its kind.
-type SiteKind = 'toon' | 'idle' | 'demo'
+// area. Its key is its kind.
+type SiteKind = 'toon' | 'area'
 type Site = { requestId: string | undefined; kind: SiteKind; columns: number; rows: number; isAnimating: boolean; isSeen: boolean }
 
-// How often each kind repaints: the idle Clawd is calm.
-const FRAME_MS: Record<SiteKind, number> = { toon: 83, demo: 83, idle: 166 }
+// How often a site repaints: the idle Clawd is calm.
+const frameMs = (mod: Mod, kind: SiteKind): number => (kind === 'area' && mod.demo === null ? 166 : 83)
 
 const createSite = (kind: SiteKind): Site => ({ requestId: undefined, kind, columns: STAGE_W, rows: TOON_ROWS, isAnimating: false, isSeen: false })
 
@@ -121,7 +122,7 @@ const createMod = (): Mod => ({
   isHidden: false,
   surface: 'terminal',
   toon: createSite('toon'),
-  band: createSite('idle'),
+  band: createSite('area'),
   idleSince: 0,
   idle: 'classic',
   nextIdle: 'classic',
@@ -203,24 +204,30 @@ function castOf($: EngineInterface, mod: Mod): Cast {
   }
 }
 
+// The area's next frame, cut to its width, or null once the demo it plays
+// is over: a demo, else the idle routine.
+function areaCells($: EngineInterface, mod: Mod, columns: number, now: number): string | null {
+  const onBreak = (id: string, error: unknown) => $.ui.log(`stage-toons: idle routine ${id} failed and was replaced by classic: ${String(error)}`, { to: 'debug' })
+  const idleAt = (ms: number) => cropLeft(placeIdle(idleFrame(mod.idle, ms, mod.brokenIdle, onBreak)), columns)
+  const demo = mod.demo
+  if (demo?.kind === 'scenes') {
+    const frame = demoAt(demo, now)
+
+    return frame ? encodeCells(composeFrame(frame.shot, frame.sceneMs, columns, castOf($, mod))) : null
+  }
+  if (demo?.kind === 'idle') {
+    const f = idleDemoAt(demo, now)
+    if (!f) return null
+
+    return encodeCells(cropLeft(placeIdle(f.routine === null ? idleFrame(FALLBACK_ROUTINE, DOZE_MS + f.ms) : idleFrame(f.routine, f.ms, mod.brokenIdle, onBreak)), columns))
+  }
+
+  return encodeCells(idleAt(now - mod.idleSince))
+}
+
 // A site's next frame, or null once the demo it plays is over.
 function siteCells($: EngineInterface, mod: Mod, site: Site, now: number): string | null {
-  if (site.kind === 'idle') {
-    const onBreak = (id: string, error: unknown) => $.ui.log(`stage-toons: idle routine ${id} failed and was replaced by classic: ${String(error)}`, { to: 'debug' })
-    if (mod.demo?.kind === 'idle') {
-      const f = idleDemoAt(mod.demo, now)
-      if (!f) return null
-
-      return encodeCells(f.routine === null ? idleFrame(FALLBACK_ROUTINE, DOZE_MS + f.ms) : idleFrame(f.routine, f.ms, mod.brokenIdle, onBreak))
-    }
-
-    return encodeCells(idleFrame(mod.idle, now - mod.idleSince, mod.brokenIdle, onBreak))
-  }
-  if (site.kind === 'demo') {
-    const frame = mod.demo ? demoAt(mod.demo, now) : null
-
-    return frame ? encodeCells(composeFrame(frame.shot, frame.sceneMs, site.columns, castOf($, mod))) : null
-  }
+  if (site.kind === 'area') return areaCells($, mod, site.columns, now)
   mod.director = tick(mod.director, now)
 
   return encodeCells(composeFrame(shot(mod.director, now), now, site.columns, castOf($, mod)))
@@ -246,13 +253,6 @@ function animate($: EngineInterface, mod: Mod, site: Site) {
         const now = await $.clock.now()
         const cells = siteCells($, mod, site, now)
         if (cells === null) {
-          // A demo of the other kind has just started: the site still has
-          // the old kind until the redraw /stage demo asked for, so this
-          // frame is skipped.
-          if (mod.demo && demoStep(mod.demo, now)) {
-            await $.clock.sleep(FRAME_MS[kind])
-            continue
-          }
           // The demo is over. Nothing is awaited from here to the loop's
           // end, so the redraw that brings the band back finds it finished.
           site.requestId = undefined
@@ -273,7 +273,7 @@ function animate($: EngineInterface, mod: Mod, site: Site) {
         } else {
           refused += 1
         }
-        await $.clock.sleep(FRAME_MS[kind])
+        await $.clock.sleep(frameMs(mod, kind))
       }
       // Refused until it gave up, the band's Raster may be gone for good
       // (the band collapsed) or for now: the hook decides again, and an
@@ -362,18 +362,17 @@ async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promis
   return { text: lines.join('\n'), context: [`[stage-toons] The workflow changed: ${stageList(mod.workflow)}. Now: ${describe(mod.workflow, progress)}`] }
 }
 
-const IDLE_ROOM = 'The idle demo needs a terminal at least 78 columns wide and 5 rows of band.'
+// Whether the band last drawn has room for the area under a bar of
+// barLines lines (the bar with the demo's line).
+const hasRoom = (mod: Mod, barLines: number): boolean =>
+  !mod.lastBand || bandMode({ ...mod.lastBand, hasSurvey: false, isAgentView: false, isHidden: false, hasDemo: true, barLines }) === 'area'
 
-// Whether the band last drawn has room for a demo of this kind.
-const hasRoom = (mod: Mod, kind: 'scenes' | 'idle'): boolean =>
-  !mod.lastBand || bandMode({ ...mod.lastBand, hasSurvey: false, isAgentView: false, isHidden: false, demo: kind }) === (kind === 'scenes' ? 'demo' : 'idle')
-
-// Starts the demo, or says why not. label names what plays.
-function startDemo(mod: Mod, demo: Demo, label: string, now: number, isHidden: boolean): string {
+// Starts the demo, or says why not. label names what plays; barLines is
+// how many lines the bar takes with the demo's line.
+function startDemo(mod: Mod, demo: Demo, label: string, now: number, isHidden: boolean, barLines: number): string {
   if (isHidden) return 'stage-toons is hidden; /stage hide shows it.'
-  if (demo.kind === 'idle' && (mod.surface !== 'terminal' || !hasRoom(mod, 'idle'))) return IDLE_ROOM
   if (mod.surface !== 'terminal') return 'The demo plays in the terminal only.'
-  if (demo.kind === 'scenes' && !hasRoom(mod, 'scenes')) return 'The band has no room for the demo: it needs 30 columns and 9 rows.'
+  if (!hasRoom(mod, barLines)) return `The band has no room for the demo: it needs 30 columns and ${barLines + TOON_ROWS} rows.`
   const isRestart = mod.demo !== null && demoStep(mod.demo, now) !== null
   mod.demo = demo
   const total = demoLength(demo) * demo.seconds
@@ -501,7 +500,9 @@ export const register: Register = on => {
       const demo: Demo = cmd.kind === 'demo-idle' ? { kind: 'idle', at: now, seconds: cmd.seconds } : { kind: 'scenes', at: now, seconds: cmd.seconds, scenes: stage?.scenes ?? DEMO_ORDER }
       const n = demoLength(demo)
       const label = cmd.kind === 'demo-idle' ? `${IDLE_IDS.length} idle routines and the doze` : stage ? `${n} scene${n === 1 ? '' : 's'} of ${stage.label}` : `${n} scenes`
-      const text = startDemo(mod, demo, label, now, await read($, hiddenAtom))
+      // The bar's lines with the demo's line under it, at the band's width.
+      const barLines = bandLayout(mod.workflow, before, false, mod.lastBand?.columns ?? 100, 'demo').length
+      const text = startDemo(mod, demo, label, now, await read($, hiddenAtom), barLines)
       // The band grows to hold it.
       if (mod.demo) $.ui.invalidate('ui.render')
 
@@ -606,33 +607,33 @@ export const register: Register = on => {
       mod.idleSince = now
       mod.idle = mod.nextIdle
     }
+    const progress = await read($, progressAtom)
+    const columns = e.props.bodyColumns
+    const sceneFrame = mod.demo?.kind === 'scenes' ? demoAt(mod.demo, now) : null
+    const idleFrameOfDemo = mod.demo?.kind === 'idle' ? idleDemoAt(mod.demo, now) : null
+    if (sceneFrame) mod.demoLineIndex = sceneFrame.index
+    if (idleFrameOfDemo) mod.demoLineIndex = idleFrameOfDemo.index
+    const demoText = sceneFrame && mod.demo ? demoLine(sceneFrame, mod.demo, mod.workflow) : idleFrameOfDemo ? idleDemoLine(idleFrameOfDemo) : undefined
+    const lines = progress === null ? [] : bandLayout(mod.workflow, progress, await read($, auditingAtom), columns, demoText)
     const site: BandSite = {
       surface: e.surface,
       isWorking: e.props.isWorking,
       hasSurvey: e.props.hasSurvey,
       isAgentView: e.props.view.agentId !== undefined,
       isHidden: await read($, hiddenAtom),
-      columns: e.props.bodyColumns,
+      columns,
       maxRows: e.props.maxRows,
-      demo: mod.demo?.kind ?? 'none',
+      hasDemo: mod.demo !== null,
+      barLines: lines.length,
     }
     mod.lastBand = site
     const mode = bandMode(site)
-    const progress = await read($, progressAtom)
     const { band } = mod
     if (mode === 'none' || progress === null) {
       band.requestId = undefined
 
       return next(e)
     }
-    const columns = e.props.bodyColumns
-    const sceneFrame = mode === 'demo' && mod.demo ? demoAt(mod.demo, now) : null
-    const idleFrameOfDemo = mode === 'idle' && mod.demo ? idleDemoAt(mod.demo, now) : null
-    if (sceneFrame) mod.demoLineIndex = sceneFrame.index
-    if (idleFrameOfDemo) mod.demoLineIndex = idleFrameOfDemo.index
-    const demoText = sceneFrame && mod.demo ? demoLine(sceneFrame, mod.demo, mod.workflow) : idleFrameOfDemo ? idleDemoLine(idleFrameOfDemo) : undefined
-    const barColumns = mode === 'idle' ? columns - IDLE_COLS - IDLE_GAP : columns
-    const lines = bandLayout(mod.workflow, progress, await read($, auditingAtom), barColumns, demoText)
     // Other plugins' bands, and the engine's, still draw: below the bar.
     const below = await next(e)
     const { Box, Text } = $.ui.resolve(e)
@@ -660,27 +661,18 @@ export const register: Register = on => {
       )
     }
     band.requestId = e.requestId
-    band.kind = mode
-    band.columns = mode === 'idle' ? IDLE_COLS : Math.min(STAGE_W, columns - 1)
-    band.rows = mode === 'idle' ? IDLE_ROWS : TOON_ROWS
+    band.kind = 'area'
+    band.columns = Math.min(STAGE_W, columns - 1)
+    band.rows = TOON_ROWS
     band.isSeen = false
     const cells = siteCells($, mod, band, now) ?? ''
     animate($, mod, band)
     const { Raster } = $.ui.resolve(e)
-    const raster = <Raster key={mode} columns={band.columns} rows={band.rows} cells={cells} />
 
-    return mode === 'idle' ? (
-      <Box flexDirection="column">
-        <Box key="idle-row" flexDirection="row" alignItems="center" columnGap={IDLE_GAP} marginTop={1}>
-          {raster}
-          {bar}
-        </Box>
-        {below}
-      </Box>
-    ) : (
+    return (
       <Box flexDirection="column">
         {bar}
-        {raster}
+        <Raster key="area" columns={band.columns} rows={band.rows} cells={cells} />
         {below}
       </Box>
     )

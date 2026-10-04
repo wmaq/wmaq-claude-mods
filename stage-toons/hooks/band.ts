@@ -3,7 +3,6 @@
 // auditor runs, and the message. Sized to the band so nothing wraps.
 
 import type { Progress, Workflow } from '../types'
-import { IDLE_COLS, IDLE_ROWS } from './idle'
 import { charCount, fitText, NOT_TRACKED, position, stageLabel } from './stages'
 import { TOON_ROWS } from './toon'
 import { isTrack, rank, stageOf } from './workflow'
@@ -16,12 +15,9 @@ export const WIDE_MIN = 50
 export const TAG = '⌕ Fable reviewing'
 // The fewest columns a toon is drawn in, cropped.
 export const TOON_MIN = 30
-// Columns between the idle Clawd and the bar.
-export const IDLE_GAP = 2
-// The idle Clawd shows only where the two-line bar still fits beside it.
-export const IDLE_MIN = IDLE_COLS + IDLE_GAP + WIDE_MIN
 
-export type BandMode = 'none' | 'text' | 'idle' | 'demo'
+export type BandMode = 'none' | 'text' | 'area'
+// barLines: how many lines the bar takes, as bandLayout laid it out.
 export type BandSite = {
   surface: string
   isWorking: boolean
@@ -30,27 +26,20 @@ export type BandSite = {
   isHidden: boolean
   columns: number
   maxRows: number
-  demo: 'none' | 'scenes' | 'idle'
+  hasDemo: boolean
+  barLines: number
 }
 
 // What the band draws: nothing of stage-toons' (yielding), the text bar,
-// the bar beside the idle Clawd while Claude waits, or the bar over the
-// demo. The cartoons are terminal only, and show only where the band has
-// the rows to hold them whole: the idle Clawd a blank row and 4, the demo
-// the bar's lines and 7.
+// or the bar over the area, which plays the demo, the waiting toon or the
+// idle Clawd. The area is terminal only, shows while Claude waits or a demo
+// plays, and only where the band has the rows to hold it whole under the
+// bar's lines.
 export function bandMode(s: BandSite): BandMode {
   if (s.hasSurvey || s.isAgentView || s.isHidden) return 'none'
-  if (s.surface !== 'terminal') return 'text'
-  if (s.demo === 'scenes') {
-    const rows = (s.columns < WIDE_MIN ? 1 : 2) + TOON_ROWS
+  if (s.surface !== 'terminal' || (s.isWorking && !s.hasDemo)) return 'text'
 
-    return s.columns >= TOON_MIN && s.maxRows >= rows ? 'demo' : 'text'
-  }
-  const hasIdleRoom = s.columns >= IDLE_MIN && s.maxRows >= 1 + IDLE_ROWS
-  // The idle demo shows the idle box whether or not Claude works.
-  if (s.demo === 'idle') return hasIdleRoom ? 'idle' : 'text'
-
-  return !s.isWorking && hasIdleRoom ? 'idle' : 'text'
+  return s.columns >= TOON_MIN && s.maxRows >= s.barLines + TOON_ROWS ? 'area' : 'text'
 }
 
 // The track as it stands: done steps and the links between them, the

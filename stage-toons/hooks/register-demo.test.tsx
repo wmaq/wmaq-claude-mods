@@ -16,13 +16,13 @@ test("/stage demo develop plays Develop's scenes", async ($, on) => {
   expect(await bandText($)).toContain('Demo 3/3: workbench (Develop)')
 })
 
-test('/stage demo idle plays the routines in the idle box, then the doze, then ends', async ($, on) => {
+test('/stage demo idle plays the routines in the area, then the doze, then ends', async ($, on) => {
   const { clock } = engine(on)
   await $.session.start(START)
   const ui = await mountBand($)
   expect(text(await runStage($, 'demo idle 3'))).toBe('Playing 5 idle routines and the doze, 3 s each (under a minute). /stage demo stop ends it.')
   await ui.redraw(bandProps(100))
-  expect(await ui.find({ key: 'idle' })).toBeDefined()
+  expect(await ui.find({ key: 'area' })).toBeDefined()
   expect(await bandText($)).toContain('Idle demo 1/6: classic')
   for (const [i, name] of ['nyan', 'coffee', 'reading', 'yo-yo', 'doze'].entries()) {
     await clock.advance(3_000)
@@ -49,8 +49,8 @@ test('/stage demo idle over a playing scene demo keeps playing before the band i
 test('/stage demo idle without room says so and plays nothing', async ($, on) => {
   engine(on)
   await $.session.start(START)
-  await mountBand($, 'terminal', bandProps(77))
-  expect(text(await runStage($, 'demo idle'))).toBe('The idle demo needs a terminal at least 78 columns wide and 5 rows of band.')
+  await mountBand($, 'terminal', bandProps(29))
+  expect(text(await runStage($, 'demo idle'))).toBe('The band has no room for the demo: it needs 30 columns and 9 rows.')
   expect(await bandText($)).not.toContain('Idle demo')
 })
 
