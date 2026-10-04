@@ -3,7 +3,7 @@
 // entry to the next (the last runs to now) and Claude's working time.
 
 import type { HistoryEntry, Progress, StageId, Workflow } from '../types'
-import { stageLabel } from './stages'
+import { cellWidth, stageLabel } from './stages'
 import { stageIds } from './workflow'
 
 export const LOG_DEFAULT = 15
@@ -75,8 +75,9 @@ function spansOf(p: Progress, now: number, runningMs: number): Span[] {
 const featureOf = (entry: HistoryEntry): string | null => entry.feature ?? null
 const featureName = (feature: string | null): string => feature ?? '(no feature)'
 const times = (wallMs: number, workMs: number, soFar = false): string => `${duration(wallMs)}${soFar ? ' so far' : ''} (Claude ${duration(workMs)})`
-const widest = (texts: string[]): number => texts.reduce((n, t) => Math.max(n, Array.from(t).length), 0)
-const pad = (text: string, width: number): string => text + ' '.repeat(Math.max(0, width - Array.from(text).length))
+// Columns line up in terminal cells, as the band's text does.
+const widest = (texts: string[]): number => texts.reduce((n, t) => Math.max(n, cellWidth(t)), 0)
+const pad = (text: string, width: number): string => text + ' '.repeat(Math.max(0, width - cellWidth(text)))
 
 const EMPTY = 'No moves yet: the history starts when the work enters a stage.'
 

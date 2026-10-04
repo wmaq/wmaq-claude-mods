@@ -161,7 +161,7 @@ test('init says so when it cannot check for the file', async ($, on) => {
   const { world } = engine(on)
   await $.session.start(START)
   world.isExistsBroken = true
-  expect(text(await runStage($, 'workflow init'))).toContain("couldn't write .claude/stage-toons.json")
+  expect(text(await runStage($, 'workflow init'))).toContain("couldn't check for .claude/stage-toons.json")
 })
 
 test('reload says so when set_stage could not be registered again', async ($, on) => {

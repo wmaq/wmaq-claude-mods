@@ -2,7 +2,7 @@ import { expect, test } from 'claude-code/testing'
 
 import type { HistoryEntry, Progress } from '../types'
 import { credit, creditAt, currentEntry, currentIndex, duration, logText, timeText } from './history'
-import { freshProgress } from './stages'
+import { cellWidth, freshProgress } from './stages'
 import { DEFAULT_WORKFLOW as W } from './workflow'
 
 const MIN = 60_000
@@ -91,4 +91,16 @@ test('working time finds its entry again by stage and start, in a copy another s
   expect(after.history.map(h => h.workMs)).toEqual([125, undefined])
   expect(creditAt(theirs, { stage: 'gone', at: 0 }, 25)).toBe(theirs)
   expect(creditAt(theirs, null, 25)).toBe(theirs)
+})
+
+test('/stage log lines up wide stage labels by terminal cells', () => {
+  const stage = (id: string, label: string) => ({ id, label, message: 'm', when: 'w', scenes: ['gift'] })
+  const w = { track: [stage('a', '計画'), stage('b', 'Plan')], side: [] }
+  const p = progress([
+    { stage: 'a', at: 0, by: 'claude' },
+    { stage: 'b', at: MIN, by: 'claude' },
+  ])
+  const rows = logText(w, p, 2 * MIN, 15).split(NL).slice(2)
+  // Each row's duration starts in the same terminal column.
+  expect(rows.map(r => cellWidth(r.slice(0, r.indexOf('1m'))))).toEqual([13, 13])
 })

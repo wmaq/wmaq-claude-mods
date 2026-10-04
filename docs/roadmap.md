@@ -231,6 +231,15 @@ The research's Tier 0, designed in chat:
 - The walk-in test raises the main turn's end; the README's costs name
   v0.6's notes.
 
+From Fable's review of 0.6.1: a turn's credit builds on the store's
+copy as saved (never one fitted to this session's workflow), working time
+follows the entry it was counted for (`workEntry`) through an adoption,
+`/stage`, `log` and `time` show another session's move at once, and
+`/stage log` lines its columns up in cells. Left as it is: between reading
+the store and saving, a few awaits apart, two sessions can still race
+(one credit or one entry lost); closing it would need history merged by
+time.
+
 ### Research (2026-10-04)
 
 `docs/research/2026-10-04-stage-toons-improvement-ideas.md` ranks 30
