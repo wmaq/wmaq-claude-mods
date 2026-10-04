@@ -51,7 +51,8 @@ This is the default workflow. A project can define its own (below).
 Claude moves it. The mod gives Claude a `set_stage` tool and a short note in
 the system prompt listing the stages; Claude calls the tool when the work
 moves on (forwards, backwards or skipping) and writes the message under the
-bar. Progress is saved per project directory and survives restarts.
+bar. Some steps move it by themselves (below). Progress is saved per
+project directory and survives restarts.
 
 You can move it yourself with `/stage`:
 
@@ -70,8 +71,45 @@ You can move it yourself with `/stage`:
 | `/stage workflow` | Show the workflow, where it came from, and each stage's scenes |
 | `/stage workflow init` | Write the default workflow to `.claude/stage-toons.json` to edit |
 | `/stage workflow reload` | Read `.claude/stage-toons.json` again and switch to it |
+| `/stage auto [on \| off]` | Show the rules that move the stage by itself; turn them on or off |
+| `/stage log [n]` | The last n moves (15; up to 200) with how long each stage lasted |
+| `/stage time` | Time per feature and per stage |
 
 Claude is told about your moves.
+
+### By itself
+
+Some steps of the workflow are plain to see from what Claude does, and the
+bar moves on them without waiting for `set_stage`. With the default
+workflow and the [superpowers](https://github.com/obra/superpowers) skills:
+
+| Claude... | The bar moves to |
+|---|---|
+| loads `superpowers:brainstorming` | Brainstorm |
+| writes a file under `docs/superpowers/specs/` | Spec |
+| starts a Fable subagent during Brainstorm or Spec | Spec audit |
+| loads `superpowers:writing-plans`, or writes under `docs/superpowers/plans/` | Plan |
+| starts a Fable subagent during Plan | Plan audit |
+| loads `superpowers:executing-plans` or `superpowers:subagent-driven-development` | Develop |
+| loads `superpowers:finishing-a-development-branch` | Cleanup |
+| loads `superpowers:systematic-debugging` | Debugging |
+
+The bar only moves forward this way (or into a side stage): fixing the
+spec during its audit, or ticking the plan's boxes while developing, moves
+nothing. Only the main conversation counts, not subagents or teammates, and
+only files written with Write or Edit. Claude is told of each such move
+with the result of the call that made it, and still calls `set_stage` for
+a better message or any other move. `/stage auto off` turns this off, for
+every project; a workflow file sets its own rules (below).
+
+### History
+
+Each move is kept with the feature, who made it (Claude, you, or `auto`
+and why) and how long Claude worked in it, for the last 200 moves.
+`/stage log` lists the recent ones with how long each stage lasted;
+`/stage time` totals the time per feature and per stage. Wall-clock time
+counts the hours nobody worked (a night in Your testing); Claude's working
+time is the time its turns ran.
 
 ## While Claude waits for you
 
@@ -127,6 +165,28 @@ status line, a `when` line telling Claude when to move there, and `scenes`:
 }
 ```
 
+A stage may also list `auto` rules: what, done in the main conversation,
+moves the work into it (only forward on the track, or into a side stage).
+Each rule has one of `skill` (a skill's name; without a `plugin:` part it
+matches any plugin's skill of that name), `write` (a glob on the file's
+path from the project directory: `**` any run, `*` within a folder, `?`
+one character), `agent` (a model family, such as `fable`, that a subagent
+runs on) or `bash` (a regular expression on a command), and may add
+`from`, the stages it fires from:
+
+```json
+"auto": [
+  { "skill": "superpowers:writing-plans" },
+  { "write": "docs/superpowers/plans/**" },
+  { "agent": "fable", "from": ["plan"] },
+  { "bash": "git merge" }
+]
+```
+
+Up to 8 rules a stage. A workflow file without `auto` lists has no rules:
+one written by `/stage workflow init` before 0.6 needs them added (or the
+file deleted) to get the default's.
+
 A stage lists 1 to 5 scenes. One is picked at random each time the work
 enters the stage, never the one it showed last when it has another. The
 older `"scene": "bug-hunt"` still works. A workflow file keeps its own
@@ -146,7 +206,9 @@ Fable subagent runs rather than for a stage; `/stage workflow` shows the
 current workflow and its scenes.
 
 Limits: 1 to 15 track stages, up to 5 side stages; ids are lowercase
-letters, digits and dashes. A mistake in the file is reported with where it
+letters, digits and dashes, and not one of `/stage`'s words (`next`,
+`back`, `hide`, `demo`, `feature`, `message`, `workflow`, `auto`, `log`,
+`time`). A mistake in the file is reported with where it
 is, and the session keeps a working workflow.
 
 ## Install
