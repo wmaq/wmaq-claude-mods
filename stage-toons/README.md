@@ -65,6 +65,7 @@ You can move it yourself with `/stage`:
 | `/stage message <text>` | Set the message |
 | `/stage hide` | Hide or show the bar and the cartoons |
 | `/stage demo [<stage> \| idle] [seconds]` | Play every scene, one stage's scenes (by id), or the idle routines, 10 s each (2 to 60); a bare number is the seconds |
+| `/stage demo waiting` | Play the waiting toon with pretend agents (about 25 s) |
 | `/stage demo stop` | End the demo |
 | `/stage workflow` | Show the workflow, where it came from, and each stage's scenes |
 | `/stage workflow init` | Write the default workflow to `.claude/stage-toons.json` to edit |
@@ -74,19 +75,33 @@ Claude is told about your moves.
 
 ## While Claude waits for you
 
-When Claude isn't working, a small Clawd stands left of the bar, in a box
-26 columns wide. He has five routines: the classic one (he blinks, glances
-at the prompt and the bar, taps a foot), Nyan Clawd, coffee (he sips from a
-steaming mug), reading (he turns the pages of a book) and yo-yo. One is
-picked each time a turn starts. Whichever it is, after a minute he sits
-down and dozes off. He shows in a terminal at least 78 columns wide;
-otherwise the bar is text alone.
+When Claude isn't working, the band shows an area below the bar, 48
+columns by 7 rows, as the demo does. A small Clawd stands at its left. He
+has five routines: the classic one (he blinks, glances at the prompt and
+the bar, taps a foot), Nyan Clawd, coffee (he sips from a steaming mug),
+reading (he turns the pages of a book) and yo-yo. One is picked each time a
+turn starts. Whichever it is, after a minute he sits down and dozes off.
+
+## While Claude waits on agents
+
+When Claude's turn ends while agents still work (background subagents, a
+Fable audit, teammates), Clawd walks aside with a cup of coffee and a row
+of small helpers sits at laptops beside him, one for each agent at work,
+in its model's colour: Sonnet magenta, Opus orange, Fable violet (with a
+monocle), Haiku teal, any other model grey. Four seats; more agents wait
+for one to free. A helper hops up and walks off when its agent finishes,
+and when the last has gone Clawd walks back and his idle routine plays. He
+doesn't doze while agents work. `/stage demo waiting` plays it with
+pretend agents.
+
+The area shows in a terminal at least 30 columns wide with room for the
+bar and 7 rows (8 or 9 rows of band); otherwise the bar is text alone.
 
 `/stage demo` plays all 37 scenes of the library in turn below the bar,
 each named with the stage that plays it, so you can see them without
 waiting for the work to reach each stage. `/stage demo plan` plays only the
-scenes of one stage, and `/stage demo idle` the idle routines. A new prompt
-ends the demo.
+scenes of one stage, `/stage demo idle` the idle routines and
+`/stage demo waiting` the waiting toon. A new prompt ends the demo.
 
 ## Your own workflow
 

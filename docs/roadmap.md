@@ -140,6 +140,22 @@ check took anything but `running` as finished, so Fable could leave the
 stage while still auditing. An auditor is now gone only when the list shows
 it ended (`completed`, `failed`, `killed`) or no longer shows it.
 
+### v0.5 (in progress)
+
+The waiting toon. Spec:
+`docs/superpowers/specs/2026-10-04-stage-toons-waiting-toon-design.md`.
+Plan: `docs/superpowers/plans/2026-10-04-stage-toons-waiting-toon.md`.
+- **The area below the bar.** The idle Clawd moves from beside the bar to
+  an area below it, 48 x 7 like the demo; the bar keeps its full width and
+  the idle Clawd shows from 30 columns (it needed 78). It needs 8 or 9 rows
+  of band (5 before).
+- **The waiting toon.** While Claude waits on agents, Clawd stands aside
+  with a cup beside a desk row of helpers, one per agent at work (pending,
+  running or waiting), coloured by model; four seats and a queue. Agents
+  are tracked by `agent.spawn`, their own `turn.complete`, and a 2 s poll
+  of `$.agent.list()` while the area shows.
+- **`/stage demo waiting`** plays it with pretend agents.
+
 ### Later (ideas, up for discussion)
 
 - **Scene authoring by others.** A data format for scenes (sprites and
@@ -160,14 +176,9 @@ it ended (`completed`, `failed`, `killed`) or no longer shows it.
   the idle Clawd's box and the demo have fixed sizes; they could grow with
   the terminal, or be set in `.claude/stage-toons.json`, so scenes on a
   wide screen get more room.
-- **A toon while Claude waits on subagents.** When the main Claude is
-  idle but background subagents are still working, the band shows the idle
-  Clawd, who dozes off after a minute. A "waiting on agents" toon would fit
-  better (Clawd watching the agents work). The mod already sees spawns
-  (`agent.spawn`) and can list the agents (`$.agent.list`); since 2.1.289
-  the list says which are `running`, `waiting` (held) or `idle` (a teammate
-  between turns), and an agent keeps one id across every hook event, so the
-  band can tell "agents still working" from "agents waiting" reliably.
+- **Several waiting scenes.** The desk row is one; more scenes for the
+  waiting toon (the helpers building, rowing, ...) picked at random like a
+  stage's scenes, sharing the seat log's rules.
 - **Layers (a Z axis) for scenes.** Today a scene paints in a fixed order
   (backdrop, actors, front) and a later pixel simply covers an earlier
   one, so placing a prop behind or in front of Clawd means arranging the
