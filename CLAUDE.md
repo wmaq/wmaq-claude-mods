@@ -178,6 +178,54 @@ Learned building stage-toons on 2.1.287 to 2.1.289:
   roster takes it back to work once `LIST_LAG_MS` has passed.
 - `expect` has no `toBeCloseTo`: round and compare with `toBe`.
 
+## Working as a cloud agent
+
+This section applies only to a Claude Code cloud session (claude.ai/code,
+the Claude app): `CLAUDE_CODE_REMOTE_SESSION_ID` is set, and the repository
+is a fresh Linux clone. A local session skips it; everything above stands
+as written. In a cloud session the rules below take precedence over the
+ones above where they differ.
+
+The person follows the session in the Claude app, not in a terminal, so
+nothing the mod draws can be seen there. The workflow is the same; what
+changes is who checks the drawing, and how the work reaches the person's
+PC.
+
+- **Branch and push.** Work on the branch the session names (it starts
+  with `claude/`), never `main`. Commit and push it without asking: the
+  container is thrown away when the session ends, and the person tests by
+  checking out that branch locally. Don't open a pull request or merge to
+  `main` unless the person asks.
+- **Loading the mod.** A fresh container has no installed copy (`claude
+  plugin list`). Load the `plugin-authoring` skill, then copy the mod into
+  the hot-reload folder it names, as above. The person must answer
+  "Enable hot reloading for this session?" in the app; once they have,
+  `mcp__stage-toons__set_stage` appears (load it with ToolSearch) and the
+  stage bar rule above applies. Refresh the copy after every change, as
+  above.
+- **Type-checking.** The repository's copy never gets
+  `.claude-plugin/types/` in a cloud session: run `tsc -p` on the loaded
+  hot-reload copy. Before the mod has loaded, use a tsconfig in the
+  scratchpad whose `include` names the skill's `types/claude-code.d.ts`
+  and the mod's `hooks` and `types`, with the options from that file's
+  header.
+- **Claude testing (stage 8).** Covers what can be checked without seeing
+  the terminal: `validate`, `test`, `tsc`, the loaded mod's load notice and
+  the text answers of its tools and commands (`set_stage`'s answer, the
+  system-prompt section). Don't start a second Claude Code (tmux,
+  `--plugin-dir`) to look at the drawing: the session's permission check
+  refuses it, so it needs the person's explicit permission first.
+- **Handing over the visual check.** When the work needs eyes on the
+  terminal (a scene, the band, a layout), push the branch and give the
+  person what to check: the branch name, the commands to see it
+  (`/stage demo <stage>`, `/stage demo waiting`, ...) and what to look
+  for. Their local session tests it (stage 8's visual part, and 9); carry
+  on with work that doesn't depend on the result, and fix what they report
+  on the same branch.
+- **Linux, not Windows.** The Git Bash note above doesn't apply. There is
+  no `ping` and `sleep` is blocked; a background agent stays busy for the
+  waiting toon with `timeout <seconds> tail -f /dev/null`.
+
 ## Where things are
 
 - `docs/roadmap.md`: what's next, per mod.
