@@ -287,7 +287,14 @@ rule from Roadmap to Develop and into Debugging moved the bar, with its
 note to Claude; a background Fable spawn's note came with the next
 prompt; writing a spec or ticking the plan's checkboxes behind the stage
 moved nothing; a Fable review during Develop moved nothing; the desk row
-showed a Fable helper for the audits.
+showed a Fable helper for the audits. The rest of the hand-off's
+checklist passed too: `/stage auto`, `log` and `time` read well; an emoji
+and CJK feature name fits the bar; Clawd dozes and then holds still; the
+main spinner's toon and a background agent's animate together, the
+agent's alone after the main turn; the scenes, idle routines and waiting
+toon play as before, and come back moving after the band is collapsed
+and expanded. Not watched: C4 (whether a collapsed band's loop keeps
+restarting), which needs `claude --debug`.
 
 To fix after the test (approved, 0.6.3):
 - **A helper turns grey after a reload.** An agent already at work when
