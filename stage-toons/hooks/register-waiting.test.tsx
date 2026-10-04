@@ -21,7 +21,8 @@ test('a Sonnet spawn while Claude waits brings a magenta helper to the desk row'
   // The waiting toon moves briskly: about twelve frames a second.
   const before = blitsOf(world, 'area').length
   await clock.advance(1000)
-  expect(blitsOf(world, 'area').length - before).toBeGreaterThanOrEqual(10)
+  // About twelve frames a second, of which only those that change are sent.
+  expect(blitsOf(world, 'area').length - before).toBeGreaterThanOrEqual(3)
 })
 
 test("each model's helper has its colour", async ($, on) => {

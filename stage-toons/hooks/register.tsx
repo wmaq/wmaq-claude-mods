@@ -18,7 +18,7 @@ import { bandLayout, bandMode, type BandSite, type Tone, TOON_MIN } from './band
 import { autoText, moveFor, parseCommand, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { type Demo, demoAt, demoLength, demoLine, demoStep, idleDemoAt, idleDemoLine, WAITING_DEMO_LINE } from './demo'
 import { createDirector, type Director, react, shot, tick, withAuditing, withScene } from './director'
-import { DOZE_MS, FALLBACK_ROUTINE, IDLE_IDS, idleFrame, pickIdle } from './idle'
+import { DEEP_SLEEP_MS, DOZE_MS, FALLBACK_ROUTINE, IDLE_IDS, idleFrame, pickIdle } from './idle'
 import { pickOne } from './pick'
 import { creditAt, currentEntry, type EntryKey, logText, timeText } from './history'
 import { encodeCells } from './pixels'
@@ -82,14 +82,39 @@ const TONES: Record<Tone, { color?: string; bold?: boolean; dimColor?: boolean }
 // A Raster the mod repaints: the toon under the spinner, or the band's
 // area. Its key is its kind.
 type SiteKind = 'toon' | 'area'
-type Site = { requestId: string | undefined; kind: SiteKind; columns: number; rows: number; isAnimating: boolean; isSeen: boolean }
+// lastCells and blittedAt: the frame the Raster shows and when it was
+// sent; isAsleep: the area stopped on its still picture (P1).
+type Site = {
+  requestId: string | undefined
+  kind: SiteKind
+  columns: number
+  rows: number
+  isAnimating: boolean
+  isSeen: boolean
+  lastCells: string | null
+  blittedAt: number
+  isAsleep: boolean
+}
 
-// How often a site repaints: the idle Clawd is calm.
-const frameMs = (mod: Mod, kind: SiteKind): number => (kind === 'area' && mod.demo === null && (mod.seats.since === null || mod.isWaitingBroken) ? 166 : 83)
+// How often a site repaints: the idle Clawd is calm, and calmer dozing.
+function frameMs(mod: Mod, kind: SiteKind, now: number): number {
+  if (kind !== 'area' || mod.demo !== null || (mod.seats.since !== null && !mod.isWaitingBroken)) return 83
+
+  return now - mod.idleSince >= DOZE_MS ? 333 : 166
+}
 // How often the area checks the agent list while it knows of agents.
 const AGENT_POLL_MS = 2000
 
-const createSite = (kind: SiteKind): Site => ({ requestId: undefined, kind, columns: STAGE_W, rows: TOON_ROWS, isAnimating: false, isSeen: false })
+const createSite = (kind: SiteKind): Site => ({ requestId: undefined, kind, columns: STAGE_W, rows: TOON_ROWS, isAnimating: false, isSeen: false, lastCells: null, blittedAt: 0, isAsleep: false })
+
+// A frame the same as the one shown is not sent again, but one is sent at
+// least this often: a blit is how the loop learns its Raster is gone.
+const RESEND_MS = 2000
+
+// Whether the idle Clawd is deep asleep: nothing else plays in the area,
+// and he has dozed for DEEP_SLEEP_MS.
+const isDeepAsleep = (mod: Mod, now: number): boolean =>
+  mod.demo === null && (mod.seats.since === null || mod.isWaitingBroken) && now - mod.idleSince >= DOZE_MS + DEEP_SLEEP_MS
 
 // The module's own state: made fresh by every load, so it starts over on a
 // reload. What must outlive a reload is in $.state.
@@ -506,6 +531,7 @@ function endDemo($: EngineInterface, mod: Mod) {
 function animate($: EngineInterface, mod: Mod, site: Site) {
   if (site.isAnimating) return
   site.isAnimating = true
+  site.isAsleep = false
   void (async () => {
     try {
       let refused = 0
@@ -538,19 +564,34 @@ function animate($: EngineInterface, mod: Mod, site: Site) {
           mod.demoLineIndex = step.index
           $.ui.invalidate('ui.render')
         }
-        const answer = await $.ui.blit({ requestId, key: kind, cells, columns, rows }).catch(() => ({ deny: 'failed' }))
-        if (answer.deny === undefined) {
-          refused = 0
-          site.isSeen = true
-        } else {
-          refused += 1
+        // The frame the Raster already shows is not sent again, but for a
+        // resend now and then, which tells the loop whether it is still there.
+        if (cells !== site.lastCells || now - site.blittedAt >= RESEND_MS) {
+          const answer = await $.ui.blit({ requestId, key: kind, cells, columns, rows }).catch(() => ({ deny: 'failed' }))
+          if (answer.deny === undefined) {
+            refused = 0
+            site.isSeen = true
+            site.lastCells = cells
+            site.blittedAt = now
+          } else {
+            refused += 1
+            // Refused: every frame is sent until one is taken, so a Raster
+            // that is gone is noticed as quickly as before.
+            site.lastCells = null
+          }
         }
-        await $.clock.sleep(frameMs(mod, kind))
+        // Deep asleep with the still picture shown: the loop stops, and the
+        // next render (a prompt, an agent, a redraw) starts it again.
+        if (kind === 'area' && site.lastCells === cells && isDeepAsleep(mod, now)) {
+          site.isAsleep = true
+          break
+        }
+        await $.clock.sleep(frameMs(mod, kind, now))
       }
       // Refused until it gave up, the band's Raster may be gone for good
       // (the band collapsed) or for now: the hook decides again, and an
       // expanded band repaints instead of standing still.
-      if (site.kind !== 'toon' && site.requestId !== undefined && !mod.isHidden) {
+      if (site.kind !== 'toon' && site.requestId !== undefined && !mod.isHidden && !site.isAsleep) {
         site.requestId = undefined
         $.ui.invalidate('ui.render')
       }
@@ -940,6 +981,11 @@ export const register: Register = on => {
     const now = await $.clock.now()
     mod.roster = spawned(mod.roster, result.agentId, result.model, now)
     reseat(mod, now)
+    // Clawd deep asleep: the area wakes to seat the helper.
+    if (mod.band.isAsleep) {
+      mod.band.isAsleep = false
+      $.ui.invalidate('ui.render')
+    }
     // A spawn of the main conversation's own, not a teammate's, may move the stage.
     if (e.parentAgentId === undefined && e.isTeammate !== true && mod.isAuto && hasRules(mod.workflow, 'agent')) {
       const signal: Signal = { kind: 'agent', model: result.model, asked: e.model, parentModel: e.parentModel }
@@ -1060,6 +1106,9 @@ export const register: Register = on => {
     // away (a paint loop still running from before polls on its own time).
     if (!wasShown) void checkAgents($, mod)
     const cells = siteCells($, mod, band, now) ?? ''
+    // The Raster mounts showing these.
+    band.lastCells = cells
+    band.blittedAt = now
     animate($, mod, band)
     const { Raster } = $.ui.resolve(e)
 
@@ -1084,7 +1133,10 @@ export const register: Register = on => {
     mod.toon.requestId = e.requestId
     mod.toon.columns = Math.min(STAGE_W, viewport - 6)
     mod.toon.isSeen = false
-    const cells = siteCells($, mod, mod.toon, await $.clock.now()) ?? ''
+    const shownAt = await $.clock.now()
+    const cells = siteCells($, mod, mod.toon, shownAt) ?? ''
+    mod.toon.lastCells = cells
+    mod.toon.blittedAt = shownAt
     animate($, mod, mod.toon)
     const { Box, Raster } = $.ui.resolve(e)
 

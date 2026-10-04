@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
-import { bandProps, type Blit, blitsOf, colorInRows, decode, endTurn, engine, mountBand, runStage, setStage, START } from './harness'
-import { Z_COLOR } from './idle'
+import { bandProps, type Blit, blitsOf, colorInRows, decode, endTurn, engine, mountBand, runStage, setStage, spawnAgent, START } from './harness'
+import { DEEP_SLEEP_MS, DOZE_MS, Z_COLOR } from './idle'
 
 // The area's cells left of the idle Clawd, columns 0 to 10, are all blank.
 function isLeftBlank(blit: Blit | undefined): boolean {
@@ -22,9 +22,12 @@ test('while Claude waits, the band shows the idle Clawd in the area below the ba
   expect((await ui.find({ key: 'area' }))?.props).toMatchObject({ columns: 48, rows: 7 })
   expect((await ui.find({ key: 'stage-toons' }))?.text).toContain('Not tracked yet')
   await clock.advance(1000)
-  // The idle Clawd is calm: about six frames a second.
-  expect(blitsOf(world, 'area').length).toBeGreaterThanOrEqual(4)
+  // The idle Clawd is calm: about six frames a second, of which only those
+  // that change are sent.
+  expect(blitsOf(world, 'area').length).toBeGreaterThanOrEqual(1)
   expect(blitsOf(world, 'area').length).toBeLessThanOrEqual(8)
+  const sent = blitsOf(world, 'area').map(b => b.cells)
+  expect(sent.every((cells, i) => i === 0 || cells !== sent[i - 1])).toBe(true)
   // His box sits at the bottom-left: nothing on the area's top three rows.
   const words = decode(blitsOf(world, 'area').at(-1)!.cells)
   for (let i = 0; i < 48 * 3; i++) expect(words[i * 3]).toBe(0x20)
@@ -66,7 +69,7 @@ test('the idle Clawd stops repainting when Claude starts working', async ($, on)
   const { world, clock } = engine(on)
   await $.session.start(START)
   const ui = await mountBand($)
-  await clock.advance(500)
+  await clock.advance(2500)
   // It was repainting before Claude started.
   expect(blitsOf(world, 'area').length).toBeGreaterThan(0)
   await ui.redraw(bandProps(100, { isWorking: true }))
@@ -121,7 +124,8 @@ test('/stage demo plays every scene below the bar, then gives the band back', as
   expect(world.invalidations).toBe(started)
   await clock.advance(1_000)
   expect(world.invalidations).toBe(started + 1)
-  expect(blitsOf(world, 'area').length).toBeGreaterThan(20)
+  // Scenes move: about half their frames are new, and only those are sent.
+  expect(blitsOf(world, 'area').length).toBeGreaterThan(10)
   await ui.redraw()
   expect((await ui.find({ key: 'stage-toons' }))?.text).toContain('Demo 2/37: stargazing (Roadmap)')
   const before = world.invalidations
@@ -161,16 +165,19 @@ test('a band whose blits keep being refused asks to be drawn again, and then ani
   const { world, clock } = engine(on)
   await $.session.start(START)
   const ui = await mountBand($)
-  await clock.advance(500)
+  // Long enough for a frame to be taken (a still one is resent within
+  // RESEND_MS): until then refusals are expected for a while, as after a resize.
+  await clock.advance(2500)
   world.isBlitRefused = true
   const before = world.invalidations
-  await clock.advance(1500)
+  // A still frame is resent within RESEND_MS, then every frame until taken.
+  await clock.advance(3000)
   expect(world.invalidations).toBeGreaterThan(before)
   world.isBlitRefused = false
   await ui.redraw()
   const after = blitsOf(world, 'area').length
-  await clock.advance(1000)
-  expect(blitsOf(world, 'area').length).toBeGreaterThan(after + 3)
+  await clock.advance(2500)
+  expect(blitsOf(world, 'area').length).toBeGreaterThan(after)
 })
 
 test('the idle Clawd starts awake when the band stops working, before the turn is reported', async ($, on) => {
@@ -248,7 +255,8 @@ test('the routine picked at a prompt shows only from the next idle period, not a
   expect(isClassic()).toBe(true)
   await $.prompt.submit({ text: 'hi', wait: false, origin: { kind: 'composer' } } as never)
   const before = blitsOf(world, 'area').length
-  await clock.advance(500)
+  // Classic's frames often repeat: long enough for a new one, or a resend.
+  await clock.advance(2500)
   expect(blitsOf(world, 'area').length).toBeGreaterThan(before)
   expect(isClassic()).toBe(true)
   await endTurn($)
@@ -268,4 +276,21 @@ test('a hot reload keeps the idle routine', async ($, on) => {
   engine(on)
   await $.session.start(START)
   expect(picks).toHaveLength(0)
+})
+
+test('dozing he repaints at most three times a second; after five minutes he is still and the area stops; an agent wakes it', async ($, on) => {
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  await mountBand($)
+  await clock.advance(DOZE_MS + 10_000)
+  const dozing = blitsOf(world, 'area').length
+  await clock.advance(10_000)
+  expect(blitsOf(world, 'area').length - dozing).toBeLessThanOrEqual(30)
+  await clock.advance(DEEP_SLEEP_MS)
+  const asleep = blitsOf(world, 'area').length
+  await clock.advance(10 * 60_000)
+  expect(blitsOf(world, 'area').length).toBe(asleep)
+  const before = world.invalidations
+  await spawnAgent($)
+  expect(world.invalidations).toBeGreaterThan(before)
 })

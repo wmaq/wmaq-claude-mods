@@ -7,6 +7,11 @@ import { drawSprite, type Sprite } from '../scene'
 import { C } from '../scenes/kit'
 
 export const DOZE_MS = 60_000
+// After this long dozing Clawd is deep asleep: one still picture, and the
+// area stops repainting until something happens.
+export const DEEP_SLEEP_MS = 5 * 60_000
+// The z of the still picture: halfway up.
+export const STILL_T = 1
 export const Z_COLOR = C.smoke
 // Clawd's column in the box, in every routine and the doze: the right edge,
 // so nothing jumps when the doze takes over.

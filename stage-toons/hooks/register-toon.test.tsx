@@ -11,7 +11,8 @@ test('the toon draws under the spinner on the terminal only', async ($, on) => {
   expect(await ui.find({ type: 'Text', text: 'engine' })).toBeDefined()
   expect(await ui.find({ key: 'toon' })).toBeDefined()
   await clock.advance(1000)
-  expect(world.blits.length).toBeGreaterThan(8)
+  // About twelve frames a second, of which only those that change are sent.
+  expect(world.blits.length).toBeGreaterThan(4)
   expect(world.blits.at(-1)?.columns).toBe(48)
   expect(decode(world.blits.at(-1)?.cells ?? '')).toHaveLength(48 * 7 * 3)
   await ui.unmount()

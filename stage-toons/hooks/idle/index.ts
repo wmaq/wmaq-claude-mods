@@ -8,13 +8,13 @@ import { pickOne } from '../pick'
 import { createBuffer, type PixelBuffer } from '../pixels'
 import { classic } from './classic'
 import { coffee } from './coffee'
-import { DOZE_MS, drawDoze } from './doze'
+import { DEEP_SLEEP_MS, DOZE_MS, drawDoze, STILL_T } from './doze'
 import { nyan } from './nyan'
 import { reading } from './reading'
 import type { IdleRoutine } from './routine'
 import { yoYo } from './yo-yo'
 
-export { CLAWD_X, DOZE_MS, Z_COLOR } from './doze'
+export { CLAWD_X, DEEP_SLEEP_MS, DOZE_MS, Z_COLOR } from './doze'
 export type { IdleRoutine } from './routine'
 
 export const IDLE_COLS = 26
@@ -37,7 +37,7 @@ const drawn = (r: IdleRoutine, idleMs: number): PixelBuffer => {
 export function idleFrame(routine: IdleId, idleMs: number, broken: Set<IdleId> = new Set(), onBreak?: (id: IdleId, error: unknown) => void): PixelBuffer {
   if (idleMs >= DOZE_MS) {
     const b = createBuffer(IDLE_COLS, IDLE_ROWS * 2)
-    drawDoze(b, (idleMs - DOZE_MS) / 1000)
+    drawDoze(b, idleMs >= DOZE_MS + DEEP_SLEEP_MS ? STILL_T : (idleMs - DOZE_MS) / 1000)
 
     return b
   }
