@@ -156,3 +156,18 @@ test('reload of the same stages from another source says unchanged and tells Cla
   expect(world.schemas.length).toBe(registered)
   expect(text(await runStage($, 'workflow'))).toContain('Workflow: from .claude/stage-toons.json')
 })
+
+test('init says so when it cannot check for the file', async ($, on) => {
+  const { world } = engine(on)
+  await $.session.start(START)
+  world.isExistsBroken = true
+  expect(text(await runStage($, 'workflow init'))).toContain("couldn't write .claude/stage-toons.json")
+})
+
+test('reload says so when set_stage could not be registered again', async ($, on) => {
+  const { world } = engine(on)
+  await $.session.start(START)
+  world.files[FILE] = json(CUSTOM)
+  world.isRegisterBroken = true
+  expect(text(await runStage($, 'workflow reload'))).toContain('set_stage could not be registered again')
+})

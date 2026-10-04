@@ -372,7 +372,9 @@ const isWaitingShown = (mod: Mod): boolean => mod.band.requestId !== undefined &
 function reseat(mod: Mod, now: number) {
   const { log, endedAt } = seat(mod.seats, mod.roster, now, isWaitingShown(mod))
   mod.seats = log
-  if (endedAt !== null) mod.idleSince = endedAt
+  // Never backwards: a period that ended unseen may report an end before
+  // the main turn's own.
+  if (endedAt !== null) mod.idleSince = Math.max(mod.idleSince, endedAt)
 }
 
 // The roster as the agent list has it now. A list that fails leaves the
@@ -520,17 +522,22 @@ async function readWorkflowFile($: EngineInterface): Promise<FileWorkflow> {
 const sessionWorkflowOf = (file: FileWorkflow): SessionWorkflow =>
   file.kind === 'ok' ? { workflow: file.workflow, source: 'file' } : { workflow: DEFAULT_WORKFLOW, source: 'default' }
 
-async function registerTool($: EngineInterface, mod: Mod) {
+// Registers set_stage for the workflow; false when the engine refused.
+async function registerTool($: EngineInterface, mod: Mod): Promise<boolean> {
   try {
     mod.toolName = (await $.tool.register({ name: TOOL, description: TOOL_DESCRIPTION, inputSchema: toolSchema(mod.workflow) })).tool
+
+    return true
   } catch (error) {
     $.ui.log(`stage-toons: could not register set_stage: ${String(error)}`, { to: 'debug' })
+
+    return false
   }
 }
 
 async function initWorkflow($: EngineInterface, mod: Mod): Promise<string> {
-  if (await $.fs.exists(WORKFLOW_FILE)) return `${WORKFLOW_FILE} exists; edit it, then /stage workflow reload`
   try {
+    if (await $.fs.exists(WORKFLOW_FILE)) return `${WORKFLOW_FILE} exists; edit it, then /stage workflow reload`
     await $.fs.write(WORKFLOW_FILE, workflowJson(DEFAULT_WORKFLOW))
   } catch (error) {
     return `couldn't write ${WORKFLOW_FILE}: ${String(error)}`
@@ -571,13 +578,14 @@ async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promis
     return fitted
   })
   mod.director = withScene(mod.director, await sceneFor($, mod, progress.stage), now)
-  await registerTool($, mod)
+  const isRegistered = await registerTool($, mod)
   await update($, sectionAtom, () => workflowText(mod.workflow, progress, mod.toolName))
   // The band's lines name stages: draw it again.
   $.ui.invalidate('ui.render')
   const from = next.source === 'file' ? `from ${WORKFLOW_FILE}` : `the default (no ${WORKFLOW_FILE})`
   const lines = [`workflow ${from}: ${mod.workflow.track.length} track stages, ${mod.workflow.side.length} side stages.`]
   if (moved) lines.push(moved)
+  if (!isRegistered) lines.push("set_stage could not be registered again (the debug log says why): Claude's tool may still list the old stages.")
 
   return { text: lines.join('\n'), context: [`[stage-toons] The workflow changed: ${stageList(mod.workflow)}. Now: ${describe(mod.workflow, progress)}`] }
 }

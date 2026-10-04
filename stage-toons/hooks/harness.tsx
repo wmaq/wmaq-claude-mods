@@ -58,10 +58,13 @@ export type World = {
   // and what $.session.cwd() does: answer world.cwd, or fail.
   isBashFailing: boolean
   isCwdBroken: boolean
+  // Whether fs.exists fails, and tool.register.
+  isExistsBroken: boolean
+  isRegisterBroken: boolean
 }
 
 export function engine(on: On, preset: { store?: Record<string, unknown> } = {}) {
-  const world: World = { store: { ...preset.store }, isStoreBroken: false, isBlitRefused: false, blits: [], invalidations: 0, commands: [], toasts: [], files: {}, isFsBroken: false, schemas: [], agents: [], spawnModel: 'claude-sonnet-5-5', spawned: 0, cwd: START.cwd, prompts: [], isBashFailing: true, isCwdBroken: false }
+  const world: World = { store: { ...preset.store }, isStoreBroken: false, isBlitRefused: false, blits: [], invalidations: 0, commands: [], toasts: [], files: {}, isFsBroken: false, schemas: [], agents: [], spawnModel: 'claude-sonnet-5-5', spawned: 0, cwd: START.cwd, prompts: [], isBashFailing: true, isCwdBroken: false, isExistsBroken: false, isRegisterBroken: false }
   const clock = mock.clock(on, { now: NOW })
   const guard = () => {
     if (world.isStoreBroken) throw new Error('store unavailable')
@@ -93,6 +96,7 @@ export function engine(on: On, preset: { store?: Record<string, unknown> } = {})
   on('prompt.compose', () => ({ sections: [{ id: 'intro', text: 'You are Claude Code.', scope: 'shared' as const }] }))
   on('session.compact', () => ({ messages: [SUMMARY] }))
   on('tool.register', ($, e) => {
+    if (world.isRegisterBroken) throw new Error('refused')
     world.schemas.push(e.inputSchema)
 
     return { value: { tool: `mcp__stage-toons__${e.name}` } }
@@ -105,7 +109,11 @@ export function engine(on: On, preset: { store?: Record<string, unknown> } = {})
 
     return at < 0 ? slashed : slashed.slice(at)
   }
-  on('fs.exists', ($, e) => ({ value: fileOf(e.path) in world.files }))
+  on('fs.exists', ($, e) => {
+    if (world.isExistsBroken) throw new Error('EACCES')
+
+    return { value: fileOf(e.path) in world.files }
+  })
   on('fs.read', ($, e) => {
     const file = fileOf(e.path)
     if (world.isFsBroken || !(file in world.files)) throw new Error(`ENOENT: ${file}`)

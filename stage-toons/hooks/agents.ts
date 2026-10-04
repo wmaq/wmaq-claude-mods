@@ -55,8 +55,9 @@ const isFresh = (at: number | null, now: number) => at !== null && now - at < LI
 // The roster as the list has it: at work by its status; an idle teammate
 // kept, not at work, so it keeps its kind; ended and unlisted agents
 // dropped, but for one spawned too lately for the list to show it; an
-// agent at work the roster lacks (spawned before a reload) joined as
-// unknown. Roster order first, then the list's.
+// agent at work or an idle teammate the roster lacks (from before a
+// reload) joined as unknown, so the list is polled while it lasts. Roster
+// order first, then the list's.
 export function reconcileRoster(roster: Roster, list: readonly ListedAgent[], now: number): Roster {
   const listed = new Map(list.map(a => [a.id, a.status]))
   const next = new Map<string, RosterAgent>()
@@ -71,7 +72,8 @@ export function reconcileRoster(roster: Roster, list: readonly ListedAgent[], no
     next.set(agent.id, { ...agent, isAtWork, endedAt: isAtWork ? null : agent.endedAt })
   }
   for (const { id, status } of list) {
-    if (!next.has(id) && !roster.has(id) && AT_WORK.has(status)) next.set(id, { id, kind: 'unknown', isAtWork: true, spawnedAt: null, endedAt: null })
+    if (next.has(id) || roster.has(id) || (!AT_WORK.has(status) && status !== IDLE)) continue
+    next.set(id, { id, kind: 'unknown', isAtWork: AT_WORK.has(status), spawnedAt: null, endedAt: null })
   }
 
   return next

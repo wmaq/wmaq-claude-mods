@@ -60,6 +60,12 @@ test('an agent at work that the roster lacks joins as unknown; an idle teammate 
   expect(r.get('mate')?.kind).toBe('haiku')
 })
 
+test('an idle teammate the roster lacks (from before a reload) joins, not at work', () => {
+  const r = reconcileRoster(EMPTY_ROSTER, [{ id: 'mate', status: 'idle' }], LATER)
+  expect(r.get('mate')).toEqual({ id: 'mate', kind: 'unknown', isAtWork: false, spawnedAt: null, endedAt: null })
+  expect(atWork(r)).toEqual([])
+})
+
 test('a list that still says running just after the turn ended is taken as lagging, until the lag runs out', () => {
   let r = ended(spawned(EMPTY_ROSTER, 'a', 'opus', 0), 'a', LATER)
   r = reconcileRoster(r, [{ id: 'a', status: 'running' }], LATER + LIST_LAG_MS - 1)
