@@ -82,13 +82,12 @@ function settle($: EngineInterface, what: string, done: Promise<unknown>): Promi
 }
 
 // The progress with Claude's working time so far credited to the entry it
-// was spent in, and the count restarted: what every move starts from.
+// was spent in: what every move starts from. The count restarts only when
+// the move goes ahead (move).
 function credited(mod: Mod, p: Progress, now: number): Progress {
   if (mod.workSince === null) return p
-  const ms = now - mod.workSince
-  mod.workSince = now
 
-  return creditAt(p, mod.workEntry, ms)
+  return creditAt(p, mod.workEntry, now - mod.workSince)
 }
 
 // The working time of the turn under way, not yet credited.
@@ -174,6 +173,20 @@ async function commit($: EngineInterface, mod: Mod, before: Progress, after: Pro
   if (!mod.isReadOnly && !(await saveProgress(storeOf($), mod.key, after))) await warnUnsaved($)
 }
 
+// Reads the store's latest copy, credits the time so far, applies what
+// build makes of it, and commits; null from build moves nothing, and
+// leaves the working time counting as it was.
+async function move<P extends Progress | null>($: EngineInterface, mod: Mod, at: number, build: (from: Progress) => P): Promise<P> {
+  const { progress } = await latestProgress($, mod, at)
+  const before = credited(mod, progress, at)
+  const after = build(before)
+  if (after === null) return after
+  if (mod.workSince !== null) mod.workSince = at
+  await commit($, mod, before, after, at)
+
+  return after
+}
+
 async function setStage($: EngineInterface, mod: Mod, args: ToolArgs) {
   if (args.agentId !== undefined) return { deny: 'stage-toons: only the main conversation moves the workflow stage.' }
   const { stage, message, feature } = args
@@ -181,10 +194,7 @@ async function setStage($: EngineInterface, mod: Mod, args: ToolArgs) {
     return { deny: `stage-toons: set_stage needs "stage" (one of ${stageIds(mod.workflow).join(', ')}) and a non-empty "message".` }
   }
   const now = await $.clock.now()
-  const { progress } = await latestProgress($, mod, now)
-  const before = credited(mod, progress, now)
-  const after = applyMove(mod.workflow, before, { stage, message, feature: typeof feature === 'string' ? feature : undefined, by: 'claude', at: now })
-  await commit($, mod, before, after, now)
+  const after = await move($, mod, now, from => applyMove(mod.workflow, from, { stage, message, feature: typeof feature === 'string' ? feature : undefined, by: 'claude', at: now }))
   // Claude's own move supersedes what it has not heard of yet.
   mod.notes = []
 
@@ -223,14 +233,18 @@ async function autoMove($: EngineInterface, mod: Mod, signal: Signal) {
   const now = await $.clock.now()
   // Most calls move nothing: only a match on this session's copy reads the store.
   if (autoMatch(mod.workflow, await current($, now), signal, mod.isWindows) === null) return
-  const { progress: p } = await latestProgress($, mod, now)
-  const match = autoMatch(mod.workflow, p, signal, mod.isWindows)
-  if (match === null) return
-  const target = match.stage
-  const before = credited(mod, p, now)
-  const via = viaOf(signal, match.rule)
-  const after = applyMove(mod.workflow, before, { stage: target, by: 'auto', via, at: now })
-  await commit($, mod, before, after, now)
+  // Matched again on the store's copy, which another session may have moved.
+  let target: StageId = ''
+  let via = ''
+  const after = await move($, mod, now, from => {
+    const match = autoMatch(mod.workflow, from, signal, mod.isWindows)
+    if (match === null) return null
+    target = match.stage
+    via = viaOf(signal, match.rule)
+
+    return applyMove(mod.workflow, from, { stage: target, by: 'auto', via, at: now })
+  })
+  if (after === null) return
   mod.notes.push(
     `[stage-toons] The stage moved by itself to ${stageLabel(mod.workflow, target)} (${via}). Now: ${describe(mod.workflow, after)}. Call ${mod.toolName} if a more specific message or another stage fits.`,
   )
@@ -622,10 +636,7 @@ export const register: Register = on => {
     return queued(mod, async () => {
       // Read when its turn on the queue comes: a move queued before it may have run.
       const at = await $.clock.now()
-      const { progress: base } = await latestProgress($, mod, at)
-      const from = credited(mod, base, at)
-      const after = moveFor(mod.workflow, from, cmd, at)
-      await commit($, mod, from, after, at)
+      const after = await move($, mod, at, from => moveFor(mod.workflow, from, cmd, at))
 
       return { text: `Stage ${describe(mod.workflow, after)}`, context: [`[stage-toons] The user set the stage: ${describe(mod.workflow, after)}`] }
     })
