@@ -376,7 +376,7 @@ Decided in the discussion:
   data to every entry, and the store fills at about 100 projects (P5).
 - **"Done after a merge" and "idle variants by the last finished step" are
   one feature** (#17), as the research has it.
-- **Art is no longer terminal-only.** Once the frame tool lands, a cloud
+- **Art is no longer terminal-only.** With the frame tool (0.6.4), a cloud
   session checks scenes and the band from contact sheets; the person's
   terminal gives the final look. The research's "Terminal" labels predate
   it.
@@ -399,6 +399,9 @@ tool on real art.
   (duplicated helpers), D3 (dead code), D5 (scene and stage keys typed
   inside the library), A1 (one typed guard for MCP tool arguments), P8
   (an ASCII fast path for text width), P9 (per-frame allocations).
+- The eleven minor findings deferred from 0.6.4's reviews (the split's
+  and the frame tool's), listed in
+  `docs/handoffs/2026-10-04-cloud-session-split-frames.md`.
 
 **Phase 2: small wins on hooks the mod already has.** One release or two.
 - #7: rules fire on skills the person types (`skill.prompt`; a subagent's
