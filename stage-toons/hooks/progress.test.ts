@@ -104,3 +104,13 @@ test("pruning picks projects untouched for 180 days, never the session's own or 
   ] as const
   expect(staleKeys(entries, now, 'progress:/mine')).toEqual(['progress:/old'])
 })
+
+test('pruning keeps the 50 most recently moved projects, the session\'s own among them', () => {
+  const DAY = 86_400_000
+  const now = 400 * DAY
+  const entries = Array.from({ length: 60 }, (_, i) => [`progress:/p${i}`, applyMove(W, freshProgress(0), { stage: 'plan', by: 'user', at: now - i * 1000 })] as const)
+  const stale = staleKeys(entries, now, 'progress:/p0')
+  expect(stale).toHaveLength(10)
+  expect(stale[0]).toBe('progress:/p50')
+  expect(stale.includes('progress:/p0')).toBe(false)
+})

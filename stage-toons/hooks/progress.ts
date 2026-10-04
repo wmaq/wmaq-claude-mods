@@ -70,18 +70,24 @@ export function validate(x: unknown): Progress | null {
 // nobody has moved it for this long.
 export const PRUNE_EVERY_MS = 7 * 86_400_000
 export const PRUNE_AFTER_MS = 180 * 86_400_000
+// The most projects kept, the session's own included: a full history is
+// up to 50 KB, and the store holds 4 MiB for everything.
+export const PROJECTS_MAX = 50
 
-// The progress keys to delete: projects untouched for PRUNE_AFTER_MS, never
-// the session's own, never one this version can't read (a newer version's).
+// The progress keys to delete: projects untouched for PRUNE_AFTER_MS, and
+// beyond the PROJECTS_MAX most recently moved; never the session's own,
+// never one this version can't read (a newer version's).
 export function staleKeys(entries: readonly (readonly [string, unknown])[], now: number, keep: string): string[] {
-  return entries
-    .filter(([key, value]) => {
-      if (!key.startsWith('progress:') || key === keep) return false
+  const readable = entries
+    .filter(([key]) => key.startsWith('progress:') && key !== keep)
+    .flatMap(([key, value]) => {
       const p = validate(value)
 
-      return p !== null && now - p.updatedAt > PRUNE_AFTER_MS
+      return p === null ? [] : [{ key, updatedAt: p.updatedAt }]
     })
-    .map(([key]) => key)
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+
+  return readable.filter((p, i) => now - p.updatedAt > PRUNE_AFTER_MS || i >= PROJECTS_MAX - 1).map(p => p.key)
 }
 
 export async function loadProgress(store: KV, key: string, now: number): Promise<{ progress: Progress; isAvailable: boolean }> {

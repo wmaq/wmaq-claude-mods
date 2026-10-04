@@ -702,7 +702,6 @@ export const register: Register = on => {
     mod.isWindows = isWindowsPath(e.cwd)
     const loaded = await loadProgress(storeOf($), mod.key, now)
     if (!loaded.isAvailable) await warnUnsaved($)
-    else await pruneStore($, mod, now)
     const progress = reconcile(mod.workflow, loaded.progress).progress
     let isHidden = false
     try {
@@ -755,6 +754,8 @@ export const register: Register = on => {
     // Agents at work before a reload: the roster starts empty, and the list
     // finds them (their models are lost: grey helpers).
     await checkAgents($, mod)
+    // Last, so the tool and the command are there first.
+    if (loaded.isAvailable) await pruneStore($, mod, now)
 
     return result
   })
