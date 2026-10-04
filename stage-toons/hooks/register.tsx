@@ -12,19 +12,21 @@ import type { EngineInterface, Register } from 'claude-code'
 import type { IdleId, Progress, ScenePick, SessionWorkflow, StageId, Workflow } from '../types'
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { EMPTY_ROSTER, ended, reconcileRoster, type Roster, spawned } from './agents'
+import { autoTarget, hasRules, isWindowsPath, relativePath, type Signal, viaOf } from './auto'
 import { cropLeft, placeIdle } from './area'
 import { bandLayout, bandMode, type BandSite, type Tone, TOON_MIN } from './band'
-import { moveFor, parseCommand, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
+import { autoText, moveFor, parseCommand, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { type Demo, demoAt, demoLength, demoLine, demoStep, idleDemoAt, idleDemoLine, WAITING_DEMO_LINE } from './demo'
 import { createDirector, type Director, react, shot, tick, withAuditing, withScene } from './director'
 import { DOZE_MS, FALLBACK_ROUTINE, IDLE_IDS, idleFrame, pickIdle } from './idle'
 import { pickOne } from './pick'
+import { credit, currentIndex, logText, timeText } from './history'
 import { encodeCells } from './pixels'
 import { type KV, loadProgress, saveProgress, storeKey, validate } from './progress'
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolNameFor, toolSchema, workflowText } from './prompt'
 import { type SceneId, STAGE_W } from './scene'
 import { DEMO_ORDER, REACTIONS, SCENES, STAGE_SCENES } from './scenes'
-import { applyMove, describe, freshProgress, isAdvance, reconcile } from './stages'
+import { applyMove, describe, freshProgress, isAdvance, reconcile, stageLabel } from './stages'
 import { type Cast, composeFrame, TOON_ROWS } from './toon'
 import { waitingFrame } from './waiting'
 import { WAITING_DEMO_MS, waitingDemoAt } from './waiting/demo'
@@ -33,6 +35,7 @@ import { DEFAULT_WORKFLOW, parseWorkflow, sameWorkflow, stageIds, stageList, sta
 
 const PLUGIN = 'stage-toons'
 const HIDDEN_KEY = 'hidden'
+const AUTO_KEY = 'auto'
 const UNSAVED = "stage-toons: couldn't save progress; it lasts for this session only"
 const BAD_FILE = 'stage-toons: .claude/stage-toons.json has errors; using the default workflow. /stage workflow reload lists them.'
 // Refused blits in a row before the loop gives up: the spinner it painted is
@@ -60,6 +63,9 @@ const idleAtom = atom({ plugin: 'stage-toons', key: 'idle' } as const, null)
 // The scene the stage shows: kept across a hot reload, so the toon does not
 // change under the person when the module reloads.
 const sceneAtom = atom({ plugin: 'stage-toons', key: 'scene' } as const, null)
+// Whether rules move the stage by itself: mirrors the store, so a reload
+// keeps it when the store fails.
+const autoAtom = atom({ plugin: 'stage-toons', key: 'auto' } as const, true)
 
 const TONES: Record<Tone, { color?: string; bold?: boolean; dimColor?: boolean }> = {
   done: { color: '#D97757' },
@@ -119,6 +125,17 @@ type Mod = {
   roster: Roster
   seats: SeatLog
   isWaitingBroken: boolean
+  // Automatic moves: whether they are on, whether the project is on a
+  // Windows path (globs ignore case there), and the notes for Claude about
+  // moves it has not heard of yet.
+  isAuto: boolean
+  isWindows: boolean
+  notes: string[]
+  // Since when Claude's working time is counted for the current history
+  // entry: the main turn's start or the last move in it; null between turns.
+  workSince: number | null
+  // Every move runs in turn on this queue.
+  queue: Promise<unknown>
 }
 
 const createMod = (): Mod => ({
@@ -146,7 +163,43 @@ const createMod = (): Mod => ({
   roster: EMPTY_ROSTER,
   seats: EMPTY_LOG,
   isWaitingBroken: false,
+  isAuto: true,
+  isWindows: false,
+  notes: [],
+  workSince: null,
+  queue: Promise.resolve(),
 })
+
+// Runs a move after the moves before it, so each reads the progress the
+// last one left. A move that fails does not hold up the next.
+function queued<T>(mod: Mod, run: () => Promise<T>): Promise<T> {
+  const done = mod.queue.then(run, run)
+  mod.queue = done.catch(() => undefined)
+
+  return done
+}
+
+// A queued step of the mod's own (an automatic move, a turn's credit) that
+// must not fail the call or event it rides on: a failure goes to the debug log.
+function settle($: EngineInterface, what: string, done: Promise<unknown>): Promise<void> {
+  return done.then(
+    () => undefined,
+    error => $.ui.log(`stage-toons: ${what} failed: ${String(error)}`, { to: 'debug' }),
+  )
+}
+
+// The progress with Claude's working time so far credited to the current
+// entry, and the count restarted: what every move starts from.
+function credited(mod: Mod, p: Progress, now: number): Progress {
+  if (mod.workSince === null) return p
+  const ms = now - mod.workSince
+  mod.workSince = now
+
+  return credit(p, ms)
+}
+
+// The working time of the turn under way, not yet credited.
+const runningMs = (mod: Mod, now: number): number => (mod.workSince === null ? 0 : Math.max(0, now - mod.workSince))
 
 type ToolArgs = { agentId?: string } & Record<string, unknown>
 
@@ -196,12 +249,82 @@ async function setStage($: EngineInterface, mod: Mod, args: ToolArgs) {
     return { deny: `stage-toons: set_stage needs "stage" (one of ${stageIds(mod.workflow).join(', ')}) and a non-empty "message".` }
   }
   const now = await $.clock.now()
-  const before = await current($, now)
+  const before = credited(mod, await current($, now), now)
   const after = applyMove(mod.workflow, before, { stage, message, feature: typeof feature === 'string' ? feature : undefined, by: 'claude', at: now })
   await commit($, mod, before, after, now)
+  // Claude's own move supersedes what it has not heard of yet.
+  mod.notes = []
 
   // Core takes a registered tool's result as a string, an array or nothing.
   return { result: `Stage ${describe(mod.workflow, after)}` }
+}
+
+// What a successful tool call of the main conversation did, as rules read
+// it: a skill loaded, a file written (relative to the session's directory
+// at the call), a command run; or nothing a rule reads.
+async function signalOf($: EngineInterface, mod: Mod, args: Record<string, unknown>): Promise<Signal | null> {
+  if (args.tool === 'Skill' && typeof args.skill === 'string') return { kind: 'skill', name: args.skill }
+  if (args.tool === 'Bash' && typeof args.command === 'string') return { kind: 'bash', command: args.command }
+  if ((args.tool === 'Write' || args.tool === 'Edit') && typeof args.file_path === 'string') {
+    let cwd = ''
+    try {
+      cwd = await $.session.cwd()
+    } catch {
+      // No directory: the path stays whole and a relative glob misses it.
+    }
+    mod.isWindows = isWindowsPath(cwd)
+
+    return { kind: 'write', path: relativePath(args.file_path, cwd) }
+  }
+
+  return null
+}
+
+// Moves the work where a rule sends it, if one does, and queues a note for
+// Claude. Runs on the move queue.
+async function autoMove($: EngineInterface, mod: Mod, signal: Signal) {
+  if (!mod.isAuto) return
+  const now = await $.clock.now()
+  const p = await current($, now)
+  const target = autoTarget(mod.workflow, p, signal, mod.isWindows)
+  if (target === null) return
+  const before = credited(mod, p, now)
+  const via = viaOf(signal)
+  const after = applyMove(mod.workflow, before, { stage: target, by: 'auto', via, at: now })
+  await commit($, mod, before, after, now)
+  mod.notes.push(
+    `[stage-toons] The stage moved by itself to ${stageLabel(mod.workflow, target)} (${via}). Now: ${describe(mod.workflow, after)}. Call ${mod.toolName} if a more specific message or another stage fits.`,
+  )
+}
+
+// The main turn's end: the rest of its working time credited and saved,
+// so another session on the project picks it up. A turn whose start was
+// missed credits its duration, at most the time since the entry began.
+async function creditTurn($: EngineInterface, mod: Mod, durationMs: number) {
+  const now = await $.clock.now()
+  const p = await read($, progressAtom)
+  const since = mod.workSince
+  mod.workSince = null
+  if (p === null) return
+  const i = currentIndex(p)
+  if (i < 0) return
+  const ms = since !== null ? now - since : Math.min(Math.max(0, durationMs), now - p.history[i]!.at)
+  const after = credit(p, ms)
+  if (after === p) return
+  const saved = { ...after, updatedAt: now }
+  await update($, progressAtom, () => saved)
+  if (!(await saveProgress(storeOf($), mod.key, saved))) await warnUnsaved($)
+}
+
+// /stage auto on or off, kept for every project.
+async function setAuto($: EngineInterface, mod: Mod, isOn: boolean) {
+  mod.isAuto = isOn
+  await update($, autoAtom, () => isOn)
+  try {
+    await $.store.set(AUTO_KEY, isOn)
+  } catch {
+    // Lasts for this session.
+  }
 }
 
 async function setAuditing($: EngineInterface, mod: Mod, isAuditing: boolean) {
@@ -415,8 +538,13 @@ async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promis
   mod.workflow = next.workflow
   mod.workflowSource = next.source
   await update($, workflowAtom, () => next)
-  const { progress, moved } = reconcile(mod.workflow, await current($, now))
-  await update($, progressAtom, () => progress)
+  // On the move queue, so it reads what the last move left.
+  const { progress, moved } = await queued(mod, async () => {
+    const fitted = reconcile(mod.workflow, credited(mod, await current($, now), now))
+    await update($, progressAtom, () => fitted.progress)
+
+    return fitted
+  })
   mod.director = withScene(mod.director, await sceneFor($, mod, progress.stage), now)
   await registerTool($, mod)
   await update($, sectionAtom, () => workflowText(mod.workflow, progress, mod.toolName))
@@ -466,7 +594,15 @@ export const register: Register = on => {
       if (file.kind === 'bad') $.ui.toast(BAD_FILE)
     }
     mod.workflow = withScenes(held.workflow)
+    // A default kept by an older version takes this version's (its rules)
+    // while the stages are the same.
+    if (held.source === 'default' && !sameWorkflow(mod.workflow, DEFAULT_WORKFLOW) && stageIds(mod.workflow).join() === stageIds(DEFAULT_WORKFLOW).join()) {
+      mod.workflow = DEFAULT_WORKFLOW
+      const upgraded: SessionWorkflow = { workflow: DEFAULT_WORKFLOW, source: 'default' }
+      await update($, workflowAtom, () => upgraded)
+    }
     mod.workflowSource = held.source
+    mod.isWindows = isWindowsPath(e.cwd)
     const loaded = await loadProgress(storeOf($), mod.key, now)
     if (!loaded.isAvailable) await warnUnsaved($)
     const progress = reconcile(mod.workflow, loaded.progress).progress
@@ -477,6 +613,14 @@ export const register: Register = on => {
       // Shown, then.
     }
     mod.isHidden = isHidden
+    let isAuto = await read($, autoAtom)
+    try {
+      isAuto = (await $.store.get(AUTO_KEY)) !== false
+    } catch {
+      // As this session had it.
+    }
+    mod.isAuto = isAuto
+    await update($, autoAtom, () => isAuto)
     mod.surface = e.surface
     mod.idleSince = now
     let routine = await read($, idleAtom)
@@ -498,8 +642,9 @@ export const register: Register = on => {
       mod.commandName = (
         await $.command.register({
           name: COMMAND,
-          description: 'Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene, a stage\'s scenes, the idle routines or the waiting toon; /stage workflow shows or reloads the workflow',
-          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo waiting | demo stop | workflow [init | reload]]',
+          description:
+            "Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene, a stage's scenes, the idle routines or the waiting toon; /stage workflow shows or reloads the workflow; /stage auto, log and time: the automatic moves, the history, the time spent",
+          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo waiting | demo stop | workflow [init | reload] | auto [on | off] | log [n] | time]',
           immediate: true,
         })
       ).command
@@ -529,35 +674,58 @@ export const register: Register = on => {
     }
     // A turn starts: the toon under the spinner takes over from the demo.
     if (mod.demo) endDemo($, mod)
-    // Another session on this project may have moved the stage.
-    try {
-      const stored = validate(await $.store.get(mod.key))
-      const mine = await read($, progressAtom)
-      if (stored && (!mine || stored.updatedAt > mine.updatedAt)) {
-        // Fitted to this session's workflow in memory only: never saved back.
-        const fitted = reconcile(mod.workflow, stored).progress
-        await update($, progressAtom, () => fitted)
-        mod.director = withScene(mod.director, await sceneFor($, mod, fitted.stage), await $.clock.now())
+    // Another session on this project may have moved the stage. On the move
+    // queue, so a move still running is not overwritten.
+    await queued(mod, async () => {
+      try {
+        const stored = validate(await $.store.get(mod.key))
+        const mine = await read($, progressAtom)
+        if (stored && (!mine || stored.updatedAt > mine.updatedAt)) {
+          // Fitted to this session's workflow in memory; saved back only with
+          // this session's next move or turn's credit.
+          const fitted = reconcile(mod.workflow, stored).progress
+          await update($, progressAtom, () => fitted)
+          mod.director = withScene(mod.director, await sceneFor($, mod, fitted.stage), await $.clock.now())
+        }
+      } catch {
+        // The store is unreadable: keep what this session has.
       }
-    } catch {
-      // The store is unreadable: keep what this session has.
-    }
+    })
+    if (mod.notes.length === 0) return next(e)
+    const notes = mod.notes
+    mod.notes = []
+
+    return next({ ...e, context: [...(e.context ?? []), ...notes] })
+  })
+
+  // Claude's working time counts from the main turn's start (only the main
+  // loop raises turn.start).
+  on('turn.start', async ($, e, next) => {
+    mod.workSince = await $.clock.now()
 
     return next(e)
   })
 
   on('tool.call', async ($, e, next) => {
-    if (e.tool === mod.toolName) return setStage($, mod, e as unknown as ToolArgs)
+    if (e.tool === mod.toolName) return queued(mod, () => setStage($, mod, e as unknown as ToolArgs))
     const result = await next(e)
-    if (e.agentId === undefined && result.isError === true) {
+    if (e.agentId !== undefined || result.deny !== undefined) return result
+    if (result.isError === true) {
       const now = await $.clock.now()
       if (isFailureDue(mod.lastFailureAt, now)) {
         mod.lastFailureAt = now
         mod.director = react(mod.director, 'failure', now)
       }
+    } else if (mod.isAuto && hasRules(mod.workflow)) {
+      const signal = await signalOf($, mod, e as unknown as Record<string, unknown>)
+      if (signal) await settle($, 'an automatic move', queued(mod, () => autoMove($, mod, signal)))
     }
+    if (mod.notes.length === 0) return result
+    // Claude hears of the moves it has not heard of with this result.
+    const notes = mod.notes
+    mod.notes = []
 
-    return result
+    return { ...result, context: [...(result.context ?? []), ...notes] }
   })
 
   on('command.run', async ($, e, next) => {
@@ -566,6 +734,13 @@ export const register: Register = on => {
     const now = await $.clock.now()
     const before = await current($, now)
     if (cmd.kind === 'show') return { text: showText(mod.workflow, before, now) }
+    if (cmd.kind === 'log') return { text: logText(mod.workflow, before, now, cmd.count, runningMs(mod, now)) }
+    if (cmd.kind === 'time') return { text: timeText(mod.workflow, before, now, runningMs(mod, now)) }
+    if (cmd.kind === 'auto') {
+      if (cmd.isOn !== null) await setAuto($, mod, cmd.isOn)
+
+      return { text: autoText(mod.workflow, mod.isAuto) }
+    }
     if (cmd.kind === 'usage') return { text: usage(mod.workflow) }
     if (cmd.kind === 'demo' || cmd.kind === 'demo-idle' || cmd.kind === 'demo-waiting') {
       const stage = cmd.kind === 'demo' && cmd.stage !== null ? stageOf(mod.workflow, cmd.stage) : undefined
@@ -615,10 +790,16 @@ export const register: Register = on => {
     }
     // Untracked, a message would be shown nowhere and lost at the first stage.
     if (cmd.kind === 'message' && before.stage === null) return { text: 'a message belongs to a stage; set one first (/stage next, or /stage <id>).' }
-    const after = moveFor(mod.workflow, before, cmd, now)
-    await commit($, mod, before, after, now)
 
-    return { text: `Stage ${describe(mod.workflow, after)}`, context: [`[stage-toons] The user set the stage: ${describe(mod.workflow, after)}`] }
+    return queued(mod, async () => {
+      // Read when its turn on the queue comes: a move queued before it may have run.
+      const at = await $.clock.now()
+      const from = credited(mod, await current($, at), at)
+      const after = moveFor(mod.workflow, from, cmd, at)
+      await commit($, mod, from, after, at)
+
+      return { text: `Stage ${describe(mod.workflow, after)}`, context: [`[stage-toons] The user set the stage: ${describe(mod.workflow, after)}`] }
+    })
   })
 
   on('prompt.compose', async ($, e, next) => {
@@ -657,6 +838,11 @@ export const register: Register = on => {
     const now = await $.clock.now()
     mod.roster = spawned(mod.roster, result.agentId, result.model, now)
     reseat(mod, now)
+    // A spawn of the main conversation's own, not a teammate's, may move the stage.
+    if (e.parentAgentId === undefined && e.isTeammate !== true && mod.isAuto && hasRules(mod.workflow)) {
+      const signal: Signal = { kind: 'agent', model: result.model, asked: e.model, parentModel: e.parentModel }
+      await settle($, 'an automatic move', queued(mod, () => autoMove($, mod, signal)))
+    }
 
     return result
   })
@@ -676,6 +862,7 @@ export const register: Register = on => {
       return next(e)
     }
     mod.toon.requestId = undefined
+    await settle($, "crediting the turn's working time", queued(mod, () => creditTurn($, mod, e.durationMs)))
     const now = await $.clock.now()
     mod.idleSince = now
     mod.idle = mod.nextIdle

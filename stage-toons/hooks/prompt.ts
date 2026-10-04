@@ -2,6 +2,7 @@
 // that lists the stages.
 
 import type { Progress, StageDef, Workflow } from '../types'
+import { hasRules } from './auto'
 import { describe } from './stages'
 import { stageIds } from './workflow'
 
@@ -42,6 +43,7 @@ export function workflowText(w: Workflow, p: Progress, toolName: string): string
     'message. Also call it when the focus within a stage changes notably, but',
     'not more than every few minutes. Its result and any "[stage-toons]" note',
     'are the current state.',
+    ...(hasRules(w) ? ['The bar also moves by itself on some steps (rules in the workflow); a', '"[stage-toons]" note says when.'] : []),
     `If ${toolName} is listed as a deferred tool, load it first with ToolSearch (query "select:${toolName}").`,
     `At session start: ${describe(w, p)}.`,
   )

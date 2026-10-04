@@ -50,10 +50,18 @@ export type World = {
   agents: AgentRow[]
   spawnModel: string
   spawned: number
+  // The session's directory as $.session.cwd() answers it, and the context
+  // each prompt entered with.
+  cwd: string
+  prompts: (readonly string[] | undefined)[]
+  // Whether Bash answers with an error (it does unless a test says not),
+  // and what $.session.cwd() does: answer world.cwd, or fail.
+  isBashFailing: boolean
+  isCwdBroken: boolean
 }
 
 export function engine(on: On, preset: { store?: Record<string, unknown> } = {}) {
-  const world: World = { store: { ...preset.store }, isStoreBroken: false, isBlitRefused: false, blits: [], invalidations: 0, commands: [], toasts: [], files: {}, isFsBroken: false, schemas: [], agents: [], spawnModel: 'claude-sonnet-5-5', spawned: 0 }
+  const world: World = { store: { ...preset.store }, isStoreBroken: false, isBlitRefused: false, blits: [], invalidations: 0, commands: [], toasts: [], files: {}, isFsBroken: false, schemas: [], agents: [], spawnModel: 'claude-sonnet-5-5', spawned: 0, cwd: START.cwd, prompts: [], isBashFailing: true, isCwdBroken: false }
   const clock = mock.clock(on, { now: NOW })
   const guard = () => {
     if (world.isStoreBroken) throw new Error('store unavailable')
@@ -71,7 +79,17 @@ export function engine(on: On, preset: { store?: Record<string, unknown> } = {})
   })
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('turn.complete', () => ({ text: '' }))
-  on('prompt.submit', ($, e) => ({ text: e.text }))
+  on('prompt.submit', ($, e) => {
+    world.prompts.push(e.context)
+
+    return { text: e.text }
+  })
+  on('turn.start', ($, e) => ({ turnId: e.turnId }))
+  on('session.cwd', () => {
+    if (world.isCwdBroken) throw new Error('no directory')
+
+    return { value: world.cwd }
+  })
   on('prompt.compose', () => ({ sections: [{ id: 'intro', text: 'You are Claude Code.', scope: 'shared' as const }] }))
   on('session.compact', () => ({ messages: [SUMMARY] }))
   on('tool.register', ($, e) => {
@@ -136,7 +154,7 @@ export function engine(on: On, preset: { store?: Record<string, unknown> } = {})
 
     return <Text>engine</Text>
   })
-  on('tool.call', ($, e) => (e.tool === 'Bash' ? { result: 'boom', text: 'boom', isError: true } : { result: 'ok', text: 'ok' }) as never)
+  on('tool.call', ($, e) => (e.tool === 'Bash' && world.isBashFailing ? { result: 'boom', text: 'boom', isError: true } : e.tool === 'Read' ? { result: 'ok', text: 'ok', context: ['read note'] } : { result: 'ok', text: 'ok' }) as never)
 
   return { world, clock }
 }
@@ -179,8 +197,20 @@ export function spawnAgent($: Engine, model?: string, parentModel = 'claude-opus
 
 export const runStage = ($: Engine, args: string) => $.command.run({ command: 'stage', args } as never)
 
-export const endTurn = ($: Engine, agentId?: string) =>
-  $.turn.complete({ answer: '', durationMs: 1, isAborted: false, turnId: 't', reason: 'end_turn', ...(agentId ? { agentId } : {}) } as never)
+export const endTurn = ($: Engine, agentId?: string, durationMs = 1) =>
+  $.turn.complete({ answer: '', durationMs, isAborted: false, turnId: 't', reason: 'end_turn', ...(agentId ? { agentId } : {}) } as never)
+
+export const startTurn = ($: Engine) => $.turn.start({ text: 'go', turnId: 't' })
+
+export const submit = ($: Engine, text = 'hi') => $.prompt.submit({ text, wait: false, origin: { kind: 'composer' } } as never)
+
+// A built-in tool's call from the main conversation, or a subagent's.
+let toolCalls = 0
+export function callTool($: Engine, tool: string, args: Record<string, unknown>, agentId?: string) {
+  toolCalls += 1
+
+  return $.tool.call({ tool, tool_use_id: `tu-tool-${toolCalls}`, ...args, ...(agentId ? { agentId } : {}) } as never) as Promise<{ context?: readonly string[]; deny?: string }>
+}
 
 // The band's text as drawn: the mod's band, the engine's own when the mod
 // passes, or nothing.
