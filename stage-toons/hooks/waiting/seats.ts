@@ -111,7 +111,7 @@ export function seat(log: SeatLog, roster: Roster, now: number, isShown: boolean
     let last = Math.max(-Infinity, ...entries.map(e => e.arrivedAt))
     while (queue.length > 0) {
       const taken = new Set(entries.map(e => e.seat))
-      const free = [0, 1, 2, 3].find(s => !taken.has(s))
+      const free = Array.from({ length: SEATS }, (_, s) => s).find(s => !taken.has(s))
       if (free === undefined) break
       const agentId = queue.shift()!
       const arrivedAt = Math.max(now, last + ARRIVAL_GAP)

@@ -1,5 +1,5 @@
-// The idle Clawd beside the bar while Claude waits for you: 26 columns by
-// 4 rows (26 x 8 pixels). Awake, he plays one routine, picked each time a
+// The idle Clawd at the bottom left of the area below the bar while Claude
+// waits for you: 26 columns by 4 rows (26 x 8 pixels). Awake, he plays one routine, picked each time a
 // turn starts for the idle period after it; after a minute every routine
 // turns into the same doze.
 

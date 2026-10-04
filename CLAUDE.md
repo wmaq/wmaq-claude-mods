@@ -106,7 +106,10 @@ Learned building stage-toons on 2.1.287 to 2.1.289:
   - an `atom`'s `plugin` and `key` are not string literals;
   - a function handed `$` shares its name with anything else declared in
     the file, a local `const` in another hook included ("declared more
-    than once").
+    than once");
+  - a function handed `$` is imported from another file: `$` is followed
+    only into functions declared in the same file. Closures built in
+    `register.tsx` that call `$` (`storeOf($)`) may cross imports.
 - A tool registered with `$.tool.register` must answer `{ result }` with a
   string, an array or nothing. An object such as `{ content: [...] }` is
   refused at runtime, although the types say `unknown` and the test kit

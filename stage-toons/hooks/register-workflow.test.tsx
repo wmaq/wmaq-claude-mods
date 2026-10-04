@@ -164,6 +164,13 @@ test('init says so when it cannot check for the file', async ($, on) => {
   expect(text(await runStage($, 'workflow init'))).toContain("couldn't check for .claude/stage-toons.json")
 })
 
+test('a workflow file far too big to be one is refused', async ($, on) => {
+  const { world } = engine(on)
+  await $.session.start(START)
+  world.files[FILE] = ' '.repeat(70_000)
+  expect(text(await runStage($, 'workflow reload'))).toContain('70000 characters; a workflow file holds at most 65536')
+})
+
 test('reload says so when set_stage could not be registered again', async ($, on) => {
   const { world } = engine(on)
   await $.session.start(START)

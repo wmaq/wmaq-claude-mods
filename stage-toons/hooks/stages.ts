@@ -17,10 +17,8 @@ export function cut(text: string, max: number): string {
   return fitText(clean, max)
 }
 
-// Text measured and cut by characters (code points), so a cut never
-// splits an emoji's surrogate pair.
-export const charCount = (text: string): number => Array.from(text).length
-
+// Text cut by characters (code points), so a cut never splits an emoji's
+// surrogate pair.
 export function fitText(text: string, width: number): string {
   const chars = Array.from(text)
   if (chars.length <= width) return text

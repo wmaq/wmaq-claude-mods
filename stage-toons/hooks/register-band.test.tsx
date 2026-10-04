@@ -67,6 +67,8 @@ test('the idle Clawd stops repainting when Claude starts working', async ($, on)
   await $.session.start(START)
   const ui = await mountBand($)
   await clock.advance(500)
+  // It was repainting before Claude started.
+  expect(blitsOf(world, 'area').length).toBeGreaterThan(0)
   await ui.redraw(bandProps(100, { isWorking: true }))
   await clock.advance(200)
   const stopped = blitsOf(world, 'area').length

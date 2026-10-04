@@ -85,7 +85,7 @@ type SiteKind = 'toon' | 'area'
 type Site = { requestId: string | undefined; kind: SiteKind; columns: number; rows: number; isAnimating: boolean; isSeen: boolean }
 
 // How often a site repaints: the idle Clawd is calm.
-const frameMs = (mod: Mod, kind: SiteKind): number => (kind === 'area' && mod.demo === null && mod.seats.since === null ? 166 : 83)
+const frameMs = (mod: Mod, kind: SiteKind): number => (kind === 'area' && mod.demo === null && (mod.seats.since === null || mod.isWaitingBroken) ? 166 : 83)
 // How often the area checks the agent list while it knows of agents.
 const AGENT_POLL_MS = 2000
 
@@ -562,6 +562,9 @@ function animate($: EngineInterface, mod: Mod, site: Site) {
   })
 }
 
+// A workflow file is a few KB; anything far bigger is not one.
+const WORKFLOW_FILE_MAX = 64 * 1024
+
 type FileWorkflow = { kind: 'none' } | { kind: 'ok'; workflow: Workflow } | { kind: 'bad'; errors: string[] }
 
 // The project's workflow file: absent, a workflow, or what is wrong with it.
@@ -569,6 +572,7 @@ async function readWorkflowFile($: EngineInterface): Promise<FileWorkflow> {
   try {
     if (!(await $.fs.exists(WORKFLOW_FILE))) return { kind: 'none' }
     const text = await $.fs.read(WORKFLOW_FILE)
+    if (typeof text === 'string' && text.length > WORKFLOW_FILE_MAX) return { kind: 'bad', errors: [`${text.length} characters; a workflow file holds at most ${WORKFLOW_FILE_MAX}`] }
     const parsed = parseWorkflow(typeof text === 'string' ? text : '', STAGE_SCENES)
 
     return 'workflow' in parsed ? { kind: 'ok', workflow: parsed.workflow } : { kind: 'bad', errors: parsed.errors }
