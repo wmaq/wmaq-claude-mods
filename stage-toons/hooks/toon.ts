@@ -4,7 +4,7 @@
 
 import type { Shot } from './director'
 import { createBuffer, type PixelBuffer } from './pixels'
-import { crop, FALLBACK_SCENE, heroAt, type Mood, overlay, type ReactionId, type ReactionSpec, renderFull, type Scene, type SceneId, STAGE_H, STAGE_W, wipe } from './scene'
+import { crop, FALLBACK_SCENE, focusAt, heroAt, type Mood, overlay, type ReactionId, type ReactionSpec, renderFull, type Scene, type SceneId, STAGE_H, STAGE_W, wipe } from './scene'
 
 export const TOON_ROWS = STAGE_H / 2
 
@@ -44,5 +44,5 @@ export function composeFrame(shot: Shot, now: number, width: number, cast: Cast)
     frame = overlay(frame, layer)
   }
 
-  return crop(frame, sceneOf(shot.base).focusX, width)
+  return crop(frame, focusAt(sceneOf(shot.base), time), width)
 }

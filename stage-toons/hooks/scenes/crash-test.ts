@@ -1,5 +1,7 @@
 // Crash test: a cart rolls faster and faster into a brick wall, bounces
 // back, and Clawd notes the result on his clipboard; then he wheels it back.
+// In a raster narrower than the stage the camera follows the cart to the
+// wall and comes back to Clawd for the note.
 
 import { fillRect, type PixelBuffer, setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
@@ -15,8 +17,22 @@ const SETTLED_AT = 2.2
 const BACK_FROM = 5
 const WALL_X = 43
 const CART: Sprite = { palette: { b: C.blue, d: C.darkGray }, frames: [['.bbbbb.', 'bbbbbbb', '.d...d.']] }
-const NOTE_FROM = 2.4
+const NOTE_FROM = 2.8
 const NOTE_FOR = 1.2
+// The camera: on Clawd and the cart, then on the wall from the hit until
+// the cart has settled, and back for the note.
+const ON_CLAWD = 15
+const ON_WALL = 40
+const PAN_BACK_FROM = 2.4
+const PAN_BACK_FOR = 0.4
+
+function focus(t: number): number {
+  if (t < ROLL_FROM) return ON_CLAWD
+  if (t < HIT_AT) return Math.round(lerp(ON_CLAWD, ON_WALL, ((t - ROLL_FROM) / (HIT_AT - ROLL_FROM)) ** 2))
+  if (t < PAN_BACK_FROM) return ON_WALL
+
+  return Math.round(lerp(ON_WALL, ON_CLAWD, (t - PAN_BACK_FROM) / PAN_BACK_FOR))
+}
 
 function cartX(t: number): number {
   if (t < ROLL_FROM) return START
@@ -36,8 +52,8 @@ function drawWall(b: PixelBuffer) {
 export const crashTest: Scene = {
   id: 'crash-test',
   loop: LOOP,
-  // Left of the action's middle, so a 30-column crop keeps Clawd in it.
-  focusX: 22,
+  focusX: ON_CLAWD,
+  focus,
   backdrop: b => drawWall(b),
   actors: [
     {

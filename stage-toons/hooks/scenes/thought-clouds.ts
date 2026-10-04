@@ -10,10 +10,21 @@ const PUFF: Sprite = {
   palette: { w: C.white, s: C.paperShade },
   frames: [['w'], ['ww', 'ss'], ['.ww.', 'wwww', '.ss.'], ['.www.', 'wwwww', '.sss.']],
 }
+// The big cloud, from the three puffs just touching (frame 0) to its full
+// size (2), and its middle-sized frame (3) as it thins away.
 const BIG: Sprite = {
   palette: { w: C.white, s: C.paperShade },
-  frames: [['...www.www...', '.wwwwwwwwwww.', 'wwwwwwwwwwwww', '.wwwwwwwwwww.', '..sssssssss..']],
+  frames: [
+    ['.............', '.www.www.www.', 'wwwwwwwwwwwww', '.sss.sss.sss.', '.............'],
+    ['.............', '..wwwwwwwww..', 'wwwwwwwwwwwww', '.wwwwwwwwwww.', '..sssssssss..'],
+    ['...www.www...', '.wwwwwwwwwww.', 'wwwwwwwwwwwww', '.wwwwwwwwwww.', '..sssssssss..'],
+    ['.............', '....wwwww....', '..wwwwwwwww..', '...sssssss...', '.............'],
+  ],
 }
+// How long the cloud takes to swell from touching puffs to full, a frame
+// at a time, and how long each thinning step lasts.
+const SWELL_STEP = 0.15
+const THIN_STEP = 0.2
 const CENTRE = 24
 const PUFFS = [
   { from: 0.4, x: 6 },
@@ -50,14 +61,20 @@ export const thoughtClouds: Scene = {
       setPixel(b, 26, 5, C.white)
     }
     if (t >= MERGE_AT && t < THIN_AT) {
-      drawSprite(b, BIG, 0, CENTRE - 6, 0)
-      if (Math.floor(t / 0.3) % 2 === 0) setPixel(b, CENTRE, 2, C.gold)
+      const frame = Math.min(2, Math.floor((t - MERGE_AT) / SWELL_STEP))
+      drawSprite(b, BIG, frame, CENTRE - 6, 0)
+      if (frame === 2 && Math.floor(t / 0.3) % 2 === 0) setPixel(b, CENTRE, 2, C.gold)
       return
     }
     if (t >= THIN_AT) {
-      // Thinning away: the big cloud shrinks to a puff, then a wisp.
-      const frame = t < THIN_AT + 0.3 ? 3 : 0
-      drawSprite(b, PUFF, frame, CENTRE - Math.floor(PUFF.frames[frame]![0]!.length / 2), 1)
+      // Thinning away: the big cloud shrinks to its middle size, a puff,
+      // then a wisp.
+      const step = Math.floor((t - THIN_AT) / THIN_STEP)
+      if (step === 0) drawSprite(b, BIG, 3, CENTRE - 6, 0)
+      else {
+        const frame = step === 1 ? 3 : 0
+        drawSprite(b, PUFF, frame, CENTRE - Math.floor(PUFF.frames[frame]![0]!.length / 2), 1)
+      }
       return
     }
     for (const p of PUFFS) {

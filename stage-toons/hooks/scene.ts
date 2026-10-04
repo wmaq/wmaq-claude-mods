@@ -26,8 +26,9 @@ export type Actor =
   | { kind: 'clawd'; look: (t: number) => Partial<ClawdLook>; at: (t: number) => Point; isHero?: boolean }
 
 // A looping scene: t runs from 0 to loop seconds. focusX is the column kept
-// in view when the raster is narrower than the stage.
-export type Scene = { id: SceneId; loop: number; focusX: number; backdrop?: Paint; actors: Actor[]; front?: Paint }
+// in view when the raster is narrower than the stage; focus, when given,
+// moves it with the action instead (a camera that pans).
+export type Scene = { id: SceneId; loop: number; focusX: number; focus?: (t: number) => number; backdrop?: Paint; actors: Actor[]; front?: Paint }
 
 // A reaction plays once over a scene, drawn on its own layer relative to
 // the hero's head, and may set the hero's mood.
@@ -65,6 +66,9 @@ export function renderFull(scene: Scene, time: number, mood: Mood = null): Pixel
 
   return b
 }
+
+// The column a narrow raster keeps in view at a moment.
+export const focusAt = (scene: Scene, time: number): number => scene.focus?.(loopTime(scene, time)) ?? scene.focusX
 
 // Where the hero's head is: its centre column and top row.
 export function heroAt(scene: Scene, time: number): Point {
@@ -107,4 +111,4 @@ export function wipe(from: PixelBuffer, to: PixelBuffer, progress: number): Pixe
 }
 
 export const renderScene = (scene: Scene, time: number, width: number, mood: Mood = null): PixelBuffer =>
-  crop(renderFull(scene, time, mood), scene.focusX, width)
+  crop(renderFull(scene, time, mood), focusAt(scene, time), width)

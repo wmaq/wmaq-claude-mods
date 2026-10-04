@@ -169,7 +169,7 @@ test('batch 1, part 3: each new scene shows what it is about', () => {
   // The clock's hand moves.
   expect([...renderFull(SCENES['waiting-bench']!, 0.1).px]).not.toEqual([...renderFull(SCENES['waiting-bench']!, 0.6).px])
   // The dirty stack shrinks as the clean one grows.
-  expect(has('dishes', C.white, 0.5)).toBeLessThan(has('dishes', C.white, 5.5))
+  expect(has('dishes', C.white, 0.5)).toBeLessThan(has('dishes', C.white, 4.5))
   // The beam finds the bug: it shows red only while lit.
   expect(has('flashlight', C.red, 0.5)).toBe(0)
   // The lit bug alone is 4 red pixels.
@@ -220,16 +220,20 @@ const BATCH_2 = [
   'workbench', 'crash-test', 'cake', 'recycling', 'bug-net', 'dice',
 ]
 
+// crash-test's camera leaves Clawd for the wall from the roll to the pan
+// back (0.4 to 2.8 s).
+const isOnWall = (id: string, t: number) => id === 'crash-test' && t > 0.5 && t < 2.8
+
 test('batch 2: at 30 columns, the narrowest the demo plays at, the crop still shows most of Clawd', () => {
   for (const id of BATCH_2) {
     const scene = SCENES[id]!
-    for (let t = 0.013; t < scene.loop; t += 0.1) expect(count(renderScene(scene, t, 30), CLAWD_ORANGE)).toBeGreaterThan(40)
+    for (let t = 0.013; t < scene.loop; t += 0.1) if (!isOnWall(id, t)) expect(count(renderScene(scene, t, 30), CLAWD_ORANGE)).toBeGreaterThan(40)
   }
 })
 
 test('batch 2: no scene jumps at its loop point', () => {
   const changed = (a: PixelBuffer, b: PixelBuffer) => [...a.px].filter((c, i) => c !== b.px[i]).length
-  for (const id of BATCH_2) {
+  for (const id of [...BATCH_2, 'dishes', 'bricklaying']) {
     const scene = SCENES[id]!
     expect(changed(renderFull(scene, scene.loop - 0.02), renderFull(scene, 0.02))).toBeLessThan(30)
   }
@@ -264,8 +268,8 @@ test('batch 2, part 1: each new scene shows what it is about', () => {
   // The page under the stamp has its line before the stamp comes down, and
   // a green tick after.
   expect(has('stamp', C.green, 1.1)).toBe(0)
-  expect(at('stamp', C.red, 1.2).every(p => p.y === 7)).toBe(true)
-  expect(has('stamp', C.green, 1.4)).toBe(5)
+  expect(at('stamp', C.red, 1.2).every(p => p.y === 8)).toBe(true)
+  expect(has('stamp', C.green, 1.4)).toBe(4)
 })
 
 test('batch 2, part 2: each new scene shows what it is about', () => {
@@ -322,4 +326,57 @@ test('the kit draws a line with both ends and every pixel between', () => {
   expect(px).toContainEqual([1, 1])
   expect(px).toContainEqual([5, 3])
   expect(px).toHaveLength(5)
+})
+
+test('polish: Clawd holds the stamp by its knob, standing on his crate and squatting to stamp', () => {
+  // Standing (0.5 s), the claw reaches column 21 of row 4, and the knob
+  // starts at 22 on the same row; squatting (1.2 s), both are two rows lower.
+  for (const [t, row] of [[0.5, 4], [1.2, 6]] as const) {
+    const b = renderFull(SCENES.stamp!, t)
+    expect(b.px[row * b.w + 21]).toBe(CLAWD_ORANGE)
+    expect(b.px[row * b.w + 22]).toBe(C.woodDark)
+  }
+  // His feet stand on the crate, clear of the desk beside it.
+  expect(at('stamp', CLAWD_ORANGE, 0.5).every(p => p.y <= 9)).toBe(true)
+  expect(at('stamp', C.wood, 0.5).filter(p => p.y === 12 && p.x > 18).every(p => p.x >= 20)).toBe(true)
+})
+
+test("polish: the quill's shaft runs from Clawd's claw to its nib on the scroll", () => {
+  for (const t of [1, 1.15, 6.5]) {
+    const b = renderFull(SCENES.scroll!, t)
+    expect(b.px[10 * b.w + 16]).toBe(CLAWD_ORANGE)
+    expect(b.px[10 * b.w + 17]).toBe(C.white)
+    expect(b.px[11 * b.w + 18]).toBe(C.ink)
+  }
+})
+
+test('polish: the thought clouds swell into the big cloud and thin away a step at a time', () => {
+  const white = (t: number) => has('thought-clouds', C.white, t)
+  // Touching puffs, a fuller cloud, the full one.
+  expect(white(3.65)).toBeLessThan(white(3.8))
+  expect(white(3.8)).toBeLessThan(white(4))
+  // Full, middle-sized, a puff, a wisp.
+  expect(white(5.3)).toBeGreaterThan(white(5.5))
+  expect(white(5.5)).toBeGreaterThan(white(5.7))
+  expect(white(5.7)).toBeGreaterThan(white(5.9))
+  expect(white(5.9)).toBeGreaterThan(0)
+})
+
+test("polish: crash-test's camera shows the wall and the bang in a narrow toon, and Clawd before and after", () => {
+  const scene = SCENES['crash-test']!
+  for (const width of [24, 30]) {
+    const bang = renderScene(scene, 1.7, width)
+    expect(count(bang, C.gold)).toBeGreaterThan(0)
+    expect(count(bang, C.brick)).toBe(count(renderFull(scene, 1.7), C.brick))
+    for (const t of [0.2, 3.2]) expect(count(renderScene(scene, t, width), CLAWD_ORANGE)).toBeGreaterThan(40)
+  }
+})
+
+test('polish: the dishes and the wall clear away before their loops start again', () => {
+  // All five dishes clean, then none in view as the dirty ones drop in.
+  expect(has('dishes', C.white, 5.05) - has('dishes', C.white, 5.6)).toBeGreaterThanOrEqual(20)
+  // The finished wall slides right, off the stage.
+  const bricks = (t: number) => at('bricklaying', C.brick, t)
+  expect(Math.min(...bricks(10.2).map(p => p.x))).toBeLessThan(Math.min(...bricks(11.5).map(p => p.x)))
+  expect(bricks(11.99).length).toBeLessThan(bricks(10.2).length / 4)
 })

@@ -33,9 +33,14 @@ export const scroll: Scene = {
     // The roll at the open end.
     fillRect(b, START_X + n, 10, 2, 4, C.paperShade)
     setPixel(b, START_X + n, 11, C.woodDark)
-    // The quill in Clawd's claw, wiggling while he writes.
-    const dx = t < WRITE_FOR && every(t, 0.15) % 2 === 0 ? 1 : 0
-    setPixel(b, 18 + dx, 10, C.ink)
-    for (let k = 1; k <= 3; k++) setPixel(b, 18 + dx + k, 10 - k, C.white)
+    // The quill in Clawd's claw, which ends at column 16 of row 10: the
+    // shaft runs through the claw's tip at 17 to the nib on the scroll's
+    // edge, and the feather leans back over the claw, wagging while he
+    // writes.
+    const isWagging = t < WRITE_FOR && every(t, 0.15) % 2 === 0
+    setPixel(b, 18, 11, C.ink)
+    setPixel(b, 17, 10, C.white)
+    setPixel(b, 16, 9, C.white)
+    setPixel(b, isWagging ? 16 : 15, 8, C.white)
   },
 }

@@ -1,4 +1,5 @@
-// Bricklaying: Clawd hammers while a brick wall grows, then starts again.
+// Bricklaying: Clawd hammers while a brick wall grows; the finished wall
+// slides away to the right, and he starts the next one.
 
 import { clawdAnchors } from '../clawd'
 import { fillRect, setPixel } from '../pixels'
@@ -12,11 +13,18 @@ const brickAt = (i: number) => {
 
   return { x: WALL_X + (i % 5) * 4 + (row % 2 === 1 ? 2 : 0), y: 12 - row * 2 }
 }
-const isStriking = (t: number) => every(t, 0.25) % 2 === 1
+const BRICKS = 20
+const PER_BRICK = 0.5
+const BUILT_AT = BRICKS * PER_BRICK
+const SLIDE_FROM = BUILT_AT + 0.5
+const LOOP = 12
+// Far enough for the wall's right end (column 47) to leave the stage.
+const SLIDE_BY = 22
+const isStriking = (t: number) => t < BUILT_AT && every(t, 0.25) % 2 === 1
 
 export const bricklaying: Scene = {
   id: 'bricklaying',
-  loop: 12,
+  loop: LOOP,
   focusX: 24,
   actors: [
     {
@@ -27,10 +35,11 @@ export const bricklaying: Scene = {
     },
   ],
   front: (b, t) => {
-    const laid = Math.min(20, every(t, 0.5))
+    const laid = Math.min(BRICKS, every(t, PER_BRICK))
+    const slid = t < SLIDE_FROM ? 0 : Math.round(((t - SLIDE_FROM) / (LOOP - SLIDE_FROM)) * SLIDE_BY)
     for (let i = 0; i < laid; i++) {
       const { x, y } = brickAt(i)
-      drawSprite(b, BRICK, 0, x, y)
+      drawSprite(b, BRICK, 0, x + slid, y)
     }
     // The hammer in Clawd's right claw: raised, or struck out with a spark.
     const tip = clawdAnchors({ arms: { left: 'down', right: isStriking(t) ? 'out' : 'up' } }).right
