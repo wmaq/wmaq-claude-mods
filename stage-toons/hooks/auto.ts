@@ -21,6 +21,10 @@ export const KINDS = ['skill', 'write', 'agent', 'bash'] as const
 type Kind = (typeof KINDS)[number]
 const FIELDS = [...KINDS, 'from'] as const
 export const RULES_MAX = 8
+// How much of a command a bash rule reads, and how many * a glob may hold:
+// a rule from a project's file runs on every call, so neither may take long.
+export const COMMAND_MAX = 500
+export const GLOB_STARS_MAX = 8
 // The longest reason for a move the history keeps.
 export const VIA_MAX = 60
 export const FROM_MAX = 20
@@ -58,10 +62,12 @@ function ruleAt(item: unknown, path: string, errors: string[]): AutoRule | null 
   if (text !== '' && kind === 'bash') {
     try {
       new RegExp(text)
+      if (isRiskyPattern(text)) errors.push(`${path}.bash: a repeated group holding another repeat or a choice, as in (a+)* or (a|b)+, can take too long; simplify it`)
     } catch (error) {
       errors.push(`${path}.bash: not a regular expression: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
+  if (text !== '' && kind === 'write' && (text.match(/\*/g)?.length ?? 0) > GLOB_STARS_MAX) errors.push(`${path}.write: at most ${GLOB_STARS_MAX} *`)
   if (text !== '' && kind === 'agent' && /\s/.test(text)) errors.push(`${path}.agent: one word, a model family such as fable`)
   let from: string[] | undefined
   if (raw.from !== undefined) {
@@ -104,6 +110,47 @@ export function unknownFrom(rules: readonly AutoRule[], path: string, ids: reado
   return errors
 }
 
+const BACKSLASH = String.fromCharCode(92)
+
+// Whether a pattern repeats a group that itself repeats or chooses, as in
+// (a+)* or (a|b)+: the shapes that make a regular expression backtrack
+// for ever on a near miss. Escapes and character classes are skipped.
+export function isRiskyPattern(source: string): boolean {
+  type Group = { hasRepeat: boolean; hasChoice: boolean }
+  const stack: Group[] = [{ hasRepeat: false, hasChoice: false }]
+  const isRepeat = (c: string | undefined) => c === '*' || c === '+' || c === '{'
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i]!
+    const top = stack[stack.length - 1]!
+    if (c === BACKSLASH) i += 1
+    else if (c === '[') {
+      for (i += 1; i < source.length && source[i] !== ']'; i++) if (source[i] === BACKSLASH) i += 1
+    } else if (c === '(') stack.push({ hasRepeat: false, hasChoice: false })
+    else if (c === '|') top.hasChoice = true
+    else if (isRepeat(c)) top.hasRepeat = true
+    else if (c === ')' && stack.length > 1) {
+      const group = stack.pop()!
+      const isRepeated = isRepeat(source[i + 1])
+      if (isRepeated && (group.hasRepeat || group.hasChoice)) return true
+      if (group.hasRepeat || isRepeated) stack[stack.length - 1]!.hasRepeat = true
+    }
+  }
+
+  return false
+}
+
+// Rules' regular expressions, compiled once each.
+const compiled = new Map<string, RegExp>()
+function regExpOf(key: string, make: () => RegExp): RegExp {
+  let found = compiled.get(key)
+  if (!found) {
+    found = make()
+    compiled.set(key, found)
+  }
+
+  return found
+}
+
 // A glob as a regular expression on a whole path: ** any run of characters
 // (a **/ also none), * any run without /, ? one character but /.
 export function globRegExp(glob: string, ignoreCase: boolean): RegExp {
@@ -111,7 +158,8 @@ export function globRegExp(glob: string, ignoreCase: boolean): RegExp {
   for (let i = 0; i < glob.length; i++) {
     const c = glob[i]!
     if (c === '*' && glob[i + 1] === '*') {
-      i += 1
+      // Three stars or more read as two.
+      while (glob[i + 1] === '*') i += 1
       if (glob[i + 1] === '/') {
         i += 1
         source += '(?:.*/)?'
@@ -158,12 +206,12 @@ export function ruleMatches(rule: AutoRule, signal: Signal, isWindows: boolean):
       return name === want || (!want.includes(':') && name.endsWith(`:${want}`))
     }
     case 'write':
-      return globRegExp(value, isWindows).test(signal.path)
+      return regExpOf(`write ${isWindows} ${value}`, () => globRegExp(value, isWindows)).test(signal.path)
     case 'agent':
       return hasFamily(signal.model, value) && (!hasFamily(signal.parentModel, value) || hasFamily(signal.asked, value))
     case 'bash':
       try {
-        return new RegExp(value).test(signal.command)
+        return regExpOf(`bash ${value}`, () => new RegExp(value)).test(signal.command.slice(0, COMMAND_MAX))
       } catch {
         return false
       }
@@ -182,17 +230,19 @@ const standing = (w: Workflow, p: Progress): number => (rank(w, p.stage) >= 0 ? 
 // workflow order, with a rule that matches and may move the work there. A
 // rule moves the work into a side stage, or forward on the track; never to
 // the stage it is in, never back.
-export function autoTarget(w: Workflow, p: Progress, signal: Signal, isWindows: boolean): StageId | null {
+export function autoMatch(w: Workflow, p: Progress, signal: Signal, isWindows: boolean): { stage: StageId; rule: AutoRule } | null {
   const at = standing(w, p)
   for (const stage of [...w.track, ...w.side]) {
     if (stage.id === p.stage) continue
     if (rank(w, stage.id) >= 0 && rank(w, stage.id) <= at) continue
-    const fires = (stage.auto ?? []).some(rule => (rule.from === undefined || (p.stage !== null && rule.from.includes(p.stage))) && ruleMatches(rule, signal, isWindows))
-    if (fires) return stage.id
+    const rule = (stage.auto ?? []).find(r => (r.from === undefined || (p.stage !== null && r.from.includes(p.stage))) && ruleMatches(r, signal, isWindows))
+    if (rule) return { stage: stage.id, rule }
   }
 
   return null
 }
+
+export const autoTarget = (w: Workflow, p: Progress, signal: Signal, isWindows: boolean): StageId | null => autoMatch(w, p, signal, isWindows)?.stage ?? null
 
 const short = (text: string, max: number): string => {
   const clean = text.replace(/\s+/g, ' ').trim()
@@ -201,8 +251,9 @@ const short = (text: string, max: number): string => {
   return list.length <= max ? clean : `${list.slice(0, max - 1).join('')}…`
 }
 
-// Why a move happened, as the history and the note say it.
-export function viaOf(signal: Signal): string {
+// Why a move happened, as the history and the note say it. A command is
+// named by the rule it matched, not by its text, which may hold a secret.
+export function viaOf(signal: Signal, rule?: AutoRule): string {
   switch (signal.kind) {
     case 'skill':
       return short(`skill ${signal.name}`, VIA_MAX)
@@ -211,12 +262,13 @@ export function viaOf(signal: Signal): string {
     case 'agent':
       return short(`agent on ${signal.model}`, VIA_MAX)
     case 'bash':
-      return short(`ran ${signal.command}`, VIA_MAX)
+      return short(rule && 'bash' in rule ? `bash rule ${rule.bash}` : 'ran a command', VIA_MAX)
   }
 }
 
-// Whether any stage of the workflow has rules.
-export const hasRules = (w: Workflow): boolean => [...w.track, ...w.side].some(s => (s.auto?.length ?? 0) > 0)
+// Whether any stage of the workflow has rules, or rules of one kind.
+export const hasRules = (w: Workflow, kind?: Signal['kind']): boolean =>
+  [...w.track, ...w.side].some(s => (s.auto ?? []).some(rule => kind === undefined || kind in rule))
 
 // A rule as /stage workflow and /stage auto list it.
 export const ruleText = (rule: AutoRule): string => `${kindOf(rule)} ${valueOf(rule)}${rule.from ? ` from ${rule.from.join(', ')}` : ''}`

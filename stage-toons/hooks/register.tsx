@@ -12,7 +12,7 @@ import type { EngineInterface, Register } from 'claude-code'
 import type { IdleId, Progress, ScenePick, SessionWorkflow, StageId, Workflow } from '../types'
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { EMPTY_ROSTER, ended, reconcileRoster, type Roster, spawned } from './agents'
-import { autoTarget, hasRules, isWindowsPath, relativePath, type Signal, viaOf } from './auto'
+import { autoMatch, hasRules, isWindowsPath, relativePath, type Signal, viaOf } from './auto'
 import { cropLeft, placeIdle } from './area'
 import { bandLayout, bandMode, type BandSite, type Tone, TOON_MIN } from './band'
 import { autoText, moveFor, parseCommand, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
@@ -318,10 +318,11 @@ async function autoMove($: EngineInterface, mod: Mod, signal: Signal) {
   if (!mod.isAuto) return
   const now = await $.clock.now()
   const { progress: p } = await latestProgress($, mod, now)
-  const target = autoTarget(mod.workflow, p, signal, mod.isWindows)
-  if (target === null) return
+  const match = autoMatch(mod.workflow, p, signal, mod.isWindows)
+  if (match === null) return
+  const target = match.stage
   const before = credited(mod, p, now)
-  const via = viaOf(signal)
+  const via = viaOf(signal, match.rule)
   const after = applyMove(mod.workflow, before, { stage: target, by: 'auto', via, at: now })
   await commit($, mod, before, after, now)
   mod.notes.push(

@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Progress, StageId } from '../types'
-import { autoTarget, globRegExp, relativePath, ruleMatches, rulesAt, ruleText, type Signal, unknownFrom, viaOf } from './auto'
+import { autoMatch, autoTarget, globRegExp, isRiskyPattern, relativePath, ruleMatches, rulesAt, ruleText, type Signal, unknownFrom, viaOf } from './auto'
 import { freshProgress } from './stages'
 import { DEFAULT_WORKFLOW as W } from './workflow'
 
@@ -138,6 +138,34 @@ test('why a move happened, cut to 60 characters', () => {
   expect(viaOf(skill('superpowers:brainstorming'))).toBe('skill superpowers:brainstorming')
   expect(viaOf(write('docs/a.md'))).toBe('wrote docs/a.md')
   expect(viaOf(fable())).toBe('agent on claude-fable-5-1')
-  expect(viaOf({ kind: 'bash', command: `git   merge ${'x'.repeat(80)}` })).toBe(`ran git merge ${'x'.repeat(45)}…`)
+  // A command is named by its rule: its text may hold a secret.
+  expect(viaOf({ kind: 'bash', command: 'curl -H "Authorization: Bearer abc" x' }, { bash: 'curl' })).toBe('bash rule curl')
+  expect(viaOf({ kind: 'bash', command: 'git merge' })).toBe('ran a command')
   expect(ruleText({ agent: 'fable', from: ['spec', 'plan'] })).toBe('agent fable from spec, plan')
+})
+
+test('patterns that can backtrack for ever are refused, with their path; safe ones pass', () => {
+  const BS = String.fromCharCode(92)
+  const greedy = `^(${BS}S+${BS}s*)+merge$`
+  for (const risky of ['^(a|a)*$', greedy, '(a+)+', '(x(ab)*)+', '(?:a|b){2,}']) expect(isRiskyPattern(risky)).toBe(true)
+  for (const safe of ['git merge', '^git (merge|rebase)', '(ab)+', 'a+b*', '[(+*]+', `x${BS}(a+${BS})*`, '(a|b)?']) expect(isRiskyPattern(safe)).toBe(false)
+  const errors: string[] = []
+  rulesAt([{ bash: greedy }, { write: '*a*a*a*a*a*a*a*a*a*b' }], 'p', errors)
+  expect(errors).toEqual([
+    'p[0].bash: a repeated group holding another repeat or a choice, as in (a+)* or (a|b)+, can take too long; simplify it',
+    'p[1].write: at most 8 *',
+  ])
+})
+
+test('a rule reads at most the first 500 characters of a command, and stays fast on long ones', () => {
+  const BS = String.fromCharCode(92)
+  expect(ruleMatches({ bash: 'merge$' }, { kind: 'bash', command: `${'x'.repeat(600)} merge` }, false)).toBe(false)
+  const started = Date.now()
+  for (let i = 0; i < 200; i++) ruleMatches({ bash: `^(${BS}S+ )*end` }, { kind: 'bash', command: 'word '.repeat(2000) }, false)
+  expect(Date.now() - started).toBeLessThan(2000)
+})
+
+test('the matched rule comes with the target; three stars read as two', () => {
+  expect(autoMatch(W, at(null), skill('superpowers:brainstorming'), false)).toEqual({ stage: 'brainstorm', rule: { skill: 'superpowers:brainstorming' } })
+  expect(globRegExp('docs/***/a.md', false).test('docs/x/y/a.md')).toBe(true)
 })

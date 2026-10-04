@@ -179,9 +179,9 @@ test("a project's own rules: a bash rule moves on a command that ran, not on one
   expect(text(await runStage($, ''))).toContain('Not tracked yet')
   world.isBashFailing = false
   const ran = await callTool($, 'Bash', { command: 'make build' })
-  expect(ran.context?.[0]).toContain('moved by itself to 2/3 build (ran make build)')
+  expect(ran.context?.[0]).toContain('moved by itself to 2/3 build (bash rule make build)')
   await callTool($, 'Bash', { command: 'git checkout main && git merge feat' })
-  expect(text(await runStage($, ''))).toContain('3/3 ship by auto (ran git checkout main && git merge feat)')
+  expect(text(await runStage($, ''))).toContain('3/3 ship by auto (bash rule git merge)')
 })
 
 test('a Windows path matches a rule in any case', async ($, on) => {
@@ -225,7 +225,7 @@ test('/stage workflow reload picks up a file whose only change is its rules', as
   world.files['.claude/stage-toons.json'] = JSON.stringify({ track: [stage('plan'), stage('build', [{ bash: 'make build' }])] })
   expect(text(await runStage($, 'workflow reload'))).toContain('workflow from .claude/stage-toons.json')
   await callTool($, 'Bash', { command: 'make build' })
-  expect(text(await runStage($, ''))).toContain('2/2 build by auto (ran make build)')
+  expect(text(await runStage($, ''))).toContain('2/2 build by auto (bash rule make build)')
 })
 
 test("a subagent's turn credits nothing", async ($, on) => {
