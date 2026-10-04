@@ -54,3 +54,19 @@ test('/stage moves build on it too', async ($, on) => {
   await runStage($, 'next')
   expect(saved(world.store).history.map(h => h.stage)).toEqual(['spec', 'plan', 'plan-audit'])
 })
+
+test('a session prunes projects untouched for months, at most once a week', async ($, on) => {
+  const DAY = 86_400_000
+  const old = { v: 2, stage: 'plan', lastTrackStage: 'plan', feature: null, message: 'm', history: [], updatedAt: 0 }
+  const { world, clock } = engine(on, { store: { 'progress:/old': old, hidden: false } })
+  await clock.advance(181 * DAY)
+  await $.session.start(START)
+  expect('progress:/old' in world.store).toBe(false)
+  expect(world.store.hidden).toBe(false)
+  expect(typeof world.store['pruned-at']).toBe('number')
+  // Within the week, nothing is pruned again.
+  world.store['progress:/old2'] = old
+  await clock.advance(DAY)
+  await $.session.start(START)
+  expect('progress:/old2' in world.store).toBe(true)
+})

@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { type KV, loadProgress, saveProgress, storeKey, validate } from './progress'
+import { type KV, loadProgress, saveProgress, staleKeys, storeKey, validate } from './progress'
 import { applyMove, freshProgress } from './stages'
 import { DEFAULT_WORKFLOW as W } from './workflow'
 
@@ -89,4 +89,18 @@ test("history entries keep this version's fields, checked; older entries read as
     { stage: 'spec', at: 4, by: 'claude' },
     { stage: 'spec', at: 5, by: 'claude', feature: null },
   ])
+})
+
+test("pruning picks projects untouched for 180 days, never the session's own or one it can't read", () => {
+  const DAY = 86_400_000
+  const now = 400 * DAY
+  const at = (days: number) => applyMove(W, freshProgress(0), { stage: 'plan', by: 'user', at: now - days * DAY })
+  const entries = [
+    ['progress:/old', at(181)],
+    ['progress:/recent', at(10)],
+    ['progress:/mine', at(300)],
+    ['progress:/future', { v: 3, updatedAt: 0 }],
+    ['hidden', true],
+  ] as const
+  expect(staleKeys(entries, now, 'progress:/mine')).toEqual(['progress:/old'])
 })

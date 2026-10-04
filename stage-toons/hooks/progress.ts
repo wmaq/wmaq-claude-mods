@@ -64,6 +64,24 @@ export function validate(x: unknown): Progress | null {
   }
 }
 
+// Saved progress is pruned at most this often, and a project's goes once
+// nobody has moved it for this long.
+export const PRUNE_EVERY_MS = 7 * 86_400_000
+export const PRUNE_AFTER_MS = 180 * 86_400_000
+
+// The progress keys to delete: projects untouched for PRUNE_AFTER_MS, never
+// the session's own, never one this version can't read (a newer version's).
+export function staleKeys(entries: readonly (readonly [string, unknown])[], now: number, keep: string): string[] {
+  return entries
+    .filter(([key, value]) => {
+      if (!key.startsWith('progress:') || key === keep) return false
+      const p = validate(value)
+
+      return p !== null && now - p.updatedAt > PRUNE_AFTER_MS
+    })
+    .map(([key]) => key)
+}
+
 export async function loadProgress(store: KV, key: string, now: number): Promise<{ progress: Progress; isAvailable: boolean }> {
   try {
     return { progress: validate(await store.get(key)) ?? freshProgress(now), isAvailable: true }

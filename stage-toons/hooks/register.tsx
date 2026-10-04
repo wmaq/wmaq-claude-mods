@@ -22,7 +22,7 @@ import { DOZE_MS, FALLBACK_ROUTINE, IDLE_IDS, idleFrame, pickIdle } from './idle
 import { pickOne } from './pick'
 import { creditAt, currentEntry, type EntryKey, logText, timeText } from './history'
 import { encodeCells } from './pixels'
-import { type KV, loadProgress, saveProgress, storeKey, validate } from './progress'
+import { type KV, loadProgress, PRUNE_EVERY_MS, saveProgress, staleKeys, storeKey, validate } from './progress'
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolNameFor, toolSchema, workflowText } from './prompt'
 import { type SceneId, STAGE_W } from './scene'
 import { DEMO_ORDER, REACTIONS, SCENES, STAGE_SCENES } from './scenes'
@@ -36,6 +36,7 @@ import { DEFAULT_WORKFLOW, parseWorkflow, sameWorkflow, stageIds, stageList, sta
 const PLUGIN = 'stage-toons'
 const HIDDEN_KEY = 'hidden'
 const AUTO_KEY = 'auto'
+const PRUNED_KEY = 'pruned-at'
 const UNSAVED = "stage-toons: couldn't save progress; it lasts for this session only"
 const BAD_FILE = 'stage-toons: .claude/stage-toons.json has errors; using the default workflow. /stage workflow reload lists them.'
 // Refused blits in a row before the loop gives up: the spinner it painted is
@@ -338,6 +339,22 @@ async function creditTurn($: EngineInterface, mod: Mod, durationMs: number) {
   if (!(await saveProgress(storeOf($), mod.key, saved))) await warnUnsaved($)
 }
 
+// Deletes the progress of projects nobody has moved for months, at most
+// once a week, so the store (4 MiB for all of it) never fills.
+async function pruneStore($: EngineInterface, mod: Mod, now: number) {
+  try {
+    const last = await $.store.get(PRUNED_KEY)
+    if (typeof last === 'number' && now - last < PRUNE_EVERY_MS) return
+    await $.store.set(PRUNED_KEY, now)
+    const keys = (await $.store.keys()).filter(key => key.startsWith('progress:') && key !== mod.key)
+    const entries: [string, unknown][] = []
+    for (const key of keys) entries.push([key, await $.store.get(key)])
+    for (const key of staleKeys(entries, now, mod.key)) await $.store.delete(key)
+  } catch (error) {
+    $.ui.log(`stage-toons: pruning old progress failed: ${String(error)}`, { to: 'debug' })
+  }
+}
+
 // /stage auto on or off, kept for every project.
 async function setAuto($: EngineInterface, mod: Mod, isOn: boolean) {
   mod.isAuto = isOn
@@ -638,6 +655,7 @@ export const register: Register = on => {
     mod.isWindows = isWindowsPath(e.cwd)
     const loaded = await loadProgress(storeOf($), mod.key, now)
     if (!loaded.isAvailable) await warnUnsaved($)
+    else await pruneStore($, mod, now)
     const progress = reconcile(mod.workflow, loaded.progress).progress
     let isHidden = false
     try {

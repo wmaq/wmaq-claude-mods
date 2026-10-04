@@ -74,6 +74,17 @@ export function engine(on: On, preset: { store?: Record<string, unknown> } = {})
 
     return { value: world.store[e.key] }
   })
+  on('store.keys', () => {
+    guard()
+
+    return { value: Object.keys(world.store) }
+  })
+  on('store.delete', ($, e) => {
+    guard()
+    delete world.store[e.key]
+
+    return { value: undefined }
+  })
   on('store.set', ($, e) => {
     guard()
     world.store[e.key] = e.value
