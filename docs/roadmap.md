@@ -424,6 +424,16 @@ the spec stage). It changes the band's drawing, which the frame tool now
 lets a cloud session check.
 
 **Phase 4: richer art.** Roughly in this order, the groundwork first:
+- **Stage scenes below the bar, like everything else** (the person's
+  request, 2026-10-04). Today a stage's scenes play under the spinner,
+  above the bar, while the demos, the idle Clawd and the waiting toon play
+  in the area below it. Move the stage scenes into that area too, so Clawd
+  always lives in one place; both canvases are already 48 x 14 pixels.
+  To settle in its design: what the spinner shows afterwards, whether a
+  background agent's row keeps its own toon (0.6.2's C1), the band's
+  height while Claude works, and Fable's arrival and the reactions moving
+  along with the scenes. It comes first because the rest of this phase
+  draws into the canvas it settles.
 - **Z layers** for scenes: a depth per actor and prop instead of the fixed
   paint order (backdrop, actors, front), so Nyan's rainbow starts right
   behind Clawd's body and props pass in front of or behind him.
