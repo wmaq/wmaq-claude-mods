@@ -98,7 +98,8 @@ The bar only moves forward this way (or into a side stage): fixing the
 spec during its audit, or ticking the plan's boxes while developing, moves
 nothing. Only the main conversation counts, not subagents or teammates, and
 only files written with Write or Edit. Claude is told of each such move
-with the result of the call that made it, and still calls `set_stage` for
+with the result of the call that made it (for a subagent, the call after
+it, as the Agent call answers before the subagent starts), and still calls `set_stage` for
 a better message or any other move. `/stage auto off` turns this off, for
 every project; a workflow file sets its own rules (below).
 

@@ -213,3 +213,36 @@ test("/stage feature mid-turn credits the turn so far to the feature it leaves",
     ['signup', 4 * MIN],
   ])
 })
+
+test('/stage workflow reload picks up a file whose only change is its rules', async ($, on) => {
+  const { world } = engine(on)
+  const stage = (id: string, auto?: unknown[]) => ({ id, label: id, message: `In ${id}`, when: id, scenes: ['gift'], ...(auto ? { auto } : {}) })
+  world.files['.claude/stage-toons.json'] = JSON.stringify({ track: [stage('plan'), stage('build')] })
+  world.isBashFailing = false
+  await $.session.start(START)
+  await callTool($, 'Bash', { command: 'make build' })
+  expect(text(await runStage($, ''))).toContain('Not tracked yet')
+  world.files['.claude/stage-toons.json'] = JSON.stringify({ track: [stage('plan'), stage('build', [{ bash: 'make build' }])] })
+  expect(text(await runStage($, 'workflow reload'))).toContain('workflow from .claude/stage-toons.json')
+  await callTool($, 'Bash', { command: 'make build' })
+  expect(text(await runStage($, ''))).toContain('2/2 build by auto (ran make build)')
+})
+
+test("a subagent's turn credits nothing", async ($, on) => {
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  await setStage($, { stage: 'spec', message: 'Writing it' })
+  await clock.advance(5 * MIN)
+  await endTurn($, 'agent-1', 5 * MIN)
+  expect(saved(world.store).history[0]!.workMs).toBeUndefined()
+})
+
+test('a note rides on a result that reports an error too', async ($, on) => {
+  const { world } = engine(on)
+  world.spawnModel = 'claude-fable-5-1'
+  await $.session.start(START)
+  await setStage($, { stage: 'plan', message: 'Writing it' })
+  await spawnAgent($, 'fable')
+  const failed = await callTool($, 'Bash', { command: 'false' })
+  expect(failed.context?.[0]).toContain('[stage-toons] The stage moved by itself to 6/10 Plan audit')
+})

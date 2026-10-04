@@ -269,10 +269,10 @@ async function signalOf($: EngineInterface, mod: Mod, args: Record<string, unkno
     let cwd = ''
     try {
       cwd = await $.session.cwd()
+      mod.isWindows = isWindowsPath(cwd)
     } catch {
       // No directory: the path stays whole and a relative glob misses it.
     }
-    mod.isWindows = isWindowsPath(cwd)
 
     return { kind: 'write', path: relativePath(args.file_path, cwd) }
   }
@@ -540,7 +540,9 @@ async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promis
   await update($, workflowAtom, () => next)
   // On the move queue, so it reads what the last move left.
   const { progress, moved } = await queued(mod, async () => {
-    const fitted = reconcile(mod.workflow, credited(mod, await current($, now), now))
+    // Read when its turn on the queue comes: a move queued before it may have run.
+    const at = await $.clock.now()
+    const fitted = reconcile(mod.workflow, credited(mod, await current($, at), at))
     await update($, progressAtom, () => fitted.progress)
 
     return fitted
@@ -716,7 +718,11 @@ export const register: Register = on => {
         mod.lastFailureAt = now
         mod.director = react(mod.director, 'failure', now)
       }
-    } else if (mod.isAuto && hasRules(mod.workflow)) {
+    }
+    // Only the model's own calls (the engine's dispatch) move the stage and
+    // carry notes: a plugin's $.tool.call result reaches no model.
+    if (next.origin.plugin !== 'engine') return result
+    if (result.isError !== true && mod.isAuto && hasRules(mod.workflow)) {
       const signal = await signalOf($, mod, e as unknown as Record<string, unknown>)
       if (signal) await settle($, 'an automatic move', queued(mod, () => autoMove($, mod, signal)))
     }
@@ -732,7 +738,9 @@ export const register: Register = on => {
     if (e.command !== mod.commandName) return next(e)
     const cmd = parseCommand(mod.workflow, e.args)
     const now = await $.clock.now()
-    const before = await current($, now)
+    // Read on the move queue: a move still running (an automatic one just
+    // made) shows.
+    const before = await queued(mod, () => current($, now))
     if (cmd.kind === 'show') return { text: showText(mod.workflow, before, now) }
     if (cmd.kind === 'log') return { text: logText(mod.workflow, before, now, cmd.count, runningMs(mod, now)) }
     if (cmd.kind === 'time') return { text: timeText(mod.workflow, before, now, runningMs(mod, now)) }
