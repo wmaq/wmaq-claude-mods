@@ -6,7 +6,7 @@ the marketplace manifest `.claude-plugin/marketplace.json`.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner, an idle Clawd in an area below the bar, and a desk row of helpers there while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.6.4 (v0.6, automatic moves and history; fixes up to 0.6.3; 0.6.4 splits `register.tsx`, tested locally); the frame tool in `tools/frames/`; later ideas in `docs/roadmap.md` and `docs/research/`; the latest review in `docs/reviews/` |
+| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner, an idle Clawd in an area below the bar, and a desk row of helpers there while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.6.4 (v0.6, automatic moves and history; fixes up to 0.6.3; 0.6.4 splits `register.tsx`, tested locally); the frame tool in `tools/frames/`; releases in `stage-toons/CHANGELOG.md`; the plan ahead in `docs/roadmap.md`, ideas in `docs/research/`; the latest review in `docs/reviews/` |
 
 ## The workflow
 
@@ -27,7 +27,16 @@ before the next one starts:
 9. The user's testing
 10. Cleanup: leftovers, chores, docs; bump the mod's version in
     `<mod>/.claude-plugin/plugin.json` (installed copies update only when it
-    changes); then merge to `main`
+    changes); move the finished work out of `docs/roadmap.md` into a short
+    entry in `<mod>/CHANGELOG.md`; then merge to `main`
+
+**The roadmap holds only what is ahead.** `docs/roadmap.md` lists the
+plan's phases and the open leftovers. When a release is finished, delete
+its items from the roadmap and add a few lines for it at the top of
+`<mod>/CHANGELOG.md` (what it shipped, with the spec, plan or hand-off
+that has the details). Minor findings a review leaves open go to the
+roadmap's "Open leftovers" list, or into the phase that fixes them; drop
+them from there once fixed.
 
 A change that builds on existing code can skip the full spec and plan: a
 short design in chat, approved by the user, is enough.
@@ -275,7 +284,8 @@ PC.
 
 ## Where things are
 
-- `docs/roadmap.md`: what's next, per mod.
+- `docs/roadmap.md`: what's next, per mod, and the open leftovers.
+- `<mod>/CHANGELOG.md`: what each release shipped.
 - `docs/superpowers/specs/`, `docs/superpowers/plans/`: specs and plans.
 - `docs/research/`: research reports (ranked improvement ideas, with the
   notes behind them).
