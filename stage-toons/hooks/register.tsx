@@ -130,7 +130,10 @@ type Mod = {
   lastFailureAt: number | null
   isHidden: boolean
   surface: string | null
-  toon: Site
+  // The toons under the spinners shown, by requestId: the main one, and a
+  // background agent's row's (its requestId is the agent's id). Each has
+  // its own paint loop.
+  toons: Map<string, Site>
   band: Site
   // When Claude last went idle: the session's start or the main turn's end.
   idleSince: number
@@ -181,7 +184,7 @@ const createMod = (): Mod => ({
   lastFailureAt: null,
   isHidden: false,
   surface: 'terminal',
-  toon: createSite('toon'),
+  toons: new Map(),
   band: createSite('area'),
   idleSince: 0,
   idle: 'classic',
@@ -517,6 +520,14 @@ function siteCells($: EngineInterface, mod: Mod, site: Site, now: number): strin
   mod.director = tick(mod.director, now)
 
   return encodeCells(composeFrame(shot(mod.director, now), now, site.columns, castOf($, mod)))
+}
+
+// Stops the toon under one spinner: its loop ends at its next frame.
+function stopToon(mod: Mod, id: string) {
+  const site = mod.toons.get(id)
+  if (!site) return
+  site.requestId = undefined
+  mod.toons.delete(id)
 }
 
 // Ends the demo and has the band drawn again without it.
@@ -1000,7 +1011,7 @@ export const register: Register = on => {
       // A subagent's turn: the end of an auditor, perhaps, and of the
       // spinner on its row, which carries the agent's id. Its helper gets
       // up at once, whatever the list says yet.
-      if (mod.toon.requestId === e.agentId) mod.toon.requestId = undefined
+      stopToon(mod, e.agentId)
       if (mod.auditors.delete(e.agentId) && mod.auditors.size === 0) await setAuditing($, mod, false)
       const now = await $.clock.now()
       mod.roster = ended(mod.roster, e.agentId, now)
@@ -1009,7 +1020,8 @@ export const register: Register = on => {
 
       return next(e)
     }
-    mod.toon.requestId = undefined
+    // The main spinner's toon stops; an agent at work keeps its row's.
+    for (const id of [...mod.toons.keys()]) if (mod.roster.get(id)?.isAtWork !== true) stopToon(mod, id)
     await settle($, "crediting the turn's working time", queued(mod, () => creditTurn($, mod, e.durationMs)))
     const now = await $.clock.now()
     mod.idleSince = now
@@ -1125,25 +1137,32 @@ export const register: Register = on => {
     if (e.surface !== 'terminal') return next(e)
     const line = await next(e)
     const viewport = e.viewport?.columns ?? 80
+    const id = e.requestId
     if ((await read($, hiddenAtom)) || viewport < TOON_MIN) {
-      mod.toon.requestId = undefined
+      if (id !== undefined) stopToon(mod, id)
 
       return line
     }
-    mod.toon.requestId = e.requestId
-    mod.toon.columns = Math.min(STAGE_W, viewport - 6)
-    mod.toon.isSeen = false
+    // A spinner with no requestId is drawn once, with no loop.
+    let toon = id === undefined ? createSite('toon') : mod.toons.get(id)
+    if (!toon) {
+      toon = createSite('toon')
+      mod.toons.set(id!, toon)
+    }
+    toon.requestId = id
+    toon.columns = Math.min(STAGE_W, viewport - 6)
+    toon.isSeen = false
     const shownAt = await $.clock.now()
-    const cells = siteCells($, mod, mod.toon, shownAt) ?? ''
-    mod.toon.lastCells = cells
-    mod.toon.blittedAt = shownAt
-    animate($, mod, mod.toon)
+    const cells = siteCells($, mod, toon, shownAt) ?? ''
+    toon.lastCells = cells
+    toon.blittedAt = shownAt
+    if (id !== undefined) animate($, mod, toon)
     const { Box, Raster } = $.ui.resolve(e)
 
     return (
       <Box flexDirection="column">
         {line}
-        <Raster key="toon" columns={mod.toon.columns} rows={TOON_ROWS} cells={cells} />
+        <Raster key="toon" columns={toon.columns} rows={TOON_ROWS} cells={cells} />
       </Box>
     )
   })

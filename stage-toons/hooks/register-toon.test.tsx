@@ -40,10 +40,12 @@ test("a subagent's turn end keeps the toon going; the main turn's end stops it",
 test('the toon follows the terminal width and skips narrow terminals', async ($, on) => {
   const { world, clock } = engine(on)
   await $.session.start(START)
-  await mountSpinner($, 80)
+  // The same spinner drawn again at another width.
+  const wide = await mountSpinner($, 80, 'main')
   await clock.advance(200)
   expect(world.blits.at(-1)?.columns).toBe(48)
-  await mountSpinner($, 40)
+  await wide.unmount()
+  await mountSpinner($, 40, 'main')
   await clock.advance(200)
   expect(world.blits.at(-1)?.columns).toBe(34)
   const narrow = await mountSpinner($, 29)
@@ -189,4 +191,22 @@ test('a reload mid-audit clears the tag', async ($, on) => {
   expect(await bandText($)).toContain('⌕ Fable reviewing')
   await $.session.start(START)
   expect(await bandText($)).not.toContain('Fable')
+})
+
+test("a background agent's spinner and the main one each animate their own toon", async ($, on) => {
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  await spawnAgent($)
+  await mountSpinner($, 100, 'main')
+  await mountSpinner($, 100, 'agent-1')
+  await clock.advance(3000)
+  const to = (id: string) => world.blits.filter(b => b.key === 'toon' && b.requestId === id).length
+  expect(to('main')).toBeGreaterThan(4)
+  expect(to('agent-1')).toBeGreaterThan(4)
+  // The main turn ends: the main toon stops, the working agent's goes on.
+  await endTurn($)
+  const [main, agent] = [to('main'), to('agent-1')]
+  await clock.advance(3000)
+  expect(to('main')).toBe(main)
+  expect(to('agent-1')).toBeGreaterThan(agent)
 })

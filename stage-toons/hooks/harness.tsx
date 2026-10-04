@@ -32,7 +32,7 @@ export const bandProps = (bodyColumns = 100, extra: { hasSurvey?: boolean; agent
   view: extra.agentId === undefined ? {} : { agentId: extra.agentId },
 })
 
-export type Blit = { key: string; cells: string; columns: number; rows: number }
+export type Blit = { key: string; cells: string; columns: number; rows: number; requestId?: string }
 export type AgentRow = { id: string; description: string; type: string; status: AgentInfo['status'] }
 export type World = {
   store: Record<string, unknown>
@@ -162,7 +162,7 @@ export function engine(on: On, preset: { store?: Record<string, unknown> } = {})
     return { value: undefined }
   })
   on('ui.blit', ($, e) => {
-    if ('cells' in e) world.blits.push({ key: e.key, cells: e.cells, columns: e.columns ?? 0, rows: e.rows ?? 0 })
+    if ('cells' in e) world.blits.push({ key: e.key, cells: e.cells, columns: e.columns ?? 0, rows: e.rows ?? 0, requestId: (e as { requestId?: string }).requestId })
 
     return { value: world.isBlitRefused ? { deny: 'nothing of this plugin is mounted there' } : {} }
   })
