@@ -69,7 +69,10 @@ It names this session's hot-reload folder,
   npx -y -p typescript@5 tsc -p <mod>
   ```
   `tsc -p <mod>` needs `<mod>/.claude-plugin/types/`, which the engine
-  writes when it first loads the mod (git-ignored). Before that, type-check
+  writes when it loads the mod from that folder (git-ignored). The repo's
+  copy keeps the version that last loaded it: after an upgrade, type-check
+  the freshly loaded hot-reload copy too (`tsc -p ~/.claude/dev-mods/<session id>/<mod>`);
+  2.1.289's closed agent statuses failed only there. Before that, type-check
   with a tsconfig kept outside the mod whose `include` names the skill's
   `types/claude-code.d.ts` and the mod's `hooks` and `types`.
 - **The API reference** is the skill's `types/claude-code.d.ts` (about 20,000

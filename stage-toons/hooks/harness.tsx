@@ -2,7 +2,7 @@
 // in-memory store, answers for the calls the mod makes, and a record of
 // what it blitted and toasted.
 
-import type { On, SessionMessage } from 'claude-code'
+import type { AgentInfo, On, SessionMessage } from 'claude-code'
 import { type Engine, mock } from 'claude-code/testing'
 
 export const NOW = 1_000_000
@@ -33,7 +33,7 @@ export const bandProps = (bodyColumns = 100, extra: { hasSurvey?: boolean; agent
 })
 
 export type Blit = { key: string; cells: string; columns: number; rows: number }
-export type AgentRow = { id: string; description: string; type: string; status: string }
+export type AgentRow = { id: string; description: string; type: string; status: AgentInfo['status'] }
 export type World = {
   store: Record<string, unknown>
   isStoreBroken: boolean
