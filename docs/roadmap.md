@@ -429,9 +429,11 @@ lets a cloud session check.
   above the bar, while the demos, the idle Clawd and the waiting toon play
   in the area below it. Move the stage scenes into that area too, so Clawd
   always lives in one place; both canvases are already 48 x 14 pixels.
-  To settle in its design: what the spinner shows afterwards, whether a
-  background agent's row keeps its own toon (0.6.2's C1), the band's
-  height while Claude works, and Fable's arrival and the reactions moving
+  The person's ruling: a stage scene shows in the area the way a demo
+  shows there now, and the bar behaves exactly as it does today; only
+  where the scene plays changes. Left to settle in its design: what the
+  spinner shows afterwards, whether a background agent's row keeps its
+  own toon (0.6.2's C1), and Fable's arrival and the reactions moving
   along with the scenes. It comes first because the rest of this phase
   draws into the canvas it settles.
 - **Z layers** for scenes: a depth per actor and prop instead of the fixed
