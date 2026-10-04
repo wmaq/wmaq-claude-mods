@@ -80,6 +80,7 @@ It names this session's hot-reload folder,
   claude plugin validate .        # the marketplace manifest
   claude plugin test <mod>
   npx -y -p typescript@5 tsc -p <mod>
+  npx -y tsx --test "tools/frames/*.test.ts"   # the frame tool, when it or the drawing changed
   ```
   `tsc -p <mod>` needs `<mod>/.claude-plugin/types/`, which the engine
   writes when it loads the mod from that folder (git-ignored). The repo's
@@ -248,6 +249,14 @@ PC.
   system-prompt section). Don't start a second Claude Code (tmux,
   `--plugin-dir`) to look at the drawing: the session's permission check
   refuses it, so it needs the person's explicit permission first.
+- **Look at the drawing yourself first.** `tools/frames/` renders what
+  the mod draws to PNG contact sheets (its README lists the commands):
+  `scene <id>`, `idle <routine>`, `waiting --agents ...`, `band --stage
+  <id>`. Before handing over visual work, render sheets of what changed,
+  read them (the Read tool shows an image), and fix what looks wrong; the
+  hand-off names the sheets checked. Letterforms differ a little from the
+  person's terminal font; the cells, colours, layout and art are the
+  mod's own. The person's look in a terminal stays the final check.
 - **Handing over the visual check.** When the work needs eyes on the
   terminal (a scene, the band, a layout), push the branch and give the
   person what to check: the branch name, the commands to see it
@@ -268,5 +277,7 @@ PC.
 - `docs/reviews/`: code reviews (correctness, performance, security).
 - `docs/handoffs/`: what a cloud session did and what to check locally;
   read the latest before testing a cloud session's branch.
+- `tools/frames/`: the frame tool, stage-toons' drawing as PNG contact
+  sheets (a developer tool, not part of the mod).
 - `<mod>/README.md`: install and use. stage-toons' Clawd sprite comes from
   claude-toons (MIT); keep `stage-toons/NOTICE` with it.
