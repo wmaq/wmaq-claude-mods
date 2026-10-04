@@ -212,6 +212,13 @@ Departures from the spec: a spawn's note comes with the next result, not
 the Agent call's own (live finding); Spec audit also fires from
 Brainstorm, for specs written through Bash.
 
+### Research (2026-10-04)
+
+`docs/research/2026-10-04-stage-toons-improvement-ideas.md` ranks 30
+improvement ideas from claude-toons, comparable tools and the unused
+parts of the plugin API, with the notes behind it in
+`docs/research/2026-10-04-notes/`. Its Tier 0 (fixes) is 0.6.1.
+
 ### Later (ideas, up for discussion)
 
 - **Scene authoring by others.** A data format for scenes (sprites and

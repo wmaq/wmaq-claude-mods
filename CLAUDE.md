@@ -247,5 +247,7 @@ PC.
 
 - `docs/roadmap.md`: what's next, per mod.
 - `docs/superpowers/specs/`, `docs/superpowers/plans/`: specs and plans.
+- `docs/research/`: research reports (ranked improvement ideas, with the
+  notes behind them).
 - `<mod>/README.md`: install and use. stage-toons' Clawd sprite comes from
   claude-toons (MIT); keep `stage-toons/NOTICE` with it.
