@@ -221,11 +221,14 @@ PC.
   asking: the container is thrown away when the session ends, and the
   person tests by checking out that branch locally. Merging to `main`
   needs the person's approval, and so does a pull request.
-- **Approvals while the person is away.** The person calls a cloud
-  session Cloudie. When they say they're away and trust Cloudie's
-  judgement, Cloudie approves the spec and plan itself (after the Fable
-  audits) and says so in the hand-off; a later PC session double-checks
-  them with the person.
+- **Names.** The person calls a cloud session (a project thread
+  included) **Cloudie**, and the local Claude Code session on their PC
+  **Termie**: the one at the terminal, who can see what the mod draws.
+  Address hand-offs that need a local check to Termie and the person.
+- **Approvals while the person is away.** When the person says they're
+  away and trust Cloudie's judgement, Cloudie approves the spec and plan
+  itself (after the Fable audits) and says so in the hand-off; Termie
+  double-checks them with the person later.
 - **Loading the mod.** A fresh container has no installed copy (`claude
   plugin list`). Load the `plugin-authoring` skill, then copy the mod into
   the hot-reload folder it names, as above. The person must answer
@@ -249,7 +252,7 @@ PC.
   terminal (a scene, the band, a layout), push the branch and give the
   person what to check: the branch name, the commands to see it
   (`/stage demo <stage>`, `/stage demo waiting`, ...) and what to look
-  for. Their local session tests it (stage 8's visual part, and 9); carry
+  for. Termie tests it with them (stage 8's visual part, and 9); carry
   on with work that doesn't depend on the result, and fix what they report
   on the same branch.
 - **Linux, not Windows.** The Git Bash note above doesn't apply. There is
