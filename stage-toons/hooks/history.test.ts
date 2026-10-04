@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { HistoryEntry, Progress } from '../types'
-import { credit, currentIndex, duration, logText, timeText } from './history'
+import { credit, creditAt, currentEntry, currentIndex, duration, logText, timeText } from './history'
 import { freshProgress } from './stages'
 import { DEFAULT_WORKFLOW as W } from './workflow'
 
@@ -79,4 +79,16 @@ test('/stage time: per feature, most recent first, and per stage in workflow ord
     'From the last 5 moves, since 3h ago.',
   ])
   expect(timeText(W, freshProgress(0), 0)).toBe('No moves yet: the history starts when the work enters a stage.')
+})
+
+test('working time finds its entry again by stage and start, in a copy another session saved', () => {
+  const mine = progress([{ stage: 'spec', at: 0, by: 'claude', workMs: 100 }])
+  const theirs = progress([
+    { stage: 'spec', at: 0, by: 'claude', workMs: 100 },
+    { stage: 'plan', at: 50, by: 'user' },
+  ])
+  const after = creditAt(theirs, currentEntry(mine), 25)
+  expect(after.history.map(h => h.workMs)).toEqual([125, undefined])
+  expect(creditAt(theirs, { stage: 'gone', at: 0 }, 25)).toBe(theirs)
+  expect(creditAt(theirs, null, 25)).toBe(theirs)
 })

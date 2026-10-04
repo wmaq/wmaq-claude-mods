@@ -17,14 +17,27 @@ export function currentIndex(p: Progress): number {
   return i >= 0 && p.stage !== null && p.history[i]!.stage === p.stage ? i : -1
 }
 
-// Claude's working time added to the current entry; with none, the
-// progress as it was.
-export function credit(p: Progress, ms: number): Progress {
+// An entry as working time finds it again after another session's copy
+// was adopted: its stage and when it began.
+export type EntryKey = { stage: StageId; at: number }
+
+export function currentEntry(p: Progress): EntryKey | null {
   const i = currentIndex(p)
+
+  return i < 0 ? null : { stage: p.history[i]!.stage, at: p.history[i]!.at }
+}
+
+// Claude's working time added to the entry it was spent in (the last one
+// so named); with none, the progress as it was.
+export function creditAt(p: Progress, key: EntryKey | null, ms: number): Progress {
+  const i = key === null ? -1 : p.history.findLastIndex(h => h.stage === key.stage && h.at === key.at)
   if (i < 0 || !(ms > 0)) return p
 
   return { ...p, history: p.history.map((h, j) => (j === i ? { ...h, workMs: (h.workMs ?? 0) + Math.round(ms) } : h)) }
 }
+
+// Claude's working time added to the current entry.
+export const credit = (p: Progress, ms: number): Progress => creditAt(p, currentEntry(p), ms)
 
 export function duration(ms: number): string {
   const minutes = Math.floor(Math.max(0, ms) / 60_000)

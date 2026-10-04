@@ -20,7 +20,7 @@ import { type Demo, demoAt, demoLength, demoLine, demoStep, idleDemoAt, idleDemo
 import { createDirector, type Director, react, shot, tick, withAuditing, withScene } from './director'
 import { DOZE_MS, FALLBACK_ROUTINE, IDLE_IDS, idleFrame, pickIdle } from './idle'
 import { pickOne } from './pick'
-import { credit, currentIndex, logText, timeText } from './history'
+import { creditAt, currentEntry, type EntryKey, logText, timeText } from './history'
 import { encodeCells } from './pixels'
 import { type KV, loadProgress, saveProgress, storeKey, validate } from './progress'
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolNameFor, toolSchema, workflowText } from './prompt'
@@ -188,14 +188,14 @@ function settle($: EngineInterface, what: string, done: Promise<unknown>): Promi
   )
 }
 
-// The progress with Claude's working time so far credited to the current
-// entry, and the count restarted: what every move starts from.
-function credited(mod: Mod, p: Progress, now: number): Progress {
+// The progress with Claude's working time so far credited to the entry it
+// was spent in, and the count restarted: what every move starts from.
+function credited(mod: Mod, p: Progress, entry: EntryKey | null, now: number): Progress {
   if (mod.workSince === null) return p
   const ms = now - mod.workSince
   mod.workSince = now
 
-  return credit(p, ms)
+  return creditAt(p, entry, ms)
 }
 
 // The working time of the turn under way, not yet credited.
@@ -217,6 +217,28 @@ async function warnUnsaved($: EngineInterface) {
 
 async function current($: EngineInterface, now: number): Promise<Progress> {
   return (await read($, progressAtom)) ?? freshProgress(now)
+}
+
+// The progress every change starts from: this session's, or the store's
+// when another session on the project saved since (adopted, fitted to this
+// session's workflow), so a change never writes over another session's
+// move. entry: the history entry this session's working time went to.
+// Runs on the move queue.
+async function latestProgress($: EngineInterface, mod: Mod, now: number): Promise<{ progress: Progress; entry: EntryKey | null }> {
+  const mine = await current($, now)
+  const entry = currentEntry(mine)
+  let stored: Progress | null = null
+  try {
+    stored = validate(await $.store.get(mod.key))
+  } catch {
+    // The store is unreadable: keep what this session has.
+  }
+  if (stored === null || stored.updatedAt <= mine.updatedAt) return { progress: mine, entry }
+  const fitted = reconcile(mod.workflow, stored).progress
+  await update($, progressAtom, () => fitted)
+  mod.director = withScene(mod.director, await sceneFor($, mod, fitted.stage), now)
+
+  return { progress: fitted, entry }
 }
 
 // The scene for the stage the work is in: the one already picked while the
@@ -249,7 +271,8 @@ async function setStage($: EngineInterface, mod: Mod, args: ToolArgs) {
     return { deny: `stage-toons: set_stage needs "stage" (one of ${stageIds(mod.workflow).join(', ')}) and a non-empty "message".` }
   }
   const now = await $.clock.now()
-  const before = credited(mod, await current($, now), now)
+  const { progress, entry } = await latestProgress($, mod, now)
+  const before = credited(mod, progress, entry, now)
   const after = applyMove(mod.workflow, before, { stage, message, feature: typeof feature === 'string' ? feature : undefined, by: 'claude', at: now })
   await commit($, mod, before, after, now)
   // Claude's own move supersedes what it has not heard of yet.
@@ -285,10 +308,10 @@ async function signalOf($: EngineInterface, mod: Mod, args: Record<string, unkno
 async function autoMove($: EngineInterface, mod: Mod, signal: Signal) {
   if (!mod.isAuto) return
   const now = await $.clock.now()
-  const p = await current($, now)
+  const { progress: p, entry } = await latestProgress($, mod, now)
   const target = autoTarget(mod.workflow, p, signal, mod.isWindows)
   if (target === null) return
-  const before = credited(mod, p, now)
+  const before = credited(mod, p, entry, now)
   const via = viaOf(signal)
   const after = applyMove(mod.workflow, before, { stage: target, by: 'auto', via, at: now })
   await commit($, mod, before, after, now)
@@ -302,14 +325,13 @@ async function autoMove($: EngineInterface, mod: Mod, signal: Signal) {
 // missed credits its duration, at most the time since the entry began.
 async function creditTurn($: EngineInterface, mod: Mod, durationMs: number) {
   const now = await $.clock.now()
-  const p = await read($, progressAtom)
   const since = mod.workSince
   mod.workSince = null
-  if (p === null) return
-  const i = currentIndex(p)
-  if (i < 0) return
-  const ms = since !== null ? now - since : Math.min(Math.max(0, durationMs), now - p.history[i]!.at)
-  const after = credit(p, ms)
+  if ((await read($, progressAtom)) === null) return
+  const { progress: p, entry } = await latestProgress($, mod, now)
+  if (entry === null) return
+  const ms = since !== null ? now - since : Math.min(Math.max(0, durationMs), now - entry.at)
+  const after = creditAt(p, entry, ms)
   if (after === p) return
   const saved = { ...after, updatedAt: now }
   await update($, progressAtom, () => saved)
@@ -542,7 +564,8 @@ async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promis
   const { progress, moved } = await queued(mod, async () => {
     // Read when its turn on the queue comes: a move queued before it may have run.
     const at = await $.clock.now()
-    const fitted = reconcile(mod.workflow, credited(mod, await current($, at), at))
+    const { progress: base, entry } = await latestProgress($, mod, at)
+    const fitted = reconcile(mod.workflow, credited(mod, base, entry, at))
     await update($, progressAtom, () => fitted.progress)
 
     return fitted
@@ -678,21 +701,10 @@ export const register: Register = on => {
     if (mod.demo) endDemo($, mod)
     // Another session on this project may have moved the stage. On the move
     // queue, so a move still running is not overwritten.
-    await queued(mod, async () => {
-      try {
-        const stored = validate(await $.store.get(mod.key))
-        const mine = await read($, progressAtom)
-        if (stored && (!mine || stored.updatedAt > mine.updatedAt)) {
-          // Fitted to this session's workflow in memory; saved back only with
-          // this session's next move or turn's credit.
-          const fitted = reconcile(mod.workflow, stored).progress
-          await update($, progressAtom, () => fitted)
-          mod.director = withScene(mod.director, await sceneFor($, mod, fitted.stage), await $.clock.now())
-        }
-      } catch {
-        // The store is unreadable: keep what this session has.
-      }
-    })
+    // Fitted to this session's workflow in memory; saved back only with this
+    // session's next move or turn's credit.
+    const now = await $.clock.now()
+    await queued(mod, () => latestProgress($, mod, now))
     if (mod.notes.length === 0) return next(e)
     const notes = mod.notes
     mod.notes = []
@@ -802,7 +814,8 @@ export const register: Register = on => {
     return queued(mod, async () => {
       // Read when its turn on the queue comes: a move queued before it may have run.
       const at = await $.clock.now()
-      const from = credited(mod, await current($, at), at)
+      const { progress: base, entry } = await latestProgress($, mod, at)
+      const from = credited(mod, base, entry, at)
       const after = moveFor(mod.workflow, from, cmd, at)
       await commit($, mod, from, after, at)
 
