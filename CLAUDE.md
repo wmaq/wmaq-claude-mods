@@ -215,10 +215,15 @@ changes is who checks the drawing, and how the work reaches the person's
 PC.
 
 - **Branch and push.** Work on the branch the session names (it starts
-  with `claude/`), never `main`. Commit and push it without asking: the
-  container is thrown away when the session ends, and the person tests by
-  checking out that branch locally. Don't open a pull request or merge to
-  `main` unless the person asks.
+  with `claude/`), never `main`. Commit and push to that branch without
+  asking: the container is thrown away when the session ends, and the
+  person tests by checking out that branch locally. Merging to `main`
+  needs the person's approval, and so does a pull request.
+- **Approvals while the person is away.** The person calls a cloud
+  session Cloudie. When they say they're away and trust Cloudie's
+  judgement, Cloudie approves the spec and plan itself (after the Fable
+  audits) and says so in the hand-off; a later PC session double-checks
+  them with the person.
 - **Loading the mod.** A fresh container has no installed copy (`claude
   plugin list`). Load the `plugin-authoring` skill, then copy the mod into
   the hot-reload folder it names, as above. The person must answer
