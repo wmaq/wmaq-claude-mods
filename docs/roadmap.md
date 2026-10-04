@@ -132,6 +132,14 @@ passed):
   thinning away.
 - Scroll's quill tip sits a column or two right of the claw.
 
+### 0.4.2 (2026-10-04)
+
+From reviewing Claude Code 2.1.289's changelog: `$.agent.list()` now
+reports `pending`, `waiting` and `idle` beside `running`, and the auditor
+check took anything but `running` as finished, so Fable could leave the
+stage while still auditing. An auditor is now gone only when the list shows
+it ended (`completed`, `failed`, `killed`) or no longer shows it.
+
 ### Later (ideas, up for discussion)
 
 - **Scene authoring by others.** A data format for scenes (sprites and
@@ -156,7 +164,10 @@ passed):
   idle but background subagents are still working, the band shows the idle
   Clawd, who dozes off after a minute. A "waiting on agents" toon would fit
   better (Clawd watching the agents work). The mod already sees spawns
-  (`agent.spawn`) and can list running agents (`$.agent.list`).
+  (`agent.spawn`) and can list the agents (`$.agent.list`); since 2.1.289
+  the list says which are `running`, `waiting` (held) or `idle` (a teammate
+  between turns), and an agent keeps one id across every hook event, so the
+  band can tell "agents still working" from "agents waiting" reliably.
 - **Layers (a Z axis) for scenes.** Today a scene paints in a fixed order
   (backdrop, actors, front) and a later pixel simply covers an earlier
   one, so placing a prop behind or in front of Clawd means arranging the

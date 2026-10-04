@@ -6,7 +6,7 @@ the marketplace manifest `.claude-plugin/marketplace.json`.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner and an idle Clawd beside the bar | v0.4 step 2 merged (0.4.1); later ideas in `docs/roadmap.md` |
+| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner and an idle Clawd beside the bar | 0.4.2 (v0.4 and a fix for 2.1.289's agent statuses); later ideas in `docs/roadmap.md` |
 
 ## The workflow
 
@@ -78,7 +78,7 @@ It names this session's hot-reload folder,
 
 ### Engine rules the docs don't spell out
 
-Learned building stage-toons on 2.1.287 and 2.1.288:
+Learned building stage-toons on 2.1.287 to 2.1.289:
 
 - The engine prefixes a command's answer with the plugin's name
   (`stage-toons: …`); an answer that starts with it shows it twice. A
@@ -111,6 +111,15 @@ Learned building stage-toons on 2.1.287 and 2.1.288:
 - `AbovePrompt` has `isWorking` and `maxRows`; a tree taller than `maxRows`
   scrolls instead of showing whole.
 - `ui.toast` and `ui.log` return nothing, not a promise.
+- Since 2.1.289 `$.agent.list()` statuses are a closed set,
+  `pending | running | waiting | idle | completed | failed | killed`: an
+  agent at work is any of the first four, so test for the ended ones, never
+  for `running` alone. An agent has one id across `agent.spawn`'s answer,
+  its loop's events and the list; teammates fire `agent.spawn` too
+  (`isTeammate`), and their calls carry `agentId`.
+- Since 2.1.289 a `ui.render` answer that throws while the terminal draws it
+  costs that site alone: the engine draws its own there and the session goes
+  on.
 
 ### The test kit (`claude-code/testing`)
 

@@ -11,11 +11,15 @@ export const isFableModel = (model: string | undefined): boolean => model !== un
 export const isAuditorSpawn = (spawn: { model?: string; parentModel: string }, resolved: string): boolean =>
   isFableModel(resolved) && (!isFableModel(spawn.parentModel) || isFableModel(spawn.model))
 
-// Tracked auditors the agent list no longer shows as running.
-export function staleAuditors(tracked: Iterable<string>, agents: readonly { id: string; status: string }[]): string[] {
-  const running = new Set(agents.filter(a => a.status === 'running').map(a => a.id))
+// An agent's statuses once its loop has ended; pending, running, waiting
+// (held) and idle (between turns) are all still at work.
+const ENDED = new Set(['completed', 'failed', 'killed'])
 
-  return [...tracked].filter(id => !running.has(id))
+// Tracked auditors the agent list shows as ended, or no longer shows.
+export function staleAuditors(tracked: Iterable<string>, agents: readonly { id: string; status: string }[]): string[] {
+  const live = new Set(agents.filter(a => !ENDED.has(a.status)).map(a => a.id))
+
+  return [...tracked].filter(id => !live.has(id))
 }
 
 export const isFailureDue = (lastAt: number | null, now: number): boolean => lastAt === null || now - lastAt >= FAILURE_GAP_MS
