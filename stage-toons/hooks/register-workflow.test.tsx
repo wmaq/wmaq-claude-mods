@@ -100,7 +100,7 @@ test('reload with errors keeps the workflow and lists every error', async ($, on
   world.files[FILE] = json({ track: [{ ...CUSTOM.track[0], scene: 'bug-hnt', lable: 'x' }] })
   const answer = text(await runStage($, 'workflow reload'))
   expect(answer).toContain('.claude/stage-toons.json has errors; kept the current workflow:')
-  expect(answer).toContain('  track[0].lable: not a field (id, label, message, when, scene, scenes)')
+  expect(answer).toContain('  track[0].lable: not a field (id, label, message, when, scene, scenes, auto)')
   expect(answer).toContain('  track[0].scene "bug-hnt" is not a scene (')
   expect(answer.split(String.fromCharCode(10)).filter(l => l.startsWith('  track[0]'))).toHaveLength(2)
   expect(answerText(await setStage($, { stage: 'ship', message: 'Out it goes' }))).toContain('3/3 Ship')

@@ -116,9 +116,9 @@ test('every error is listed with its path', () => {
   expect(errorsOf({ track: [stage('plan')], extra: 1 })).toEqual(['extra: not a field (track, side)'])
   expect(errorsOf({ side: [] })).toEqual(['track: missing, or not a list of stages'])
   expect(errorsOf({ track: [] })).toEqual(['track: 0 stages, at least 1'])
-  expect(errorsOf({ track: ['plan'] })).toEqual(['track[0]: not a stage (an object with id, label, message, when, scene, scenes)'])
+  expect(errorsOf({ track: ['plan'] })).toEqual(['track[0]: not a stage (an object with id, label, message, when, scene, scenes, auto)'])
   expect(errorsOf({ track: [{ id: 'plan', label: 'L', message: 'M', scene: 'gift', lable: 'x' }] })).toEqual([
-    'track[0].lable: not a field (id, label, message, when, scene, scenes)',
+    'track[0].lable: not a field (id, label, message, when, scene, scenes, auto)',
     'track[0].when: missing',
   ])
   expect(errorsOf({ track: [stage('plan', { label: 3 })] })).toEqual(['track[0].label: must be text'])
@@ -126,7 +126,7 @@ test('every error is listed with its path', () => {
   expect(errorsOf({ track: [stage('plan', { label: 'x'.repeat(21) })] })).toEqual(['track[0].label: 21 characters, at most 20'])
   expect(errorsOf({ track: [stage('Plan')] })).toEqual(['track[0].id "Plan": lowercase letters, digits and dashes, starting with a letter'])
   expect(errorsOf({ track: [stage('next')] })).toEqual([
-    `track[0].id "next" is one of /stage's words (next, back, hide, demo, feature, message, workflow)`,
+    `track[0].id "next" is one of /stage's words (next, back, hide, demo, feature, message, workflow, auto, log, time)`,
   ])
   expect(errorsOf({ track: [stage('plan'), stage('plan')] })).toEqual(['track[1].id "plan" is used twice'])
   expect(errorsOf({ track: [stage('plan')], side: [stage('plan')] })).toEqual(['side[0].id "plan" is used twice'])
@@ -149,4 +149,21 @@ test('the limits: 15 track stages, 5 side stages', () => {
 test('two workflows are the same when their stages are', () => {
   expect(sameWorkflow(W, { track: [...W.track], side: [...W.side] })).toBe(true)
   expect(sameWorkflow(W, { track: W.track.slice(1), side: W.side })).toBe(false)
+})
+
+test('a stage may list rules that move the work there; mistakes have their path', () => {
+  const r = parse({ track: [stage('plan', { auto: [{ skill: 'writing-plans' }] }), stage('review', { auto: [{ agent: 'fable', from: ['plan'] }] })] })
+  expect('workflow' in r && r.workflow.track.map(s => s.auto)).toEqual([[{ skill: 'writing-plans' }], [{ agent: 'fable', from: ['plan'] }]])
+  // An empty list is no rules.
+  const none = parse({ track: [stage('plan', { auto: [] })] })
+  expect('workflow' in none && none.workflow.track[0]!.auto).toBeUndefined()
+  expect(errorsOf({ track: [stage('plan', { auto: [{ agent: 'fable', from: ['spek'] }] })] })).toEqual(['track[0].auto[0].from[0]: "spek" is not a stage of this workflow'])
+  expect(errorsOf({ track: [stage('plan', { auto: [{ skill: '' }] })] })).toEqual(['track[0].auto[0].skill: empty'])
+  expect(errorsOf({ track: [stage('plan', { auto: 'x' })] })).toEqual(['track[0].auto: must be a list of rules'])
+})
+
+test('the default workflow has rules, and init writes them', () => {
+  expect(W.track.find(s => s.id === 'spec-audit')?.auto).toEqual([{ agent: 'fable', from: ['brainstorm', 'spec'] }])
+  expect(W.track.find(s => s.id === 'roadmap')?.auto).toBeUndefined()
+  expect(workflowJson(W)).toContain('"skill": "superpowers:brainstorming"')
 })

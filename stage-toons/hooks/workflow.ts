@@ -3,6 +3,7 @@
 // is the workflow stage-toons ships with.
 
 import type { StageDef, Workflow } from '../types'
+import { rulesAt, unknownFrom } from './auto'
 
 export type { StageDef, Workflow }
 
@@ -12,18 +13,32 @@ export const UNTRACKED_SCENE = 'mystery-box'
 export const DEFAULT_WORKFLOW: Workflow = {
   track: [
     { id: 'roadmap', label: 'Roadmap', message: 'Discussing the roadmap and new features', when: 'roadmap discussion, new features brainstorming', scenes: ['road-trip', 'stargazing', 'treasure-map'] },
-    { id: 'brainstorm', label: 'Brainstorm', message: 'Brainstorming the feature', when: "one feature's brainstorming", scenes: ['light-bulbs', 'sticky-notes', 'thought-clouds'] },
-    { id: 'spec', label: 'Spec', message: 'Writing the spec', when: 'writing the spec', scenes: ['writing-desk', 'blueprint', 'scroll'] },
-    { id: 'spec-audit', label: 'Spec audit', message: 'Fable is auditing the spec', when: 'a Fable subagent audits the spec', scenes: ['proofread-page', 'red-pen', 'stamp'] },
-    { id: 'plan', label: 'Plan', message: 'Writing the implementation plan', when: 'writing the implementation plan', scenes: ['stepping-stones', 'dominoes', 'ladder'] },
-    { id: 'plan-audit', label: 'Plan audit', message: 'Fable is auditing the plan', when: 'a Fable subagent audits the plan', scenes: ['proofread-checklist', 'clipboard', 'scales'] },
-    { id: 'develop', label: 'Develop', message: 'Building it', when: 'building it', scenes: ['bricklaying', 'terminal', 'workbench'] },
+    { id: 'brainstorm', label: 'Brainstorm', message: 'Brainstorming the feature', when: "one feature's brainstorming", scenes: ['light-bulbs', 'sticky-notes', 'thought-clouds'], auto: [{ skill: 'superpowers:brainstorming' }] },
+    { id: 'spec', label: 'Spec', message: 'Writing the spec', when: 'writing the spec', scenes: ['writing-desk', 'blueprint', 'scroll'], auto: [{ write: 'docs/superpowers/specs/**' }] },
+    { id: 'spec-audit', label: 'Spec audit', message: 'Fable is auditing the spec', when: 'a Fable subagent audits the spec', scenes: ['proofread-page', 'red-pen', 'stamp'], auto: [{ agent: 'fable', from: ['brainstorm', 'spec'] }] },
+    {
+      id: 'plan',
+      label: 'Plan',
+      message: 'Writing the implementation plan',
+      when: 'writing the implementation plan',
+      scenes: ['stepping-stones', 'dominoes', 'ladder'],
+      auto: [{ skill: 'superpowers:writing-plans' }, { write: 'docs/superpowers/plans/**' }],
+    },
+    { id: 'plan-audit', label: 'Plan audit', message: 'Fable is auditing the plan', when: 'a Fable subagent audits the plan', scenes: ['proofread-checklist', 'clipboard', 'scales'], auto: [{ agent: 'fable', from: ['plan'] }] },
+    {
+      id: 'develop',
+      label: 'Develop',
+      message: 'Building it',
+      when: 'building it',
+      scenes: ['bricklaying', 'terminal', 'workbench'],
+      auto: [{ skill: 'superpowers:executing-plans' }, { skill: 'superpowers:subagent-driven-development' }],
+    },
     { id: 'claude-test', label: 'Claude testing', message: 'Claude is testing the work', when: 'Claude verifies the work', scenes: ['test-tubes', 'control-panel', 'crash-test'] },
     { id: 'user-test', label: 'Your testing', message: 'Over to you for testing', when: 'the user tests it', scenes: ['gift', 'waiting-bench', 'cake'] },
-    { id: 'cleanup', label: 'Cleanup', message: 'Cleaning up leftovers, chores and docs', when: 'leftovers, chores, docs', scenes: ['sweeping', 'dishes', 'recycling'] },
+    { id: 'cleanup', label: 'Cleanup', message: 'Cleaning up leftovers, chores and docs', when: 'leftovers, chores, docs', scenes: ['sweeping', 'dishes', 'recycling'], auto: [{ skill: 'superpowers:finishing-a-development-branch' }] },
   ],
   side: [
-    { id: 'debugging', label: 'Debugging', message: 'Hunting a bug', when: 'finding and fixing a bug, at any point', scenes: ['bug-hunt', 'flashlight', 'bug-net'] },
+    { id: 'debugging', label: 'Debugging', message: 'Hunting a bug', when: 'finding and fixing a bug, at any point', scenes: ['bug-hunt', 'flashlight', 'bug-net'], auto: [{ skill: 'superpowers:systematic-debugging' }] },
     { id: 'other', label: 'Other', message: 'Work outside the usual stages', when: 'work that fits none of the stages', scenes: ['mystery-box', 'fishing', 'dice'] },
   ],
 }
@@ -47,14 +62,14 @@ export function stageList(w: Workflow): string {
   return w.side.length > 0 ? `${track}; side: ${w.side.map(s => s.id).join(', ')}` : track
 }
 
-export const RESERVED_IDS = ['next', 'back', 'hide', 'demo', 'feature', 'message', 'workflow'] as const
+export const RESERVED_IDS = ['next', 'back', 'hide', 'demo', 'feature', 'message', 'workflow', 'auto', 'log', 'time'] as const
 export const TRACK_MAX = 15
 export const SIDE_MAX = 5
 
 export const SCENES_MAX = 5
 const TEXT_FIELDS = ['id', 'label', 'message', 'when'] as const
 type TextField = (typeof TEXT_FIELDS)[number]
-const FIELDS = [...TEXT_FIELDS, 'scene', 'scenes'] as const
+const FIELDS = [...TEXT_FIELDS, 'scene', 'scenes', 'auto'] as const
 const LIMITS: Record<TextField, number> = { id: 24, label: 20, message: 80, when: 120 }
 const ID = /^[a-z][a-z0-9-]{0,23}$/
 // Library scenes a stage can't use, and why.
@@ -142,8 +157,10 @@ function stageAt(item: unknown, path: string, errors: string[], sceneNames: read
     errors.push(`${path}.id "${id}" is one of /stage's words (${RESERVED_IDS.join(', ')})`)
   }
   const scenes = scenesAt(raw, path, errors, sceneNames)
+  const auto = raw.auto === undefined ? undefined : rulesAt(raw.auto, `${path}.auto`, errors)
+  if (errors.length !== before || !scenes) return null
 
-  return errors.length === before && scenes ? { id: text.id!, label: text.label!, message: text.message!, when: text.when!, scenes } : null
+  return { id: text.id!, label: text.label!, message: text.message!, when: text.when!, scenes, ...(auto && auto.length > 0 ? { auto } : {}) }
 }
 
 function stagesAt(value: unknown, name: 'track' | 'side', min: number, max: number, errors: string[], sceneNames: readonly string[]) {
@@ -184,6 +201,8 @@ export function parseWorkflow(json: string, sceneNames: readonly string[]): { wo
     if (seen.has(stage.id)) errors.push(`${path}.id "${stage.id}" is used twice`)
     seen.add(stage.id)
   }
+  const ids = [...seen]
+  for (const { path, stage } of [...track, ...side]) errors.push(...unknownFrom(stage.auto ?? [], `${path}.auto`, ids))
 
   return errors.length > 0 ? { errors } : { workflow: { track: track.map(f => f.stage), side: side.map(f => f.stage) } }
 }
