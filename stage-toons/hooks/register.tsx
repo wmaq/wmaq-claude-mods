@@ -38,6 +38,7 @@ const HIDDEN_KEY = 'hidden'
 const AUTO_KEY = 'auto'
 const PRUNED_KEY = 'pruned-at'
 const UNSAVED = "stage-toons: couldn't save progress; it lasts for this session only"
+const NEWER = "stage-toons: a newer version saved this project's progress; this session won't save over it"
 const BAD_FILE = 'stage-toons: .claude/stage-toons.json has errors; using the default workflow. /stage workflow reload lists them.'
 // Refused blits in a row before the loop gives up: the spinner it painted is
 // gone, as when a background agent's row closes. Until a blit since the last
@@ -138,6 +139,8 @@ type Mod = {
   // The history entry that time goes to, found again by stage and start
   // in a copy another session saved.
   workEntry: EntryKey | null
+  // Whether a newer version's progress is in the store: nothing is saved.
+  isReadOnly: boolean
   // Every move runs in turn on this queue.
   queue: Promise<unknown>
 }
@@ -172,6 +175,7 @@ const createMod = (): Mod => ({
   notes: [],
   workSince: null,
   workEntry: null,
+  isReadOnly: false,
   queue: Promise.resolve(),
 })
 
@@ -233,12 +237,25 @@ async function current($: EngineInterface, now: number): Promise<Progress> {
 // session's stage to fit this session's workflow. Runs on the move queue.
 async function latestProgress($: EngineInterface, mod: Mod, now: number): Promise<{ progress: Progress; raw: Progress }> {
   const mine = await current($, now)
-  let stored: Progress | null = null
+  let value: unknown
   try {
-    stored = validate(await $.store.get(mod.key))
+    value = await $.store.get(mod.key)
   } catch {
     // The store is unreadable: keep what this session has.
+    return { progress: mine, raw: mine }
   }
+  const head = typeof value === 'object' && value !== null ? (value as { v?: unknown; updatedAt?: unknown }) : {}
+  // A newer version's progress: this session reads none of it and saves
+  // nothing over it.
+  if (typeof head.v === 'number' && head.v > 2) {
+    if (!mod.isReadOnly) $.ui.toast(NEWER)
+    mod.isReadOnly = true
+
+    return { progress: mine, raw: mine }
+  }
+  // Older than this session's: no need to check it whole.
+  if (typeof head.updatedAt === 'number' && head.updatedAt < mine.updatedAt) return { progress: mine, raw: mine }
+  const stored = validate(value)
   if (stored === null || stored.updatedAt < mine.updatedAt) return { progress: mine, raw: mine }
   if (stored.updatedAt === mine.updatedAt) return { progress: mine, raw: stored }
   const fitted = reconcile(mod.workflow, stored).progress
@@ -270,7 +287,7 @@ async function commit($: EngineInterface, mod: Mod, before: Progress, after: Pro
   mod.workEntry = currentEntry(after)
   mod.director = withScene(mod.director, await sceneFor($, mod, after.stage), now)
   if (isAdvance(mod.workflow, before, after)) mod.director = react(mod.director, 'advance', now)
-  if (!(await saveProgress(storeOf($), mod.key, after))) await warnUnsaved($)
+  if (!mod.isReadOnly && !(await saveProgress(storeOf($), mod.key, after))) await warnUnsaved($)
 }
 
 async function setStage($: EngineInterface, mod: Mod, args: ToolArgs) {
@@ -290,6 +307,9 @@ async function setStage($: EngineInterface, mod: Mod, args: ToolArgs) {
   // Core takes a registered tool's result as a string, an array or nothing.
   return { result: `Stage ${describe(mod.workflow, after)}` }
 }
+
+// The kind of rule each tool's calls can match.
+const SIGNAL_KINDS: Record<string, Signal['kind']> = { Skill: 'skill', Bash: 'bash', Write: 'write', Edit: 'write' }
 
 // What a successful tool call of the main conversation did, as rules read
 // it: a skill loaded, a file written (relative to the session's directory
@@ -317,6 +337,8 @@ async function signalOf($: EngineInterface, mod: Mod, args: Record<string, unkno
 async function autoMove($: EngineInterface, mod: Mod, signal: Signal) {
   if (!mod.isAuto) return
   const now = await $.clock.now()
+  // Most calls move nothing: only a match on this session's copy reads the store.
+  if (autoMatch(mod.workflow, await current($, now), signal, mod.isWindows) === null) return
   const { progress: p } = await latestProgress($, mod, now)
   const match = autoMatch(mod.workflow, p, signal, mod.isWindows)
   if (match === null) return
@@ -355,7 +377,7 @@ async function creditTurn($: EngineInterface, mod: Mod, durationMs: number) {
   const saved = { ...after, updatedAt: now }
   const shown = reconcile(mod.workflow, saved).progress
   await update($, progressAtom, () => shown)
-  if (!(await saveProgress(storeOf($), mod.key, saved))) await warnUnsaved($)
+  if (!mod.isReadOnly && !(await saveProgress(storeOf($), mod.key, saved))) await warnUnsaved($)
 }
 
 // Deletes the progress of projects nobody has moved for months, at most
@@ -612,9 +634,10 @@ async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promis
     // Read when its turn on the queue comes: a move queued before it may have run.
     const at = await $.clock.now()
     const { progress: base } = await latestProgress($, mod, at)
-    const fitted = reconcile(mod.workflow, credited(mod, base, at))
+    // No credit here: the turn's time stays counting for its entry (found
+    // again by its key), and the turn's end saves it.
+    const fitted = reconcile(mod.workflow, base)
     await update($, progressAtom, () => fitted.progress)
-    mod.workEntry = currentEntry(fitted.progress)
 
     return fitted
   })
@@ -786,7 +809,8 @@ export const register: Register = on => {
     // Only the model's own calls (the engine's dispatch) move the stage and
     // carry notes: a plugin's $.tool.call result reaches no model.
     if (next.origin.plugin !== 'engine') return result
-    if (result.isError !== true && mod.isAuto && hasRules(mod.workflow)) {
+    const kind = SIGNAL_KINDS[e.tool]
+    if (result.isError !== true && kind !== undefined && mod.isAuto && hasRules(mod.workflow, kind)) {
       const signal = await signalOf($, mod, e as unknown as Record<string, unknown>)
       if (signal) await settle($, 'an automatic move', queued(mod, () => autoMove($, mod, signal)))
     }
@@ -912,7 +936,7 @@ export const register: Register = on => {
     mod.roster = spawned(mod.roster, result.agentId, result.model, now)
     reseat(mod, now)
     // A spawn of the main conversation's own, not a teammate's, may move the stage.
-    if (e.parentAgentId === undefined && e.isTeammate !== true && mod.isAuto && hasRules(mod.workflow)) {
+    if (e.parentAgentId === undefined && e.isTeammate !== true && mod.isAuto && hasRules(mod.workflow, 'agent')) {
       const signal: Signal = { kind: 'agent', model: result.model, asked: e.model, parentModel: e.parentModel }
       await settle($, 'an automatic move', queued(mod, () => autoMove($, mod, signal)))
     }

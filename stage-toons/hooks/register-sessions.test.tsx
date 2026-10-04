@@ -120,3 +120,41 @@ test('a session prunes projects untouched for months, at most once a week', asyn
   await $.session.start(START)
   expect('progress:/old2' in world.store).toBe(true)
 })
+
+test("a newer version's progress is never saved over: one toast, nothing written", async ($, on) => {
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  const theirs = { v: 3, entries: ['compact'], updatedAt: 1 }
+  world.store[KEY] = theirs
+  await clock.advance(MIN)
+  await setStage($, { stage: 'spec', message: 'Writing it' })
+  await startTurn($)
+  await clock.advance(MIN)
+  await endTurn($)
+  await setStage($, { stage: 'plan', message: 'Planning' })
+  expect(world.store[KEY]).toEqual(theirs)
+  expect(world.toasts).toEqual(["stage-toons: a newer version saved this project's progress; this session won't save over it"])
+})
+
+test('a /stage workflow reload mid-turn keeps the whole turn credited', async ($, on) => {
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  await setStage($, { stage: 'develop', message: 'Building' })
+  await startTurn($)
+  await clock.advance(MIN)
+  world.files['.claude/stage-toons.json'] = JSON.stringify({ track: [{ id: 'develop', label: 'Develop', message: 'Building', when: 'building', scenes: ['gift'] }] })
+  await runStage($, 'workflow reload')
+  await clock.advance(MIN)
+  await endTurn($)
+  expect(saved(world.store).history.map(h => h.workMs)).toEqual([2 * MIN])
+})
+
+test('a Bash call under a workflow without bash rules reads nothing from the store', async ($, on) => {
+  const { world } = engine(on)
+  await $.session.start(START)
+  const before = world.storeReads
+  await callTool($, 'Bash', { command: 'ls' })
+  // A Write the rules read, matching none: nothing read either.
+  await callTool($, 'Write', { file_path: 'C:/Dev/proj/src/a.ts', content: 'x' })
+  expect(world.storeReads).toBe(before)
+})

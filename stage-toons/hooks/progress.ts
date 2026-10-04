@@ -24,11 +24,13 @@ export function storeKey(cwd: string): string {
 
 // A history entry as saved, or null: the fields this version knows, each
 // checked; feature, via and workMs are optional (older versions wrote none).
+// Fields it doesn't know (a newer version's) are kept as they are.
 function entryOf(h: unknown): HistoryEntry | null {
   if (typeof h !== 'object' || h === null) return null
   const e = h as Record<string, unknown>
   if (typeof e.stage !== 'string' || !Number.isFinite(e.at) || (e.by !== 'claude' && e.by !== 'user' && e.by !== 'auto')) return null
-  const entry: HistoryEntry = { stage: e.stage, at: e.at as number, by: e.by }
+  const { feature: _feature, via: _via, workMs: _workMs, ...rest } = e
+  const entry: HistoryEntry = { ...rest, stage: e.stage, at: e.at as number, by: e.by }
   if (e.feature === null || typeof e.feature === 'string') entry.feature = e.feature === null ? null : cut(e.feature, FEATURE_MAX) || null
   if (typeof e.via === 'string' && e.via.trim() !== '') entry.via = cut(e.via, VIA_MAX)
   if (typeof e.workMs === 'number' && Number.isFinite(e.workMs) && e.workMs >= 0) entry.workMs = e.workMs

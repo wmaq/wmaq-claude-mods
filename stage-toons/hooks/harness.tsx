@@ -61,16 +61,19 @@ export type World = {
   // Whether fs.exists fails, and tool.register.
   isExistsBroken: boolean
   isRegisterBroken: boolean
+  // How many times the store was read.
+  storeReads: number
 }
 
 export function engine(on: On, preset: { store?: Record<string, unknown> } = {}) {
-  const world: World = { store: { ...preset.store }, isStoreBroken: false, isBlitRefused: false, blits: [], invalidations: 0, commands: [], toasts: [], files: {}, isFsBroken: false, schemas: [], agents: [], spawnModel: 'claude-sonnet-5-5', spawned: 0, cwd: START.cwd, prompts: [], isBashFailing: true, isCwdBroken: false, isExistsBroken: false, isRegisterBroken: false }
+  const world: World = { store: { ...preset.store }, isStoreBroken: false, isBlitRefused: false, blits: [], invalidations: 0, commands: [], toasts: [], files: {}, isFsBroken: false, schemas: [], agents: [], spawnModel: 'claude-sonnet-5-5', spawned: 0, cwd: START.cwd, prompts: [], isBashFailing: true, isCwdBroken: false, isExistsBroken: false, isRegisterBroken: false, storeReads: 0 }
   const clock = mock.clock(on, { now: NOW })
   const guard = () => {
     if (world.isStoreBroken) throw new Error('store unavailable')
   }
   on('store.get', ($, e) => {
     guard()
+    world.storeReads += 1
 
     return { value: world.store[e.key] }
   })

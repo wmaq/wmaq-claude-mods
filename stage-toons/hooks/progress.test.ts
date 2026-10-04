@@ -85,7 +85,7 @@ test("history entries keep this version's fields, checked; older entries read as
   ]
   expect(validate({ ...good, history })?.history).toEqual([
     { stage: 'plan', at: 1, by: 'user' },
-    { stage: 'spec', at: 2, by: 'auto', feature: 'login', via: 'wrote docs/a.md', workMs: 500 },
+    { stage: 'spec', at: 2, by: 'auto', feature: 'login', via: 'wrote docs/a.md', workMs: 500, extra: true },
     { stage: 'spec', at: 4, by: 'claude' },
     { stage: 'spec', at: 5, by: 'claude', feature: null },
   ])
