@@ -12,6 +12,9 @@ export type HistoryEntry = {
   feature?: string | null
   via?: string
   workMs?: number
+  // What the turns credited to the entry cost: dollars, and input and
+  // output tokens (input counts cache reads and writes).
+  cost?: { usd: number; in: number; out: number }
 }
 
 export type Progress = {

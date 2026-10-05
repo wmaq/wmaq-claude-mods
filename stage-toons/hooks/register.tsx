@@ -126,7 +126,7 @@ async function latestProgress($: EngineInterface, mod: Mod, now: number): Promis
   const head = typeof value === 'object' && value !== null ? (value as { v?: unknown; updatedAt?: unknown }) : {}
   // A newer version's progress: this session reads none of it and saves
   // nothing over it.
-  if (typeof head.v === 'number' && head.v > 2) {
+  if (typeof head.v === 'number' && head.v > 3) {
     if (!mod.isReadOnly) $.ui.toast(NEWER)
     mod.isReadOnly = true
 

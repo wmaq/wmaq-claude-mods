@@ -2,16 +2,18 @@ import { expect, test } from 'claude-code/testing'
 
 import type { Progress } from '../types'
 import { answerText, callTool, endTurn, engine, KEY, runStage, setStage, START, startTurn } from './harness'
+import { stored, validate } from './progress'
 
 const MIN = 60_000
-const saved = (store: Record<string, unknown>) => store[KEY] as Progress
+// The store keeps v3 records: read one back into the in-memory shape.
+const saved = (store: Record<string, unknown>) => validate(store[KEY]) as Progress
 const text = (answer: unknown) => (answer as { text?: string }).text ?? ''
 
 // Another session on the project moves the stage: its whole progress lands
 // in the store, newer than this session's.
 function theirMove(store: Record<string, unknown>, stage: string, at: number) {
   const p = saved(store)
-  store[KEY] = { ...p, stage, lastTrackStage: stage, message: 'Theirs', history: [...p.history, { stage, at, by: 'user', feature: p.feature }], updatedAt: at }
+  store[KEY] = stored({ ...p, stage, lastTrackStage: stage, message: 'Theirs', history: [...p.history, { stage, at, by: 'user', feature: p.feature }], updatedAt: at })
 }
 
 test("a turn's end keeps another session's move made during it, and credits this session's time where it was spent", async ($, on) => {
@@ -124,7 +126,7 @@ test('a session prunes projects untouched for months, at most once a week', asyn
 test("a newer version's progress is never saved over: one toast, nothing written", async ($, on) => {
   const { world, clock } = engine(on)
   await $.session.start(START)
-  const theirs = { v: 3, entries: ['compact'], updatedAt: 1 }
+  const theirs = { v: 4, entries: ['compact'], updatedAt: 1 }
   world.store[KEY] = theirs
   await clock.advance(MIN)
   await setStage($, { stage: 'spec', message: 'Writing it' })
@@ -134,6 +136,19 @@ test("a newer version's progress is never saved over: one toast, nothing written
   await setStage($, { stage: 'plan', message: 'Planning' })
   expect(world.store[KEY]).toEqual(theirs)
   expect(world.toasts).toEqual(["stage-toons: a newer version saved this project's progress; this session won't save over it"])
+})
+
+test("this version's own v3 record is not read-only: the next move saves over it", async ($, on) => {
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  await setStage($, { stage: 'spec', message: 'Writing it' })
+  expect((world.store[KEY] as { v: number }).v).toBe(3)
+  await clock.advance(MIN)
+  await $.prompt.submit({ text: 'hi', wait: false, origin: { kind: 'composer' } } as never)
+  await setStage($, { stage: 'plan', message: 'Planning' })
+  expect((world.store[KEY] as { v: number }).v).toBe(3)
+  expect(saved(world.store).history.map(h => h.stage)).toEqual(['spec', 'plan'])
+  expect(world.toasts).toEqual([])
 })
 
 test('a /stage workflow reload mid-turn keeps the whole turn credited', async ($, on) => {

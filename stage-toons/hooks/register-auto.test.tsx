@@ -2,12 +2,14 @@ import { expect, test } from 'claude-code/testing'
 
 import type { Progress } from '../types'
 import { answerText, BS, callTool, endTurn, engine, KEY, NOW, runStage, sectionText, setStage, spawnAgent, START, startTurn, submit } from './harness'
+import { validate } from './progress'
 import { DEFAULT_WORKFLOW } from './workflow'
 
 const text = (answer: unknown) => (answer as { text?: string }).text ?? ''
 const MIN = 60_000
 const skill = (name: string) => ({ skill: name })
-const saved = (store: Record<string, unknown>) => store[KEY] as Progress
+// The store keeps v3 records: read one back into the in-memory shape.
+const saved = (store: Record<string, unknown>) => validate(store[KEY]) as Progress
 
 test('loading a skill a rule names moves the stage, by auto, and tells Claude with that result', async ($, on) => {
   engine(on)

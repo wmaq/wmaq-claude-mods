@@ -23,26 +23,103 @@ export function storeKey(cwd: string): string {
   return `progress:${dir}`
 }
 
-// A history entry as saved, or null: the fields this version knows, each
-// checked; feature, via and workMs are optional (older versions wrote none).
-// Fields it doesn't know (a newer version's) are kept as they are.
+// A cost as saved: dollars, input tokens and output tokens, each a finite
+// number of at least 0, or nothing.
+function costOf(c: unknown): HistoryEntry['cost'] | undefined {
+  if (typeof c !== 'object' || c === null) return undefined
+  const { usd, in: input, out } = c as Record<string, unknown>
+  const isCount = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n >= 0
+
+  return isCount(usd) && isCount(input) && isCount(out) ? { usd, in: input, out } : undefined
+}
+
+// A history entry as saved by v2 (or as v3 reads into that shape), or null:
+// the fields this version knows, each checked; feature, via, workMs and cost
+// are optional (older versions wrote none). Fields it doesn't know (a newer
+// version's) are kept as they are.
 function entryOf(h: unknown): HistoryEntry | null {
   if (typeof h !== 'object' || h === null) return null
   const e = h as Record<string, unknown>
   if (typeof e.stage !== 'string' || !Number.isFinite(e.at) || (e.by !== 'claude' && e.by !== 'user' && e.by !== 'auto')) return null
-  const { feature: _feature, via: _via, workMs: _workMs, ...rest } = e
+  const { feature: _feature, via: _via, workMs: _workMs, cost: _cost, ...rest } = e
   const entry: HistoryEntry = { ...rest, stage: e.stage, at: e.at as number, by: e.by }
   if (e.feature === null || typeof e.feature === 'string') entry.feature = e.feature === null ? null : cut(e.feature, FEATURE_MAX) || null
   if (typeof e.via === 'string' && e.via.trim() !== '') entry.via = cut(e.via, VIA_MAX)
   if (typeof e.workMs === 'number' && Number.isFinite(e.workMs) && e.workMs >= 0) entry.workMs = e.workMs
+  const cost = costOf(e.cost)
+  if (cost) entry.cost = cost
 
   return entry
+}
+
+// ---- v3: the record as saved ----
+//
+// Each history entry is an array, [stage, at, by, workMs, cost, via,
+// feature], with trailing empty positions left out. by is "c", "u" or "a";
+// workMs, cost and via are 0 when absent before a later position; cost is
+// [usd, in, out]; feature is there only on the entry where it changes (null:
+// cleared), the entries after it carrying it forward.
+
+const BY_CODE = { claude: 'c', user: 'u', auto: 'a' } as const
+
+function byOf(code: unknown): HistoryEntry['by'] | undefined {
+  return code === 'c' ? 'claude' : code === 'u' ? 'user' : code === 'a' ? 'auto' : undefined
+}
+
+// The in-memory history as v3 entries.
+function encodeHistory(history: readonly HistoryEntry[]): unknown[][] {
+  let carried: string | null = null
+
+  return history.map(h => {
+    const feature = h.feature ?? null
+    const slots: unknown[] = [h.stage, h.at, BY_CODE[h.by], h.workMs || 0, h.cost ? [h.cost.usd, h.cost.in, h.cost.out] : 0, h.via || 0]
+    if (feature !== carried) {
+      slots.push(feature)
+      carried = feature
+    }
+    // Empty tail positions are left out: the zeros, but never a feature.
+    while (slots.length > 3 && slots[slots.length - 1] === 0) slots.pop()
+
+    return slots
+  })
+}
+
+// v3's entries read into entryOf's shape: the raw list walked once, the
+// feature carried forward (a bad entry is dropped, its feature change still
+// carried), each entry then checked as in v2. An entry with no feature at
+// all reads as null.
+function decodeHistory(list: readonly unknown[]): HistoryEntry[] {
+  let carried: string | null = null
+  const entries: HistoryEntry[] = []
+  for (const raw of list) {
+    if (!Array.isArray(raw)) continue
+    const feature: unknown = raw[6]
+    if (feature === null || typeof feature === 'string') carried = feature === null ? null : cut(feature, FEATURE_MAX) || null
+    const cost: unknown = raw[4]
+    const entry = entryOf({
+      stage: raw[0],
+      at: raw[1],
+      by: byOf(raw[2]),
+      workMs: raw[3] || undefined,
+      cost: Array.isArray(cost) ? { usd: cost[0], in: cost[1], out: cost[2] } : undefined,
+      via: raw[5] || undefined,
+      feature: carried,
+    })
+    if (entry) entries.push(entry)
+  }
+
+  return entries
+}
+
+// The record this version saves: progress as v3.
+export function stored(p: Progress): Record<string, unknown> {
+  return { v: 3, stage: p.stage, lastTrackStage: p.lastTrackStage, feature: p.feature, message: p.message, history: encodeHistory(p.history), updatedAt: p.updatedAt }
 }
 
 export function validate(x: unknown): Progress | null {
   if (typeof x !== 'object' || x === null) return null
   const p = x as Record<string, unknown>
-  if (p.v !== 1 && p.v !== 2) return null
+  if (p.v !== 1 && p.v !== 2 && p.v !== 3) return null
   if (p.stage !== null && typeof p.stage !== 'string') return null
   if (p.v === 1 && p.stage === null) return null
   const last = p.lastTrackStage
@@ -59,10 +136,10 @@ export function validate(x: unknown): Progress | null {
     lastTrackStage: last as StageId | null,
     feature: p.feature === null ? null : cut(p.feature as string, FEATURE_MAX),
     message: cut(p.message, MESSAGE_MAX),
-    history: p.history
-      .map(entryOf)
-      .filter((h): h is HistoryEntry => h !== null)
-      .slice(-HISTORY_MAX),
+    history: (p.v === 3
+      ? decodeHistory(p.history)
+      : p.history.map(entryOf).filter((h): h is HistoryEntry => h !== null)
+    ).slice(-HISTORY_MAX),
     updatedAt: p.updatedAt,
   }
 }
@@ -101,7 +178,7 @@ export async function loadProgress(store: KV, key: string, now: number): Promise
 
 export async function saveProgress(store: KV, key: string, p: Progress): Promise<boolean> {
   try {
-    await store.set(key, p)
+    await store.set(key, stored(p))
 
     return true
   } catch {
