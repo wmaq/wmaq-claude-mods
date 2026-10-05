@@ -10,7 +10,6 @@ export type Ports = {
   sleep: (ms: number) => Promise<void>
   blit: (frame: { requestId: string; key: SiteKind; cells: string; columns: number; rows: number }) => Promise<{ deny?: string }>
   invalidate: () => void
-  log: (text: string) => void
   pollAgents: () => Promise<void>
   // The site's next frame, or null once the demo it plays is over.
   cells: (site: Site, now: number) => string | null

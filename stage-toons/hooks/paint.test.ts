@@ -34,7 +34,6 @@ function fake(mod: Mod, opts: { cells?: (site: Site, now: number) => string | nu
     invalidate: () => {
       invalidations += 1
     },
-    log: () => undefined,
     pollAgents: async () => {
       polls += 1
       events.push('poll')

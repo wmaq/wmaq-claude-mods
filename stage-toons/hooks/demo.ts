@@ -1,7 +1,8 @@
 // /stage demo: the library's scenes, one stage's scenes, or the idle
 // routines, each for so many seconds, or the waiting toon's script, so the
-// cartoons can be seen while Claude is idle. Pure: what shows at a moment,
-// wiping in over the one before.
+// cartoons can be seen while Claude is idle. What shows at a moment, wiping
+// in over the one before, is worked out from the demo and the time alone;
+// startDemo is the one function that sets mod.demo.
 
 import type { IdleId, Workflow } from '../types'
 import { bandMode, type BandSite } from './band'

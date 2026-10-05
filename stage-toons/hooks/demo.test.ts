@@ -1,9 +1,11 @@
 import { expect, test } from 'claude-code/testing'
 
+import type { BandSite } from './band'
 import { type Demo, demoAt, demoFor, demoLine, hasRoom, IDLE_DEMO_LENGTH, idleDemoAt, idleDemoLine } from './demo'
 import { WIPE_MS } from './director'
 import { IDLE_IDS } from './idle'
 import { DEMO_ORDER, STAGE_SCENES } from './scenes'
+import { TOON_ROWS } from './toon'
 import { DEFAULT_WORKFLOW } from './workflow'
 
 const library: Demo = { kind: 'scenes', at: 1000, seconds: 10, scenes: DEMO_ORDER }
@@ -65,4 +67,23 @@ test('demoFor builds the demo a /stage demo command asks for, and names it', () 
 
 test('a band not drawn yet has room for the demo', () => {
   expect(hasRoom(null, 3)).toBe(true)
+})
+
+test('a band already drawn has room for the demo when the bar and the area fit in it', () => {
+  const band: BandSite = {
+    surface: 'terminal',
+    isWorking: true,
+    hasSurvey: true,
+    isAgentView: false,
+    isHidden: false,
+    columns: 80,
+    maxRows: 3 + TOON_ROWS,
+    hasDemo: false,
+    barLines: 2,
+  }
+  // Working, or under a survey, when last drawn: the demo still plays.
+  expect(hasRoom(band, 3)).toBe(true)
+  expect(hasRoom(band, 4)).toBe(false)
+  expect(hasRoom({ ...band, columns: 29 }, 3)).toBe(false)
+  expect(hasRoom({ ...band, surface: 'desktop' }, 3)).toBe(false)
 })

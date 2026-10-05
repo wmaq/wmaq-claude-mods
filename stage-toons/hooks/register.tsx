@@ -7,7 +7,7 @@
 // below are top-level functions that take $ and the module's state.
 
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register } from 'claude-code'
+import type { EngineInterface, Register, ToolCallInput } from 'claude-code'
 
 import type { Progress, ScenePick, SessionWorkflow, StageId, Workflow } from '../types'
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
@@ -17,7 +17,7 @@ import { areaColumns, BAR_TONES, bandLayout, bandMode, type BandSite, TOON_MIN, 
 import { autoText, moveFor, parseCommand, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { demoAt, demoFor, demoLine, demoStep, idleDemoAt, idleDemoLine, startDemo, WAITING_DEMO_LINE } from './demo'
 import { createDirector, react, withAuditing, withScene } from './director'
-import { siteCells } from './frames'
+import { type Log, siteCells } from './frames'
 import { pickIdle } from './idle'
 import { createMod, createSite, endDemo, type Mod, queued, reseat, stopToon } from './mod'
 import { animate, type Ports } from './paint'
@@ -84,6 +84,12 @@ function credited(mod: Mod, p: Progress, now: number): Progress {
 const runningMs = (mod: Mod, now: number): number => (mod.workSince === null ? 0 : Math.max(0, now - mod.workSince))
 
 type ToolArgs = { agentId?: string } & Record<string, unknown>
+
+// A tool call's arguments, read off the tool.call event itself: the engine
+// spreads them onto it, beside tool, tool_use_id and agentId. The event's
+// type is a union of the known tools' inputs, which names no MCP tool's
+// fields, so it is read as a plain record here, once.
+const argsOf = (e: ToolCallInput): ToolArgs => e as unknown as ToolArgs
 
 // The store as progress.ts takes it.
 const storeOf = ($: EngineInterface): KV => ({
@@ -198,7 +204,7 @@ const SIGNAL_KINDS: Record<string, Signal['kind']> = { Skill: 'skill', Bash: 'ba
 // What a successful tool call of the main conversation did, as rules read
 // it: a skill loaded, a file written (relative to the session's directory
 // at the call), a command run; or nothing a rule reads.
-async function signalOf($: EngineInterface, mod: Mod, args: Record<string, unknown>): Promise<Signal | null> {
+async function signalOf($: EngineInterface, mod: Mod, args: ToolArgs): Promise<Signal | null> {
   if (args.tool === 'Skill' && typeof args.skill === 'string') return { kind: 'skill', name: args.skill }
   if (args.tool === 'Bash' && typeof args.command === 'string') return { kind: 'bash', command: args.command }
   if ((args.tool === 'Write' || args.tool === 'Edit') && typeof args.file_path === 'string') {
@@ -300,17 +306,23 @@ async function setAuditing($: EngineInterface, mod: Mod, isAuditing: boolean) {
   mod.director = withAuditing(mod.director, isAuditing, await $.clock.now())
 }
 
-// The engine as the paint loop and the frames reach it: closures over $,
-// built here, since no other file may take $.
+// Where the frames' failures go (a scene or a routine that threw): the
+// debug log. The render hooks hand it to siteCells, as the paint loop's
+// cells do.
+function debugLog($: EngineInterface): Log {
+  return text => $.ui.log(text, { to: 'debug' })
+}
+
+// The engine as the paint loop reaches it: closures over $, built here,
+// since no other file may take $.
 function portsOf($: EngineInterface, mod: Mod): Ports {
-  const log = (text: string) => $.ui.log(text, { to: 'debug' })
+  const log = debugLog($)
 
   return {
     now: () => $.clock.now(),
     sleep: ms => $.clock.sleep(ms),
     blit: frame => $.ui.blit(frame).catch(() => ({ deny: 'failed' })),
     invalidate: () => $.ui.invalidate('ui.render'),
-    log,
     pollAgents: () => checkAgents($, mod),
     cells: (site, now) => siteCells(mod, site, now, log),
   }
@@ -522,7 +534,7 @@ export const register: Register = on => {
       await update($, idleAtom, () => routine)
     }
     // A turn starts: the toon under the spinner takes over from the demo.
-    if (mod.demo) endDemo(mod, portsOf($, mod).invalidate)
+    if (mod.demo) endDemo(mod, () => $.ui.invalidate('ui.render'))
     // Another session on this project may have moved the stage. On the move
     // queue, so a move still running is not overwritten.
     // Fitted to this session's workflow in memory; saved back only with this
@@ -547,7 +559,7 @@ export const register: Register = on => {
   })
 
   on('tool.call', async ($, e, next) => {
-    if (e.tool === mod.toolName) return queued(mod, () => setStage($, mod, e as unknown as ToolArgs))
+    if (e.tool === mod.toolName) return queued(mod, () => setStage($, mod, argsOf(e)))
     const result = await next(e)
     if (e.agentId !== undefined || result.deny !== undefined) return result
     if (result.isError === true) {
@@ -562,7 +574,7 @@ export const register: Register = on => {
     if (next.origin.plugin !== 'engine') return result
     const kind = SIGNAL_KINDS[e.tool]
     if (result.isError !== true && kind !== undefined && mod.isAuto && hasRules(mod.workflow, kind)) {
-      const signal = await signalOf($, mod, e as unknown as Record<string, unknown>)
+      const signal = await signalOf($, mod, argsOf(e))
       if (signal) await settle($, 'an automatic move', queued(mod, () => autoMove($, mod, signal)))
     }
     if (mod.notes.length === 0) return result
@@ -601,7 +613,7 @@ export const register: Register = on => {
     }
     if (cmd.kind === 'demo-stop') {
       if (!mod.demo) return { text: 'No demo is playing.' }
-      endDemo(mod, portsOf($, mod).invalidate)
+      endDemo(mod, () => $.ui.invalidate('ui.render'))
 
       return { text: 'Demo stopped.' }
     }
@@ -796,7 +808,7 @@ export const register: Register = on => {
     // Shown again: an agent may have ended, or started, while the area was
     // away (a paint loop still running from before polls on its own time).
     if (!wasShown) void checkAgents($, mod)
-    const cells = siteCells(mod, band, now, portsOf($, mod).log) ?? ''
+    const cells = siteCells(mod, band, now, debugLog($)) ?? ''
     // The Raster mounts showing these.
     band.lastCells = cells
     band.blittedAt = now
@@ -832,7 +844,7 @@ export const register: Register = on => {
     toon.columns = toonColumns(viewport)
     toon.isSeen = false
     const shownAt = await $.clock.now()
-    const cells = siteCells(mod, toon, shownAt, portsOf($, mod).log) ?? ''
+    const cells = siteCells(mod, toon, shownAt, debugLog($)) ?? ''
     toon.lastCells = cells
     toon.blittedAt = shownAt
     if (id !== undefined) animate(portsOf($, mod), mod, toon)
