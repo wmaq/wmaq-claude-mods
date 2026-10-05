@@ -6,7 +6,7 @@ the marketplace manifest `.claude-plugin/marketplace.json`.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner, an idle Clawd in an area below the bar, and a desk row of helpers there while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.6.4 (v0.6, automatic moves and history; fixes up to 0.6.3; 0.6.4 splits `register.tsx`, tested locally); the frame tool in `tools/frames/`; releases in `stage-toons/CHANGELOG.md`; the plan ahead in `docs/roadmap.md`, ideas in `docs/research/`; the latest review in `docs/reviews/` |
+| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with pixel-art Clawd scenes under the spinner, an idle Clawd in an area below the bar, and a desk row of helpers there while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.7.0 (the polish pass and the hook wins: typed skills, deck shuffle, per-project settings, a compact store, cost per stage; tested locally); the frame tool in `tools/frames/`; releases in `stage-toons/CHANGELOG.md`; the plan ahead in `docs/roadmap.md`, ideas in `docs/research/`; the latest review in `docs/reviews/` |
 
 ## The workflow
 

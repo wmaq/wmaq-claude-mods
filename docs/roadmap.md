@@ -8,9 +8,10 @@ the workflow's step 10).
 
 ### Where things stand
 
-0.6.4 is on `main`: automatic moves and history, the waiting toon, 37
-scenes and 5 idle routines, and the frame tool (`tools/frames/`) for
-checking the drawing from a cloud session. History:
+0.7.0 is on `main`: automatic moves and history with cost per stage, the
+waiting toon, 37 scenes dealt like a deck and 5 idle routines, per-project
+settings, and the frame tool (`tools/frames/`) for checking the drawing
+from a cloud session. Phases 1 and 2 of the plan below are done. History:
 `stage-toons/CHANGELOG.md`. Sources for what comes next: the research
 report (`docs/research/2026-10-04-stage-toons-improvement-ideas.md`, ideas
 #1-#30) and the code review (`docs/reviews/2026-10-04-code-review.md`).
@@ -60,8 +61,6 @@ Decided in the discussion:
 - **#8 (keep the stage through compaction) is done.** The `session.compact`
   hook rebuilds the stage section of the system prompt after every real
   compaction (since v0.3), so the stage survives one.
-- **The compact history entry comes before cost per stage (#9)**: #9 adds
-  data to every entry, and the store fills at about 100 projects (P5).
 - **"Done after a merge" and "idle variants by the last finished step" are
   one feature** (#17), as the research has it.
 - **Art is no longer terminal-only.** With the frame tool (0.6.4), a cloud
@@ -72,37 +71,9 @@ Decided in the discussion:
   person uses Claude Code in a terminal and Claude on the web, so the app
   surfaces come last.
 
-The phases run in order. Phases 1 and 2 build on existing code, so a short
-design in chat is enough (CLAUDE.md); from phase 3 on, each feature takes
-the full workflow, spec and plan included.
-
-**Phase 1: a polish pass with the frame tool.** One release; it tries the
-tool on real art.
-- Scene leftovers from v0.4 step 2: stamp's desk drawn through Clawd's
-  feet and the stamp floating a row above his claw; scroll's quill tip off
-  the claw; thought-clouds' big cloud popping in one frame; crash-test
-  cropped below 54 columns. From v0.4 step 1: scenes that reset visibly at
-  the loop point (dishes, bricklaying).
-- The review's nits: C7 (the 30-column minimum applied two ways), D2
-  (duplicated helpers), D5 (scene and stage keys typed
-  inside the library), A1 (one typed guard for MCP tool arguments), P8
-  (an ASCII fast path for text width), P9 (per-frame allocations).
-- The eleven minor findings deferred from 0.6.4's reviews (the split's
-  and the frame tool's), listed in
-  `docs/handoffs/2026-10-04-cloud-session-split-frames.md`.
-
-**Phase 2: small wins on hooks the mod already has.** One release or two.
-- #7: rules fire on skills the person types (`skill.prompt`; a subagent's
-  preload fires it too, so match it against `agent.spawn`).
-- #11: deck shuffle, no scene repeats until a stage's whole deck has
-  played (also ends "untracked and back shows the same scene").
-- #12: per-project `auto` and `hide` in the workflow file, and a
-  first-run toast.
-- The store diet (P5 b, c): `feature` stored only where it changes, then a
-  compact v3 history entry (about 45% smaller). P5 d (a debounced credit)
-  only if the measurements still call for it.
-- Then #9: cost and tokens per stage in the history, `/stage time` and
-  `/stage log`, from `turn.complete.usage` (no model call).
+The phases run in order; each feature takes the full workflow, spec and
+plan included. (Phases 1 and 2, the polish pass and the hook wins, shipped
+in 0.7.0.)
 
 **Phase 3: "done" after a merge, with a celebration** (#17). Past the last
 stage: the track all lit and the feature closed in the history, set by a

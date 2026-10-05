@@ -6,6 +6,32 @@ release (departures from the spec, review findings, live checks) are in its
 spec and plan under `docs/superpowers/`, the hand-offs in `docs/handoffs/`
 and the git history.
 
+## 0.7.0 (2026-10-05)
+
+Roadmap phases 1 and 2, built by a cloud session while the person was
+away (designs audited by Fable and approved by Cloudie, double-checked by
+Termie) and tested locally. Hand-offs:
+`docs/handoffs/2026-10-05-cloud-session-polish-pass.md` and
+`docs/handoffs/2026-10-05-cloud-session-hook-wins.md`.
+- **The polish pass** (spec `2026-10-04-stage-toons-polish-pass-design`):
+  stamp (Clawd on a crate, squatting to stamp), scroll's quill,
+  thought-clouds' swell, crash-test's camera in a narrow toon
+  (`Scene.focus`), dishes and bricklaying cleared away before their loop;
+  the review's nits C7, D2, D5, A1, P8, P9 and the eleven findings
+  deferred from 0.6.4.
+- **The hook wins** (spec `2026-10-05-stage-toons-hook-wins-design`):
+  skills the person types move the stage (#7); a stage's scenes dealt like
+  a shuffled deck (#11); `auto` and `hide` in the workflow file and a
+  first-run toast (#12); progress saved as a compact v3 record, about half
+  the size (P5 b, c; P5 d dropped, the store stays well under its limit);
+  dollars and tokens per stage in the history, `/stage log` and `/stage
+  time` (#9). Older copies (0.6.2 to 0.6.4) leave a project saved as v3
+  alone, read-only.
+- From the local test: `/stage help`, a one-line answer to a `/stage` it
+  doesn't understand (with the stage you may have meant), `/stage
+  workflow reload` naming the settings it applied, and a note that costs
+  count from the mod's load.
+
 ## 0.6.4 (2026-10-04)
 
 The register split and the frame tool, built by a cloud session from the
