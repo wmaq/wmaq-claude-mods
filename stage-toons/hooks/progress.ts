@@ -35,8 +35,9 @@ function costOf(c: unknown): HistoryEntry['cost'] | undefined {
 
 // A history entry as saved by v2 (or as v3 reads into that shape), or null:
 // the fields this version knows, each checked; feature, via, workMs and cost
-// are optional (older versions wrote none). Fields it doesn't know (a newer
-// version's) are kept as they are.
+// are optional (older versions wrote none). A v2 entry keeps the fields it
+// doesn't know (a newer version's) as they are; a v3 entry has only the
+// slots this version decodes.
 function entryOf(h: unknown): HistoryEntry | null {
   if (typeof h !== 'object' || h === null) return null
   const e = h as Record<string, unknown>

@@ -111,7 +111,11 @@ and why) and how long Claude worked in it, for the last 200 moves.
 `/stage log` lists the recent ones with how long each stage lasted;
 `/stage time` totals the time per feature and per stage. Wall-clock time
 counts the hours nobody worked (a night in Your testing); Claude's working
-time is the time its turns ran.
+time is the time its turns ran. Both also show what the work cost, where
+it was counted: dollars as `/cost` totals them (compaction and other
+plugins' model calls included) and the tokens in and out of Claude's
+turns and its agents'. While the session's cost can't be read, the dollars
+wait and go to the stage current when it can again.
 
 ## While Claude waits for you
 
@@ -207,8 +211,9 @@ neither.
 { "auto": false, "hide": true, "track": [ ... ] }
 ```
 
-A stage lists 1 to 5 scenes. One is picked at random each time the work
-enters the stage, never the one it showed last when it has another. The
+A stage lists 1 to 5 scenes, dealt like a shuffled deck: each time the
+work enters the stage it shows the next one, every scene once before any
+repeats, never the same twice in a row. The
 older `"scene": "bug-hunt"` still works. A workflow file keeps its own
 lists: a file written by `/stage workflow init` before 0.4.1 names two
 scenes per stage, so add the new ones to it (or delete the file to use the

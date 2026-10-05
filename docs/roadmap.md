@@ -42,6 +42,14 @@ Leftovers the plan schedules are listed in their phase instead.
   shows its last page unstamped for one frame at exactly loop time 0
   (older than the pass); in an area under about 40 columns the third and
   fourth helpers at the desk row are cut off at the right (since 0.5).
+- **Hook wins (phase 2):** `/stage workflow reload` with a file that sets
+  nothing re-reads the person's settings from the store, so a `/stage auto
+  off` or `/stage hide` whose save failed (silently) is undone. Subagent
+  tokens are summed in the mod, not `$.state`: a hot reload mid-turn loses
+  them, and those of background agents ending in an untracked turn are
+  dropped. A slash command queued while a turn runs may lose its typed
+  skill's move if the engine hears the command when typed and expands the
+  skill after the turn's end (nothing moves; check live).
 
 ### The plan after the frame tool (agreed 2026-10-04)
 

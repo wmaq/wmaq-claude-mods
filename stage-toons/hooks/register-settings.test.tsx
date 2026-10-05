@@ -125,3 +125,13 @@ test('a store that cannot save the welcome shows none', async ($, on) => {
   await $.session.start(START)
   expect(world.toasts).toEqual([])
 })
+
+test("a file's auto: true and hide: false win over the person's own settings off and hidden", async ($, on) => {
+  const { world } = engine(on, { store: { auto: false, hidden: true } })
+  world.files[FILE] = fileWith({ auto: true, hide: false })
+  await $.session.start(START)
+  expect(await bandText($)).toContain('Not tracked yet')
+  expect(text(await runStage($, 'auto'))).toContain("This project's workflow file starts it on.")
+  await callTool($, 'Skill', brainstorm)
+  expect(text(await runStage($, ''))).toContain('2/10 Brainstorm by auto')
+})

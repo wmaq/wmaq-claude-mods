@@ -90,3 +90,12 @@ test('/stage auto off stops a typed skill from moving the stage', async ($, on) 
   await expand($, 'brainstorming')
   expect(text(await runStage($, ''))).toContain('Not tracked yet')
 })
+
+test('a /stage typed between the command and its skill is not heard as a command', async ($, on) => {
+  engineWithSkills(on)
+  await $.session.start(START)
+  await typeCommand($, 'superpowers:brainstorming')
+  await runStage($, '')
+  await expand($, 'brainstorming')
+  expect(text(await runStage($, ''))).toContain('2/10 Brainstorm by auto (skill superpowers:brainstorming)')
+})
