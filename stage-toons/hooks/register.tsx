@@ -13,14 +13,14 @@ import type { Progress, ScenePick, SessionWorkflow, StageId, Workflow, WorkflowS
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { ended, reconcileRoster, rememberKind, spawned } from './agents'
 import { autoMatch, hasRules, type Heard, isWindowsPath, relativePath, type Signal, typedSkill, viaOf } from './auto'
-import { areaColumns, BAR_TONES, bandLayout, bandMode, type BandSite, TOON_MIN, toonColumns } from './band'
+import { areaColumns, BAR_TONES, bandLayout, bandMode, type BandSite } from './band'
 import { autoText, hideText, moveFor, parseCommand, settingsText, settingsWords, showText, unknownText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { demoAt, demoFor, demoLine, demoStep, idleDemoAt, idleDemoLine, startDemo, WAITING_DEMO_LINE } from './demo'
 import { createDirector, react, withAuditing, withScene } from './director'
-import { type Log, siteCells } from './frames'
+import { areaCells, type Log } from './frames'
 import { CELEBRATE, pickIdle } from './idle'
 import { idleForMove } from './keepsake'
-import { createMod, createSite, endDemo, type Mod, queued, reseat, stopToon } from './mod'
+import { createMod, endDemo, type Mod, queued, reseat } from './mod'
 import { animate, type Ports } from './paint'
 import { dealCard } from './deck'
 import { addCost, type Cost, costText, creditAt, currentEntry, logText, NO_COST, timeText, tokensOf } from './history'
@@ -57,8 +57,8 @@ const warnedAtom = atom({ plugin: 'stage-toons', key: 'warned' } as const, false
 // the band's render (which may not write $.state) only reads it; kept across
 // a hot reload.
 const idleAtom = atom({ plugin: 'stage-toons', key: 'idle' } as const, null)
-// The scene the stage shows: kept across a hot reload, so the toon does not
-// change under the person when the module reloads.
+// The scene the stage shows: kept across a hot reload, so the scene does
+// not change under the person when the module reloads.
 const sceneAtom = atom({ plugin: 'stage-toons', key: 'scene' } as const, null)
 // Whether rules move the stage by itself, for this session: the project's
 // file's setting or the store's at the start, then /stage auto's; kept
@@ -408,7 +408,7 @@ async function setAuditing($: EngineInterface, mod: Mod, isAuditing: boolean) {
 }
 
 // Where the frames' failures go (a scene or a routine that threw): the
-// debug log. The render hooks hand it to siteCells, as the paint loop's
+// debug log. The band's hook hands it to areaCells, as the paint loop's
 // cells do.
 function debugLog($: EngineInterface): Log {
   return text => $.ui.log(text, { to: 'debug' })
@@ -425,7 +425,7 @@ function portsOf($: EngineInterface, mod: Mod): Ports {
     blit: frame => $.ui.blit(frame).catch(() => ({ deny: 'failed' })),
     invalidate: () => $.ui.invalidate('ui.render'),
     pollAgents: () => checkAgents($, mod),
-    cells: (site, now) => siteCells(mod, site, now, log),
+    cells: (site, now) => areaCells(mod, site.columns, now, log),
   }
 }
 
@@ -861,10 +861,8 @@ export const register: Register = on => {
     if (e.agentId !== undefined) {
       // Its tokens wait for the main turn's end, to go to the entry with it.
       mod.turnTokens = addCost(mod.turnTokens, tokensOf(e.usage))
-      // A subagent's turn: the end of an auditor, perhaps, and of the
-      // spinner on its row, which carries the agent's id. Its helper gets
+      // A subagent's turn: the end of an auditor, perhaps. Its helper gets
       // up at once, whatever the list says yet.
-      stopToon(mod, e.agentId)
       if (mod.auditors.delete(e.agentId) && mod.auditors.size === 0) await setAuditing($, mod, false)
       const now = await $.clock.now()
       mod.roster = ended(mod.roster, e.agentId, now)
@@ -876,8 +874,6 @@ export const register: Register = on => {
     // A typed command or an expanded skill still waiting for the other is forgotten.
     mod.typedCommand = null
     mod.expandedSkill = null
-    // The main spinner's toon stops; an agent at work keeps its row's.
-    for (const id of [...mod.toons.keys()]) if (mod.roster.get(id)?.isAtWork !== true) stopToon(mod, id)
     // The tokens so far, this turn's own with its subagents': a background
     // agent's turn that ends after this goes to the next main turn's.
     const tokens = addCost(mod.turnTokens, tokensOf(e.usage))
@@ -968,14 +964,13 @@ export const register: Register = on => {
     }
     const wasShown = band.requestId !== undefined
     band.requestId = e.requestId
-    band.kind = 'area'
     band.columns = areaColumns(columns)
     band.rows = TOON_ROWS
     band.isSeen = false
     // Shown again: an agent may have ended, or started, while the area was
     // away (a paint loop still running from before polls on its own time).
     if (!wasShown) void checkAgents($, mod)
-    const cells = siteCells(mod, band, now, debugLog($)) ?? ''
+    const cells = areaCells(mod, band.columns, now, debugLog($)) ?? ''
     // The Raster mounts showing these.
     band.lastCells = cells
     band.blittedAt = now
@@ -987,40 +982,6 @@ export const register: Register = on => {
         {bar}
         <Raster key="area" columns={band.columns} rows={band.rows} cells={cells} />
         {below}
-      </Box>
-    )
-  })
-
-  on('ui.render', { component: 'Spinner' }, async ($, e, next) => {
-    if (e.surface !== 'terminal') return next(e)
-    const line = await next(e)
-    const viewport = e.viewport?.columns ?? 80
-    const id = e.requestId
-    if ((await read($, hiddenAtom)) || viewport < TOON_MIN) {
-      if (id !== undefined) stopToon(mod, id)
-
-      return line
-    }
-    // A spinner with no requestId is drawn once, with no loop.
-    let toon = id === undefined ? createSite('toon') : mod.toons.get(id)
-    if (!toon) {
-      toon = createSite('toon')
-      mod.toons.set(id!, toon)
-    }
-    toon.requestId = id
-    toon.columns = toonColumns(viewport)
-    toon.isSeen = false
-    const shownAt = await $.clock.now()
-    const cells = siteCells(mod, toon, shownAt, debugLog($)) ?? ''
-    toon.lastCells = cells
-    toon.blittedAt = shownAt
-    if (id !== undefined) animate(portsOf($, mod), mod, toon)
-    const { Box, Raster } = $.ui.resolve(e)
-
-    return (
-      <Box flexDirection="column">
-        {line}
-        <Raster key="toon" columns={toon.columns} rows={TOON_ROWS} cells={cells} />
       </Box>
     )
   })

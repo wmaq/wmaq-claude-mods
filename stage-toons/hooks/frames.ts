@@ -1,4 +1,4 @@
-// Which frame a site shows at a moment, from the mod's state and the time
+// Which frame the area shows at a moment, from the mod's state and the time
 // alone: no engine. Composing moves the mod on as the loop goes (the seat
 // log, the director's clock), and failures go to the log passed in.
 
@@ -6,7 +6,7 @@ import { cropLeft, placeIdle } from './area'
 import { demoAt, demoStep, idleDemoAt } from './demo'
 import { shot, tick } from './director'
 import { DOZE_MS, FALLBACK_ROUTINE, idleFrame } from './idle'
-import { type Mod, reseat, type Site } from './mod'
+import { type Mod, reseat } from './mod'
 import { encodeCells } from './pixels'
 import { REACTIONS, SCENES } from './scenes'
 import { type Cast, composeFrame } from './toon'
@@ -73,12 +73,4 @@ export function areaCells(mod: Mod, columns: number, now: number, log: Log): str
   }
 
   return encodeCells(idleAt(now - mod.idleSince))
-}
-
-// A site's next frame, or null once the demo it plays is over.
-export function siteCells(mod: Mod, site: Site, now: number, log: Log): string | null {
-  if (site.kind === 'area') return areaCells(mod, site.columns, now, log)
-  mod.director = tick(mod.director, now)
-
-  return encodeCells(composeFrame(shot(mod.director, now), now, site.columns, castOf(mod, log)))
 }

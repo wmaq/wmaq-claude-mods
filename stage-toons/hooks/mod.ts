@@ -17,21 +17,18 @@ import { EMPTY_LOG, seat, type SeatLog } from './waiting/seats'
 import { DEFAULT_WORKFLOW } from './workflow'
 
 export const PLUGIN = 'stage-toons'
-// Refused blits in a row before the loop gives up: the spinner it painted is
-// gone, as when a background agent's row closes. Until a blit since the last
+// Refused blits in a row before the loop gives up: the band's Raster is
+// gone, as when the person collapses the band. Until a blit since the last
 // render has been taken, refusals are expected for a moment (after a resize
 // the old Raster stays mounted until the new one paints), so it waits longer.
 export const MAX_REFUSED = 3
 export const MAX_REFUSED_UNSEEN = 24
 
-// A Raster the mod repaints: the toon under the spinner, or the band's
-// area. Its key is its kind.
-export type SiteKind = 'toon' | 'area'
-// lastCells and blittedAt: the frame the Raster shows and when it was
-// sent; isAsleep: the area stopped on its still picture (P1).
+// The Raster the mod repaints: the band's area, keyed 'area'. lastCells
+// and blittedAt: the frame the Raster shows and when it was sent; isAsleep:
+// the area stopped on its still picture (P1).
 export type Site = {
   requestId: string | undefined
-  kind: SiteKind
   columns: number
   rows: number
   isAnimating: boolean
@@ -43,15 +40,15 @@ export type Site = {
 
 // How often a site repaints: a scene, a demo and the waiting toon about
 // twelve times a second; the idle Clawd is calm, and calmer dozing.
-export function frameMs(mod: Mod, kind: SiteKind, now: number): number {
-  if (kind !== 'area' || mod.isBandWorking || mod.demo !== null || (mod.seats.since !== null && !mod.isWaitingBroken)) return 83
+export function frameMs(mod: Mod, now: number): number {
+  if (mod.isBandWorking || mod.demo !== null || (mod.seats.since !== null && !mod.isWaitingBroken)) return 83
 
   return now - mod.idleSince >= DOZE_MS ? 333 : 166
 }
 // How often the area checks the agent list while it knows of agents.
 export const AGENT_POLL_MS = 2000
 
-export const createSite = (kind: SiteKind): Site => ({ requestId: undefined, kind, columns: STAGE_W, rows: TOON_ROWS, isAnimating: false, isSeen: false, lastCells: null, blittedAt: 0, isAsleep: false })
+export const createSite = (): Site => ({ requestId: undefined, columns: STAGE_W, rows: TOON_ROWS, isAnimating: false, isSeen: false, lastCells: null, blittedAt: 0, isAsleep: false })
 
 // A frame the same as the one shown is not sent again, but one is sent at
 // least this often: a blit is how the loop learns its Raster is gone.
@@ -77,10 +74,6 @@ export type Mod = {
   lastFailureAt: number | null
   isHidden: boolean
   surface: string | null
-  // The toons under the spinners shown, by requestId: the main one, and a
-  // background agent's row's (its requestId is the agent's id). Each has
-  // its own paint loop.
-  toons: Map<string, Site>
   band: Site
   // When Claude last went idle: the session's start or the main turn's end.
   idleSince: number
@@ -97,7 +90,7 @@ export type Mod = {
   // The demo scene the band's text line names.
   demoLineIndex: number
   broken: Set<SceneId>
-  // What the toon draws with (frames.ts's castOf), built once.
+  // What the scenes draw with (frames.ts's castOf), built once.
   cast: Cast | null
   // The agents known and their helpers at the desk row; whether the
   // waiting toon threw (the idle routine stands in for the session).
@@ -141,8 +134,7 @@ export const createMod = (): Mod => ({
   lastFailureAt: null,
   isHidden: false,
   surface: 'terminal',
-  toons: new Map(),
-  band: createSite('area'),
+  band: createSite(),
   idleSince: 0,
   idle: 'classic',
   nextIdle: 'classic',
@@ -189,14 +181,6 @@ export function reseat(mod: Mod, now: number) {
   // Never backwards: a period that ended unseen may report an end before
   // the main turn's own.
   if (endedAt !== null) mod.idleSince = Math.max(mod.idleSince, endedAt)
-}
-
-// Stops the toon under one spinner: its loop ends at its next frame.
-export function stopToon(mod: Mod, id: string) {
-  const site = mod.toons.get(id)
-  if (!site) return
-  site.requestId = undefined
-  mod.toons.delete(id)
 }
 
 // Ends the demo and has the band drawn again without it.

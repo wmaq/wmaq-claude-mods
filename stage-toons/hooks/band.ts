@@ -28,13 +28,10 @@ export const BAR_TONES: Record<Tone, { color?: string; bold?: boolean; dimColor?
 // Below this many columns the band is one line.
 export const WIDE_MIN = 50
 export const TAG = '⌕ Fable reviewing'
-// The fewest terminal columns at which the toon under the spinner and the
-// area under the bar show (drawn 24 and 29 wide there, cropped).
+// The fewest band columns at which the area under the bar shows (drawn 29
+// wide there, cropped).
 export const TOON_MIN = 30
 
-// How wide the toon under the spinner is drawn in a viewport this many
-// columns wide: the spinner's own columns to its left are kept clear.
-export const toonColumns = (viewport: number) => Math.min(STAGE_W, viewport - 6)
 // How wide the area under the bar is drawn in a band this many columns wide:
 // one column spare, as the bar keeps.
 export const areaColumns = (columns: number) => Math.min(STAGE_W, columns - 1)

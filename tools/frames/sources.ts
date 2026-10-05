@@ -1,14 +1,14 @@
 // The pictures the tool draws, built from stage-toons' own modules the way
-// its hooks build them, at chosen moments: a scene under the spinner, the
-// idle Clawd, the waiting toon, and the whole band.
+// its hooks build them, at chosen moments: a scene as the area plays it
+// while Claude works, the idle Clawd, the waiting toon, and the whole band.
 
 import type { Workflow } from '../../stage-toons/types'
 import { spawned } from '../../stage-toons/hooks/agents'
 import { areaColumns, BAR_TONES, bandLayout, bandMode, type BandSite, type Span } from '../../stage-toons/hooks/band'
 import { createDirector, react, withAuditing } from '../../stage-toons/hooks/director'
-import { areaCells, siteCells } from '../../stage-toons/hooks/frames'
+import { areaCells } from '../../stage-toons/hooks/frames'
 import { CELEBRATE, DOZE_MS, IDLE_IDS, routineOf, SHOW_OFF_PREFIX } from '../../stage-toons/hooks/idle'
-import { createMod, createSite, type Mod } from '../../stage-toons/hooks/mod'
+import { createMod, type Mod } from '../../stage-toons/hooks/mod'
 import { hex } from '../../stage-toons/hooks/pixels'
 import { FALLBACK_SCENE, STAGE_W } from '../../stage-toons/hooks/scene'
 import { SCENES } from '../../stage-toons/hooks/scenes'
@@ -40,18 +40,18 @@ function cellsCanvas(cells: string, columns: number, rows: number): Canvas {
 
 export type SceneOptions = { reaction?: 'advance' | 'failure'; auditing?: boolean; width?: number }
 
-// The toon under the spinner, as its paint loop composes it (siteCells),
-// the director set up at time 0.
+// The area while Claude works, as its paint loop composes it (areaCells),
+// the director set up with this scene at time 0.
 export function sceneFrames(id: string, opts: SceneOptions, times: readonly number[]): Canvas[] {
   known('scene', id, SCENE_IDS)
   const mod = createMod()
+  mod.isBandWorking = true
   mod.director = createDirector(id, false)
   if (opts.auditing) mod.director = withAuditing(mod.director, true, 0)
   if (opts.reaction) mod.director = react(mod.director, opts.reaction, 0)
-  const site = createSite('toon')
-  site.columns = opts.width ?? STAGE_W
+  const width = opts.width ?? STAGE_W
 
-  return times.map(t => cellsCanvas(siteCells(mod, site, t, quiet) ?? '', site.columns, TOON_ROWS))
+  return times.map(t => cellsCanvas(areaCells(mod, width, t, quiet) ?? '', width, TOON_ROWS))
 }
 
 // The idle Clawd in the band's area, the idle period starting at time 0;

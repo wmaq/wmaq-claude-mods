@@ -3,12 +3,12 @@
 // tested with stand-ins.
 
 import { demoStep } from './demo'
-import { AGENT_POLL_MS, endDemo, frameMs, isDeepAsleep, MAX_REFUSED, MAX_REFUSED_UNSEEN, type Mod, RESEND_MS, type Site, type SiteKind } from './mod'
+import { AGENT_POLL_MS, endDemo, frameMs, isDeepAsleep, MAX_REFUSED, MAX_REFUSED_UNSEEN, type Mod, RESEND_MS, type Site } from './mod'
 
 export type Ports = {
   now: () => Promise<number>
   sleep: (ms: number) => Promise<void>
-  blit: (frame: { requestId: string; key: SiteKind; cells: string; columns: number; rows: number }) => Promise<{ deny?: string }>
+  blit: (frame: { requestId: string; key: 'area'; cells: string; columns: number; rows: number }) => Promise<{ deny?: string }>
   invalidate: () => void
   pollAgents: () => Promise<void>
   // The site's next frame, or null once the demo it plays is over.
@@ -17,7 +17,7 @@ export type Ports = {
 
 // Repaints a site while it is mounted, detached from the render that
 // started it: a sleep inside a dispatch would spend its time budget. The
-// site's kind and size may change under it, as the band's do.
+// band's size may change under it.
 export function animate(ports: Ports, mod: Mod, site: Site) {
   if (site.isAnimating) return
   site.isAnimating = true
@@ -30,12 +30,12 @@ export function animate(ports: Ports, mod: Mod, site: Site) {
       // AGENT_POLL_MS while it knows of agents.
       let polledAt = -Infinity
       while (site.requestId !== undefined && !mod.isHidden && refused < (site.isSeen ? MAX_REFUSED : MAX_REFUSED_UNSEEN)) {
-        const { requestId, kind, columns, rows } = site
+        const { requestId, columns, rows } = site
         const now = await ports.now()
-        if (kind === 'area' && polledAt === -Infinity) {
+        if (polledAt === -Infinity) {
           polledAt = now
           await ports.pollAgents()
-        } else if (kind === 'area' && mod.roster.size > 0 && now - polledAt >= AGENT_POLL_MS) {
+        } else if (mod.roster.size > 0 && now - polledAt >= AGENT_POLL_MS) {
           polledAt = now
           void ports.pollAgents()
         }
@@ -49,7 +49,7 @@ export function animate(ports: Ports, mod: Mod, site: Site) {
         }
         // A blit repaints the scene alone: the line naming it is text, so
         // the band is drawn again when the demo moves on.
-        const step = kind !== 'toon' && mod.demo ? demoStep(mod.demo, now) : null
+        const step = mod.demo ? demoStep(mod.demo, now) : null
         if (step && step.index !== mod.demoLineIndex) {
           mod.demoLineIndex = step.index
           ports.invalidate()
@@ -57,7 +57,7 @@ export function animate(ports: Ports, mod: Mod, site: Site) {
         // The frame the Raster already shows is not sent again, but for a
         // resend now and then, which tells the loop whether it is still there.
         if (cells !== site.lastCells || now - site.blittedAt >= RESEND_MS) {
-          const answer = await ports.blit({ requestId, key: kind, cells, columns, rows })
+          const answer = await ports.blit({ requestId, key: 'area', cells, columns, rows })
           if (answer.deny === undefined) {
             refused = 0
             site.isSeen = true
@@ -72,16 +72,16 @@ export function animate(ports: Ports, mod: Mod, site: Site) {
         }
         // Deep asleep with the still picture shown: the loop stops, and the
         // next render (a prompt, an agent, a redraw) starts it again.
-        if (kind === 'area' && site.lastCells === cells && isDeepAsleep(mod, now)) {
+        if (site.lastCells === cells && isDeepAsleep(mod, now)) {
           site.isAsleep = true
           break
         }
-        await ports.sleep(frameMs(mod, kind, now))
+        await ports.sleep(frameMs(mod, now))
       }
       // Refused until it gave up, the band's Raster may be gone for good
       // (the band collapsed) or for now: the hook decides again, and an
       // expanded band repaints instead of standing still.
-      if (site.kind !== 'toon' && site.requestId !== undefined && !mod.isHidden && !site.isAsleep) {
+      if (site.requestId !== undefined && !mod.isHidden && !site.isAsleep) {
         site.requestId = undefined
         ports.invalidate()
       }

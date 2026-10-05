@@ -36,7 +36,7 @@ test("the waiting toon seats Fable's helper at the desk row, in violet", () => {
   assert.ok(has(frame!, HELPER_COLORS.fable))
 })
 
-test('a scene is the toon width by its rows', () => {
+test('a scene is as wide as asked, by the area’s rows', () => {
   const [frame] = sceneFrames('bricklaying', { width: 40 }, [0])
   assert.equal(frame!.cols, 40)
   assert.equal(frame!.rows, 7)

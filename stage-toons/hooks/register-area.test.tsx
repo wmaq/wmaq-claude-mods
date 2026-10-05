@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { CLAWD_ORANGE, FABLE_VIOLET } from './clawd'
-import { bandProps, blitsOf, colorInRows, endTurn, engine, mountBand, runStage, setStage, spawnAgent, START, type World } from './harness'
+import { bandProps, blitsOf, colorInRows, endTurn, engine, mountBand, mountSpinner, runStage, setStage, spawnAgent, START, type World } from './harness'
 import { DEEP_SLEEP_MS, DOZE_MS } from './idle'
 import { C } from './scenes/kit'
 
@@ -108,4 +108,26 @@ test('in a band too short for the area, the bar shows alone while Claude works',
   const ui = await mountBand($, 'terminal', bandProps(100, { isWorking: true, maxRows: 7 }))
   expect(await ui.find({ key: 'area' })).toBeUndefined()
   expect(await ui.find({ key: 'stage-toons' })).toBeDefined()
+})
+
+test("the area follows the band's width while Claude works", async ($, on) => {
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  const ui = await mountBand($, 'terminal', bandProps(40, { isWorking: true }))
+  expect((await ui.find({ key: 'area' }))?.props).toMatchObject({ columns: 39, rows: 7 })
+  await clock.advance(300)
+  expect(lastArea(world)?.columns).toBe(39)
+})
+
+test("the spinner is Claude Code's own: no toon under it, the main one or an agent's", async ($, on) => {
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  for (const id of [undefined, 'agent-1']) {
+    const ui = await mountSpinner($, 100, id)
+    expect(await ui.find({ type: 'Text', text: 'engine' })).toBeDefined()
+    expect(await ui.find({ key: 'toon' })).toBeUndefined()
+    await ui.unmount()
+  }
+  await clock.advance(1000)
+  expect(world.blits.filter(b => b.key !== 'area')).toHaveLength(0)
 })

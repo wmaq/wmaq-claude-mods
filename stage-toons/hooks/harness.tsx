@@ -10,7 +10,7 @@ export const BS = String.fromCharCode(92)
 export const TOOL_NAME = 'mcp__stage-toons__set_stage'
 export const START = { cwd: 'C:/Dev/proj', surface: 'terminal', isInteractive: true } as const
 export const KEY = 'progress:c:/dev/proj'
-export const SPINNER = { word: 'Sauteing', message: null, suffix: '…', mode: 'thinking' } as const
+const SPINNER = { word: 'Sauteing', message: null, suffix: '…', mode: 'thinking' } as const
 export const COMPOSE = {
   model: 'claude-opus-5-5',
   promptModel: 'claude-opus-5-5',

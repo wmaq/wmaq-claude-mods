@@ -2,7 +2,7 @@ import { expect, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
 import { CLAWD_ORANGE } from './clawd'
-import { answerText, type Blit, blitsOf, callTool, colorInRows, decode, endTurn, engine, KEY, mountBand, mountSpinner, NOW, runStage, setStage, START, startTurn, submit } from './harness'
+import { answerText, bandProps, type Blit, blitsOf, callTool, colorInRows, decode, endTurn, engine, KEY, mountBand, NOW, runStage, setStage, START, startTurn, submit } from './harness'
 import { DEEP_SLEEP_MS, DOZE_MS, IDLE_IDS } from './idle'
 import { stored } from './progress'
 import { C } from './scenes/kit'
@@ -50,13 +50,14 @@ test('/stage done from Cleanup: the bar shows Done, the history has it, Clawd ju
   const picks = idlePicks(on)
   const { world, clock } = engine(on)
   await $.session.start(START)
-  await mountSpinner($)
+  // Claude works: the area plays the stage's scene.
+  await mountBand($, 'terminal', bandProps(100, { isWorking: true }))
   await runStage($, 'cleanup')
   await runStage($, 'feature login')
   await clock.advance(3500)
   expect(text(await runStage($, 'done'))).toContain('✓ Done · login · "Merged and done"')
   await clock.advance(500)
-  expect(colorInRows(world.blits.at(-1), [0, 1, 2], CLAWD_ORANGE)).toBe(true)
+  expect(colorInRows(blitsOf(world, 'area').at(-1), [0, 1, 2], CLAWD_ORANGE)).toBe(true)
   expect(text(await runStage($, 'log'))).toContain('✓ Done')
   expect(picks.at(-1)).toBe('celebrate')
 })
@@ -86,7 +87,7 @@ test('a merge from Cleanup moves to Done by itself, and Claude hears of it; the 
 test('after Done, Claude’s own chores move nothing; /stage back reopens the feature without confetti', async ($, on) => {
   const { world, clock } = engine(on)
   await $.session.start(START)
-  await mountSpinner($)
+  await mountBand($, 'terminal', bandProps(100, { isWorking: true }))
   await runStage($, 'cleanup')
   await runStage($, 'feature login')
   await runStage($, 'done')
@@ -96,7 +97,7 @@ test('after Done, Claude’s own chores move nothing; /stage back reopens the fe
   await clock.advance(3500)
   expect(text(await runStage($, 'back'))).toContain('10/10 Cleanup · login')
   await clock.advance(500)
-  expect(colorInRows(world.blits.at(-1), [0, 1, 2], CLAWD_ORANGE)).toBe(false)
+  expect(colorInRows(blitsOf(world, 'area').at(-1), [0, 1, 2], CLAWD_ORANGE)).toBe(false)
 })
 
 test('the idle period after a turn that finished the spec shows off the spec, from the turn’s end; the one after picks at random', async ($, on) => {
