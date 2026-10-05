@@ -34,12 +34,15 @@ export type Scene = { id: SceneId; loop: number; focusX: number; focus?: (t: num
 // the hero's head, and may set the hero's mood.
 export type ReactionSpec = { id: ReactionId; mood?: (t: number) => Mood; draw: (b: PixelBuffer, t: number, hero: Point) => void }
 
-export function drawSprite(b: PixelBuffer, sprite: Sprite, frame: number, x: number, y: number): void {
+// isMirrored draws the frame flipped left to right, each row read back to
+// front.
+export function drawSprite(b: PixelBuffer, sprite: Sprite, frame: number, x: number, y: number, isMirrored = false): void {
   const n = sprite.frames.length
   const rows = sprite.frames[((Math.floor(frame) % n) + n) % n] ?? []
   rows.forEach((row, dy) => {
+    const last = row.length - 1
     for (let dx = 0; dx < row.length; dx++) {
-      const color = sprite.palette[row[dx]!]
+      const color = sprite.palette[row[isMirrored ? last - dx : dx]!]
       if (color !== undefined) setPixel(b, x + dx, y + dy, color)
     }
   })

@@ -3,6 +3,7 @@
 
 import type { HistoryEntry, Progress, StageId } from '../types'
 import { VIA_MAX } from './auto'
+import { standing } from './track'
 import { isTrack, rank, stageIds, stageOf, type Workflow, zeroStage } from './workflow'
 
 export const MESSAGE_MAX = 80
@@ -106,10 +107,6 @@ export function applyMove(w: Workflow, p: Progress, m: Move): Progress {
 
   return { ...p, v: 2, stage: m.stage, lastTrackStage, feature, message, history, updatedAt: m.at }
 }
-
-// Where the work stands on the track: the stage itself, or, from a side
-// stage, the last track stage it left.
-const standing = (w: Workflow, p: Progress): number => (isTrack(w, p.stage) ? rank(w, p.stage) : rank(w, p.lastTrackStage))
 
 export function nextStage(w: Workflow, p: Progress): StageId {
   if (!isTrack(w, p.stage) && rank(w, p.lastTrackStage) < 0) return w.track[0]!.id

@@ -36,21 +36,13 @@ const WALKING_TOP = 9
 // The seated helper behind its laptop: M body, E eyes, L the laptop's back,
 // o its light. The claws are drawn apart, tapping.
 const SEATED = ['.MMMMM.', '.MEMEM.', '.MMMMM.', '.LLoLL.', '.LLLLL.']
+// Hopping off the seat: the body alone.
+const HOPPING = SEATED.slice(0, 3)
 // The walking helper, facing right; mirrored, facing left. Two strides.
 const WALKING = [
   ['.MMMMM.', '..MEME.', 'MMMMMMM', '.MMMMM.', '.M...M.'],
   ['.MMMMM.', '..MEME.', 'MMMMMMM', '.MMMMM.', '..M.M..'],
 ]
-
-function drawRows(b: PixelBuffer, rows: string[], x: number, y: number, colors: Record<string, number>, isMirrored = false) {
-  rows.forEach((row, dy) => {
-    const cells = isMirrored ? [...row].reverse() : [...row]
-    cells.forEach((ch, dx) => {
-      const c = colors[ch]
-      if (c !== undefined) setPixel(b, x + dx, y + dy, c)
-    })
-  })
-}
 
 function drawDesk(b: PixelBuffer, x: number, hasLegs: boolean) {
   fillRect(b, x, DESK_Y, 7, 1, C.wood)
@@ -67,7 +59,7 @@ function drawHelper(b: PixelBuffer, h: Helper, t: number) {
     drawDesk(b, h.x, true)
     // The laptop's light dims for a moment now and then, at each seat's own time.
     const isLit = (t + seat * 0.37) % 1.5 < 1.2
-    drawRows(b, SEATED, h.x, SEATED_TOP, { M: color, E: EYE_DARK, L: LAPTOP, o: isLit ? LAPTOP_LIGHT : LAPTOP })
+    drawSprite(b, { palette: { M: color, E: EYE_DARK, L: LAPTOP, o: isLit ? LAPTOP_LIGHT : LAPTOP }, frames: [SEATED] }, 0, h.x, SEATED_TOP)
     // The claws tap in turns at the laptop's edges.
     const beat = every(t + seat * 0.125, 0.25) % 2
     setPixel(b, h.x, SEATED_TOP + 2 + beat, color)
@@ -79,15 +71,14 @@ function drawHelper(b: PixelBuffer, h: Helper, t: number) {
   if (h.pose === 'hop') {
     // Up off the seat, the desk folding away under it.
     drawDesk(b, h.x, false)
-    drawRows(b, SEATED.slice(0, 3), h.x, SEATED_TOP - 1, { M: color, E: EYE_DARK })
+    drawSprite(b, { palette: { M: color, E: EYE_DARK }, frames: [HOPPING] }, 0, h.x, SEATED_TOP - 1)
     setPixel(b, h.x, SEATED_TOP + 1, color)
     setPixel(b, h.x + 6, SEATED_TOP + 1, color)
 
     return
   }
-  const rows = WALKING[h.stride % 2]!
   const isLeft = h.pose === 'walk-in'
-  drawRows(b, rows, h.x, WALKING_TOP, { M: color, E: EYE_DARK }, isLeft)
+  drawSprite(b, { palette: { M: color, E: EYE_DARK }, frames: WALKING }, h.stride, h.x, WALKING_TOP, isLeft)
   if (h.entry.kind === 'fable') setPixel(b, isLeft ? h.x + 1 : h.x + 5, WALKING_TOP + 1, MONOCLE)
 }
 

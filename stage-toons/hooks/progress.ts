@@ -4,7 +4,7 @@
 // workflow elsewhere.
 
 import type { HistoryEntry, Progress, StageId } from '../types'
-import { VIA_MAX } from './auto'
+import { isWindowsPath, VIA_MAX } from './auto'
 import { cut, FEATURE_MAX, freshProgress, HISTORY_MAX, MESSAGE_MAX, NOT_TRACKED } from './stages'
 
 export type KV = {
@@ -16,8 +16,9 @@ export type KV = {
 // lowercased, since its spellings name the same directory.
 export function storeKey(cwd: string): string {
   let dir = cwd.replace(/\\/g, '/')
-  while (dir.length > 1 && dir.endsWith('/') && !/^[A-Za-z]:\/$/.test(dir)) dir = dir.slice(0, -1)
-  if (/^[A-Za-z]:/.test(dir)) dir = dir.toLowerCase()
+  // A drive's root (C:/) keeps its slash.
+  while (dir.length > 1 && dir.endsWith('/') && !(isWindowsPath(dir) && dir.length === 3)) dir = dir.slice(0, -1)
+  if (isWindowsPath(dir)) dir = dir.toLowerCase()
 
   return `progress:${dir}`
 }

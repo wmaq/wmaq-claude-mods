@@ -27,6 +27,14 @@ test('sprites draw their frame and skip transparent pixels', () => {
   expect(getPixel(b, 0, 1)).toBe(0x111111)
 })
 
+test('a mirrored sprite reads each row back to front', () => {
+  const arrow: Sprite = { palette: { x: 0x111111, y: 0x222222 }, frames: [['xy.', '.xy']] }
+  const b = createBuffer(3, 2)
+  drawSprite(b, arrow, 0, 0, 0, true)
+  expect([0, 1, 2].map(x => getPixel(b, x, 0))).toEqual([EMPTY, 0x222222, 0x111111])
+  expect([0, 1, 2].map(x => getPixel(b, x, 1))).toEqual([0x222222, 0x111111, EMPTY])
+})
+
 test('a scene loops in time and paints backdrop, actors, then front', () => {
   const a = renderFull(scene, 0.5)
   expect(a.w).toBe(STAGE_W)

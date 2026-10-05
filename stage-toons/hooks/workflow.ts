@@ -3,9 +3,10 @@
 // is the workflow stage-toons ships with.
 
 import type { StageDef, Workflow } from '../types'
-import { rulesAt, unknownFrom } from './auto'
+import { chars, rulesAt, unknownFrom } from './auto'
 
 export type { StageDef, Workflow }
+export { isTrack, rank } from './track'
 
 // What plays while the work is in no stage of the workflow.
 export const UNTRACKED_SCENE = 'mystery-box'
@@ -48,11 +49,6 @@ export const stageIds = (w: Workflow): string[] => [...w.track, ...w.side].map(s
 export const stageOf = (w: Workflow, id: string | null): StageDef | undefined =>
   id === null ? undefined : (w.track.find(s => s.id === id) ?? w.side.find(s => s.id === id))
 
-export const isTrack = (w: Workflow, id: string | null): boolean => id !== null && w.track.some(s => s.id === id)
-
-// A stage's place on the track from 0, or -1 off it.
-export const rank = (w: Workflow, id: string | null): number => (id === null ? -1 : w.track.findIndex(s => s.id === id))
-
 // Where /stage 0 and /stage ? go: Other, else the first side stage.
 export const zeroStage = (w: Workflow): StageDef | undefined => w.side.find(s => s.id === 'other') ?? w.side[0]
 
@@ -77,8 +73,6 @@ const NOT_FOR_STAGES: Record<string, string> = {
   'fable-audit': 'plays while a Fable subagent runs, whatever the stage',
   standing: 'is the fallback for a scene that breaks',
 }
-
-const chars = (text: string): number => Array.from(text).length
 
 // A scene name a stage may use; otherwise its error, at `at`.
 function isStageScene(name: string, at: string, errors: string[], sceneNames: readonly string[]): boolean {

@@ -4,6 +4,7 @@
 // side stage.
 
 import type { AutoRule, Progress, StageId, Workflow } from '../types'
+import { rank, standing } from './track'
 
 export type { AutoRule }
 
@@ -33,7 +34,8 @@ const LIMITS: Record<Kind, number> = { skill: 60, agent: 60, write: 120, bash: 1
 const kindOf = (rule: AutoRule): Kind => KINDS.find(k => k in rule)!
 const valueOf = (rule: AutoRule): string => (rule as Record<Kind, string>)[kindOf(rule)]
 
-const chars = (text: string): number => Array.from(text).length
+// A text's length in code points, as the limits count it.
+export const chars = (text: string): number => Array.from(text).length
 
 // One rule: exactly one kind, and perhaps from. The ids in from are checked
 // against the workflow once all its stages are read (unknownFrom).
@@ -217,14 +219,6 @@ export function ruleMatches(rule: AutoRule, signal: Signal, isWindows: boolean):
       }
   }
 }
-
-// A stage's place on the track from 0, or -1 off it. (workflow.ts has the
-// same lookups, but imports this module to read rules.)
-const rank = (w: Workflow, id: StageId | null): number => (id === null ? -1 : w.track.findIndex(s => s.id === id))
-
-// Where the work stands on the track: its track stage, or the one a side
-// stage returns to; -1 untracked.
-const standing = (w: Workflow, p: Progress): number => (rank(w, p.stage) >= 0 ? rank(w, p.stage) : rank(w, p.lastTrackStage))
 
 // The stage what was done moves the work to, or null: the first stage, in
 // workflow order, with a rule that matches and may move the work there. A
