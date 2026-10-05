@@ -6,6 +6,28 @@ release (departures from the spec, review findings, live checks) are in its
 spec and plan under `docs/superpowers/`, the hand-offs in `docs/handoffs/`
 and the git history.
 
+## 0.8.0 (2026-10-05)
+
+Roadmap phase 3, "done" after a merge (#17), built by a cloud session from
+the approved spec and plan (`docs/superpowers/specs/2026-10-05-stage-toons-done-design.md`,
+`docs/superpowers/plans/2026-10-05-stage-toons-done.md`) and tested
+locally, the hot reload over a 0.7.0 session included. Hand-off:
+`docs/handoffs/2026-10-05-stage-toons-done.md`.
+- **Done**, a stage past the track (`/stage done`, `/stage next` from
+  the last stage, or a merge rule on `git push … main` or `gh pr merge`
+  during Your testing or Cleanup): the whole track lit with a tick,
+  confetti, a fireworks scene while Claude works and a celebration while
+  idle. It takes no time in `/stage time`; a move back is a reopen that
+  keeps the feature, any other move starts a new round. From Done only a
+  skill the person types moves the work by itself.
+- The workflow file takes a `done` section (`message`, `scenes`,
+  `auto`); a file with no rules anywhere gets the default's merge rules.
+- **Idle props:** after a forward move, the next idle period shows the
+  finished stage's prop once (a page with a tick for a stage of your own);
+  a move typed while Claude waits shows it at once.
+- The frame tool draws `idle celebrate`, `idle show-off:<id>` and
+  `band --idle <routine>`.
+
 ## 0.7.0 (2026-10-05)
 
 Roadmap phases 1 and 2, built by a cloud session while the person was

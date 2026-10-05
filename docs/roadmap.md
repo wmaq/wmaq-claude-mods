@@ -8,10 +8,11 @@ the workflow's step 10).
 
 ### Where things stand
 
-0.7.0 is on `main`: automatic moves and history with cost per stage, the
-waiting toon, 37 scenes dealt like a deck and 5 idle routines, per-project
-settings, and the frame tool (`tools/frames/`) for checking the drawing
-from a cloud session. Phases 1 and 2 of the plan below are done. History:
+0.8.0 is on `main`: automatic moves and history with cost per stage, the
+waiting toon, 38 scenes dealt like a deck, 5 idle routines with a prop
+show-off and a celebration, Done after a merge, per-project settings, and
+the frame tool (`tools/frames/`) for checking the drawing from a cloud
+session. Phases 1 to 3 of the plan below are done. History:
 `stage-toons/CHANGELOG.md`. Sources for what comes next: the research
 report (`docs/research/2026-10-04-stage-toons-improvement-ideas.md`, ideas
 #1-#30) and the code review (`docs/reviews/2026-10-04-code-review.md`).
@@ -49,6 +50,16 @@ Leftovers the plan schedules are listed in their phase instead.
   tokens are summed in the mod, not `$.state`: a hot reload mid-turn loses
   them, and those of background agents ending in an untracked turn are
   dropped.
+- **Done (phase 3):** the push rule also matches `git push origin main
+  --dry-run` and `git push origin :main` (Done comes early; `/stage
+  back` undoes it). After a typed skill moves the work out of Done, the
+  note to Claude doesn't ask for the new feature's name, so the bar reads
+  "no feature" until `set_stage` names one. `/stage demo idle` gives
+  each prop 2 s, too short for the turn-over and the glance. The README
+  doesn't say that a `master` or `trunk` default branch needs its own
+  `done` rule (or `/stage done`). From Done, typing a skill for a track
+  stage earlier than the one Done came from starts a new round (clearing
+  the feature); it could count as a reopen.
 
 ### The plan after the frame tool (agreed 2026-10-04)
 
@@ -73,14 +84,7 @@ Decided in the discussion:
 
 The phases run in order; each feature takes the full workflow, spec and
 plan included. (Phases 1 and 2, the polish pass and the hook wins, shipped
-in 0.7.0.)
-
-**Phase 3: "done" after a merge, with a celebration** (#17). Past the last
-stage: the track all lit and the feature closed in the history, set by a
-rule (a merge to `main`) or by hand; the idle Clawd's routine follows the
-last finished step (a celebration after a merge, holding the spec after
-the spec stage). It changes the band's drawing, which the frame tool now
-lets a cloud session check.
+in 0.7.0; phase 3, "done" after a merge, in 0.8.0.)
 
 **Phase 4: richer art.** Roughly in this order, the groundwork first:
 - **Stage scenes below the bar, like everything else** (the person's
