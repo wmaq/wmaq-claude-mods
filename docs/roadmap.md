@@ -86,7 +86,11 @@ The phases run in order; each feature takes the full workflow, spec and
 plan included. (Phases 1 and 2, the polish pass and the hook wins, shipped
 in 0.7.0; phase 3, "done" after a merge, in 0.8.0.)
 
-**Phase 4: richer art.** Roughly in this order, the groundwork first:
+**Phase 4: richer art.** Split into five sub-phases (the person, 2026-10-05),
+run in this order. Each is its own release, tested and merged before the
+next starts, in a thread and branch of its own.
+
+**4a, Clawd in one place.** The groundwork:
 - **Stage scenes below the bar, like everything else** (the person's
   request, 2026-10-04). Today a stage's scenes play under the spinner,
   above the bar, while the demos, the idle Clawd and the waiting toon play
@@ -100,6 +104,8 @@ in 0.7.0; phase 3, "done" after a merge, in 0.8.0.)
   row already shows the agents; Fable's arrival and the reactions move
   with the scene and look the same. It comes first because the rest of
   this phase draws into the canvas it settles.
+
+**4b, smoother scenes.** How a frame is put together:
 - **Z layers** for scenes: a depth per actor and prop instead of the fixed
   paint order (backdrop, actors, front), so Nyan's rainbow starts right
   behind Clawd's body and props pass in front of or behind him.
@@ -109,6 +115,8 @@ in 0.7.0; phase 3, "done" after a merge, in 0.8.0.)
   scenes restart a build-up at their loop point (sweeping's shelf,
   road-trip's flags, sticky-notes' board, clipboard, blueprint, dominoes,
   gift, writing-desk); a dissolve at the loop point would soften them all.
+
+**4c, Clawd follows the work.**
 - **Clawd's pose follows the spinner's mode** (#15): thinking, responding,
   tool use.
 - **Phases inside a stage** (#20): overlays for testing, building, git and
@@ -116,13 +124,15 @@ in 0.7.0; phase 3, "done" after a merge, in 0.8.0.)
   speech bubbles with fixed lines. Generalises the failure reaction.
 - **Progress inside a stage** (#21): N of M plan boxes ticked, under
   Develop.
+
+**4d, more waiting scenes.**
 - **More waiting scenes** (#27): the helpers building, rowing, ...,
   picked at random like a stage's scenes, under the seat log's rules.
+
+**4e, a wider canvas.**
 - **A width-adaptive canvas** (#25): the toon, the idle box and the demo
   grow with the terminal or are set in the workflow file. Every scene is
   reworked, so it comes after the others.
-- **Pet or drag Clawd** (#29): a `Client` surface with pointer input;
-  terminal and desktop only, early access.
 
 **Phase 5: sharing.**
 - **Community readiness** (#22): a GIF for the README, a CHANGELOG drawn
@@ -145,8 +155,9 @@ in 0.7.0; phase 3, "done" after a merge, in 0.8.0.)
   known to reach the app; needs the person's devices to check first.
 - Calm mode (#10): the bar stays, the rasters hold still.
 
-**Parked:** #13 (un-defer `set_stage`: tokens on every request for one
-tool) and #14 (a status line; off by default if ever built). **Ruled out**
+**Dropped:** #29 (pet or drag Clawd with the pointer; the person,
+2026-10-05: not worth it in a terminal). **Parked:** #13 (un-defer
+`set_stage`: tokens on every request for one tool) and #14 (a status line; off by default if ever built). **Ruled out**
 by the research: sound (`$.audio` plays only on macOS), model-written
 scenes or summaries (token cost; breaks the no-model-requests promise),
 `turn.step` streaming, the kitty image protocol.
