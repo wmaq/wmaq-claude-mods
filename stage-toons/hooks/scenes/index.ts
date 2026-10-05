@@ -42,7 +42,9 @@ import { waitingBench } from './waiting-bench'
 import { workbench } from './workbench'
 import { writingDesk } from './writing-desk'
 
-export const SCENES: Record<SceneId, Scene> = {
+// The table as written: `satisfies` checks it is a valid scene table but
+// keeps its own type, so its exact keys make LibraryScene.
+const LIBRARY = {
   'road-trip': roadTrip,
   'light-bulbs': lightBulbs,
   'writing-desk': writingDesk,
@@ -81,7 +83,15 @@ export const SCENES: Record<SceneId, Scene> = {
   recycling,
   'bug-net': bugNet,
   dice,
-}
+} satisfies Record<SceneId, Scene>
+
+// A scene's name in the library, checked by tsc: what the default workflow
+// and the fixed scenes (Fable's, the fallback, the untracked one) are typed
+// with. Names read from files and state stay SceneId (any string).
+export type LibraryScene = keyof typeof LIBRARY
+
+// The library, indexed by any string (a name from a file may be unknown).
+export const SCENES: Record<SceneId, Scene> = LIBRARY
 
 // What a stage may play: not Fable's scene (it plays while a Fable subagent
 // runs, whatever the stage) nor the fallback.

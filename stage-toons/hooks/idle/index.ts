@@ -19,8 +19,17 @@ export type { IdleRoutine } from './routine'
 
 export const IDLE_COLS = 26
 export const IDLE_ROWS = 4
-export const FALLBACK_ROUTINE = 'classic'
-export const ROUTINES: Record<IdleId, IdleRoutine> = { classic, nyan, coffee, reading, 'yo-yo': yoYo }
+// The routines as written: `satisfies` checks the table but keeps its own
+// type, so its exact keys make RoutineName.
+const LIBRARY = { classic, nyan, coffee, reading, 'yo-yo': yoYo } satisfies Record<IdleId, IdleRoutine>
+
+// A routine's name in the library, checked by tsc. Names read from state
+// stay IdleId (any string).
+export type RoutineName = keyof typeof LIBRARY
+
+export const FALLBACK_ROUTINE: RoutineName = 'classic'
+// The library, indexed by any string (a saved name may be unknown).
+export const ROUTINES: Record<IdleId, IdleRoutine> = LIBRARY
 export const IDLE_IDS: readonly IdleId[] = Object.keys(ROUTINES)
 
 export const pickIdle = (previous: IdleId | undefined, random: number): IdleId => pickOne(IDLE_IDS, previous, random)

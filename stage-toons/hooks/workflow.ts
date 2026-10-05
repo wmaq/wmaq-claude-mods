@@ -4,12 +4,17 @@
 
 import type { StageDef, Workflow } from '../types'
 import { chars, rulesAt, unknownFrom } from './auto'
+import type { LibraryScene } from './scenes'
 
 export type { StageDef, Workflow }
 export { isTrack, rank } from './track'
 
 // What plays while the work is in no stage of the workflow.
-export const UNTRACKED_SCENE = 'mystery-box'
+export const UNTRACKED_SCENE: LibraryScene = 'mystery-box'
+
+// A default stage names scenes of the library only: a misspelt one is a tsc
+// error. (A workflow file's stages are checked when it is read.)
+type DefaultStage = StageDef & { scenes: readonly LibraryScene[] }
 
 export const DEFAULT_WORKFLOW: Workflow = {
   track: [
@@ -42,7 +47,7 @@ export const DEFAULT_WORKFLOW: Workflow = {
     { id: 'debugging', label: 'Debugging', message: 'Hunting a bug', when: 'finding and fixing a bug, at any point', scenes: ['bug-hunt', 'flashlight', 'bug-net'], auto: [{ skill: 'superpowers:systematic-debugging' }] },
     { id: 'other', label: 'Other', message: 'Work outside the usual stages', when: 'work that fits none of the stages', scenes: ['mystery-box', 'fishing', 'dice'] },
   ],
-}
+} satisfies { track: readonly DefaultStage[]; side: readonly DefaultStage[] }
 
 export const stageIds = (w: Workflow): string[] => [...w.track, ...w.side].map(s => s.id)
 

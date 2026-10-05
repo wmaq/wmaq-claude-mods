@@ -3,6 +3,7 @@
 
 import { type ClawdLook, drawClawd } from './clawd'
 import { createBuffer, EMPTY, type PixelBuffer, type Point, setPixel } from './pixels'
+import type { LibraryScene } from './scenes'
 
 export const STAGE_W = 48
 export const STAGE_H = 14
@@ -13,8 +14,8 @@ export const CLAWD_TOP = 6
 export type SceneId = string
 // Fable's scene, played while a Fable subagent runs, and the scene that
 // stands in for one that breaks.
-export const FABLE_SCENE = 'fable-audit'
-export const FALLBACK_SCENE = 'standing'
+export const FABLE_SCENE: LibraryScene = 'fable-audit'
+export const FALLBACK_SCENE: LibraryScene = 'standing'
 export type ReactionId = 'failure' | 'advance' | 'fable-arrives' | 'fable-leaves'
 export type Mood = 'flinch' | 'jump' | null
 
