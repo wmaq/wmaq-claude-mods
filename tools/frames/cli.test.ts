@@ -49,3 +49,33 @@ test('an option the command does not take is an error, so a typo is not drawn wi
   assert.throws(() => main(['scene', 'dice', '--bogus', '1']), /unknown option --bogus for scene/)
   assert.throws(() => main(['idle', 'classic', '--agents', 'fable']), /unknown option --agents for idle/)
 })
+
+test('--width, --columns, --scale and --columns-per-row below 1 are errors', () => {
+  const out = join(dir, 'never.png')
+  for (const [args, name] of [
+    [['scene', 'dice', '--width', '0'], '--width'],
+    [['band', '--stage', 'plan', '--columns', '0'], '--columns'],
+    [['waiting', '--agents', 'fable', '--columns', '0'], '--columns'],
+    [['scene', 'dice', '--scale', '0'], '--scale'],
+    [['scene', 'dice', '--columns-per-row', '0'], '--columns-per-row'],
+  ] as const) {
+    assert.throws(() => main([...args, '--count', '1', '--out', out]), new RegExp(`${name} must be at least 1, not "0"`))
+  }
+  assert.throws(() => main(['scene', 'dice', '--scale', '-1']), /--scale must be a whole number/)
+})
+
+test('band and waiting refuse a stray positional id', () => {
+  assert.throws(() => main(['band', 'plan', '--stage', 'plan']), /unexpected "plan" for band\nusage:/)
+  assert.throws(() => main(['waiting', 'fable', '--agents', 'fable']), /unexpected "fable" for waiting\nusage:/)
+})
+
+test('a missing --workflow file says so in one line', () => {
+  const path = join(dir, 'nope.json')
+  assert.throws(() => main(['band', '--stage', 'plan', '--workflow', path]), (e: Error) => e.message === `no workflow file at ${path}`)
+})
+
+test('waiting takes --columns, the area\'s width', () => {
+  const out = join(dir, 'narrow.png')
+  const result = main(['waiting', '--agents', 'fable,opus', '--columns', '30', '--count', '2', '--columns-per-row', '2', '--out', out])
+  assert.equal(result.width, (2 * (30 + 1) + 1) * 8)
+})

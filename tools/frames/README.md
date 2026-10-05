@@ -25,12 +25,13 @@ npx -y tsx tools/frames/cli.ts band --stage plan --feature "frame tool" --agents
 |---|---|
 | `scene <id> [--reaction advance\|failure] [--auditing] [--width N]` | the toon under the spinner (48 columns by default); `--auditing` plays Fable's walk-in over it from time 0 |
 | `idle <routine> [--doze]` | the area's idle Clawd, the idle period starting at 0; `--doze` from the doze on (still after 5 minutes) |
-| `waiting --agents a,b,…` | the desk row: a helper per agent, coloured by model family (`fable`, `sonnet`, `opus`, `haiku`; anything else grey), arriving from time 0 |
+| `waiting --agents a,b,… [--columns N]` | the desk row: a helper per agent, coloured by model family (`fable`, `sonnet`, `opus`, `haiku`; anything else grey), arriving from time 0; `--columns` is the area's width (48 by default) |
 | `band --stage <id> [--feature F] [--message M] [--columns N] [--max-rows N] [--agents …] [--auditing] [--working] [--workflow file.json]` | the band: the bar's lines (100 columns by default), and under them the idle Clawd, or the waiting toon with `--agents`; `--working` draws the bar alone |
 
 Common options: `--from MS` (0), `--every MS` (250), `--count N` (16),
 `--columns-per-row N` (4), `--scale N` (1), `--out file.png` (default
-`frames-<what>-<id>.png` here). Each frame is captioned with its time.
+`frames-<what>-<id>.png` here). Each frame is captioned with its time. `--width`, `--columns`, `--scale`
+and `--columns-per-row` must be at least 1; `--count` too.
 
 **What it gets right, and what not.** The cells, the colours, the layout,
 the widths and every pixel of the art are the mod's own. Text is drawn
