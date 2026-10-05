@@ -1,6 +1,9 @@
 // The pictures the tool draws, built from stage-toons' own modules the way
 // its hooks build them, at chosen moments: a scene as the area plays it
-// while Claude works, the idle Clawd, the waiting toon, and the whole band.
+// while Claude works, the idle Clawd, the waiting toon, a turn's start and
+// end, and the whole band. Each sheet's frames are drawn in time order on
+// one mod, as the paint loop draws them, so a dissolve starts at the first
+// sample after a change.
 
 import type { Workflow } from '../../stage-toons/types'
 import { spawned } from '../../stage-toons/hooks/agents'
@@ -40,18 +43,24 @@ function cellsCanvas(cells: string, columns: number, rows: number): Canvas {
 
 export type SceneOptions = { reaction?: 'advance' | 'failure'; auditing?: boolean; width?: number }
 
-// The area while Claude works, as its paint loop composes it (areaCells),
-// the director set up with this scene at time 0.
-export function sceneFrames(id: string, opts: SceneOptions, times: readonly number[]): Canvas[] {
-  known('scene', id, SCENE_IDS)
+// A mod whose area plays this scene while Claude works, the scene coming on
+// at time 0 (a reaction or Fable's walk-in from 0 too).
+function workingMod(id: string, auditing: boolean, reaction?: 'advance' | 'failure'): Mod {
   const mod = createMod()
   mod.isBandWorking = true
   mod.director = createDirector(id, false)
-  if (opts.auditing) mod.director = withAuditing(mod.director, true, 0)
-  if (opts.reaction) mod.director = react(mod.director, opts.reaction, 0)
+  if (auditing) mod.director = withAuditing(mod.director, true, 0)
+  if (reaction) mod.director = react(mod.director, reaction, 0)
+
+  return mod
+}
+
+// The area while Claude works, as its paint loop composes it (areaCells).
+export function sceneFrames(id: string, opts: SceneOptions, times: readonly number[]): Canvas[] {
+  known('scene', id, SCENE_IDS)
   const width = opts.width ?? STAGE_W
 
-  return times.map(t => cellsCanvas(areaCells(mod, width, t, quiet) ?? '', width, TOON_ROWS))
+  return areaFrames(workingMod(id, opts.auditing ?? false, opts.reaction), width, times).map(cells => cellsCanvas(cells, width, TOON_ROWS))
 }
 
 // The idle Clawd in the band's area, the idle period starting at time 0;
@@ -79,8 +88,9 @@ function waitingMod(agents: readonly string[]): Mod {
   return mod
 }
 
-// The area's frames over time, on one mod in time order: the helpers sit
-// down as the area first sees them, at time 0.
+// The area's frames over time, on one mod in time order, the area first
+// drawn at time 0: the helpers sit down as it first sees them, and a
+// working scene comes on then.
 function areaFrames(mod: Mod, columns: number, times: readonly number[]): string[] {
   areaCells(mod, columns, 0, quiet)
 
@@ -148,11 +158,7 @@ export function bandFrames(opts: BandOptions, times: readonly number[]): Canvas[
   let area: string[] = []
   if (hasArea) {
     if (opts.working) {
-      const mod = createMod()
-      mod.isBandWorking = true
-      mod.director = createDirector(opts.scene ?? stageOf(w, opts.stage)?.scenes[0] ?? FALLBACK_SCENE, false)
-      if (opts.auditing) mod.director = withAuditing(mod.director, true, 0)
-      area = times.map(t => areaCells(mod, areaWidth, t, quiet) ?? '')
+      area = areaFrames(workingMod(opts.scene ?? stageOf(w, opts.stage)?.scenes[0] ?? FALLBACK_SCENE, opts.auditing ?? false), areaWidth, times)
     } else if (agents.length > 0) area = areaFrames(waitingMod(agents), areaWidth, times)
     else {
       const mod = createMod()
@@ -171,5 +177,43 @@ export function bandFrames(opts: BandOptions, times: readonly number[]): Canvas[
     if (hasArea) drawCells(c, 0, lines.length, area[i]!, areaWidth, TOON_ROWS)
 
     return c
+  })
+}
+
+export type TurnOptions = { stage?: string; scene?: string; idle?: string; start?: number; end?: number; columns?: number }
+
+// The area through one turn: the idle Clawd (classic, or the routine asked
+// for) until start, the stage's scene (its first, or the one asked for)
+// until end, then the idle Clawd again, his idle period starting at end.
+// Both edges dissolve.
+export function turnFrames(opts: TurnOptions, times: readonly number[]): Canvas[] {
+  const w = DEFAULT_WORKFLOW
+  if (opts.stage !== undefined) known('stage', opts.stage, stageIds(w))
+  if (opts.scene !== undefined) known('scene', opts.scene, SCENE_IDS)
+  if (opts.idle !== undefined) knownRoutine(opts.idle)
+  const start = opts.start ?? 1000
+  const end = opts.end ?? 5000
+  if (end < start) throw new Error(`--end (${end}) is before --start (${start})`)
+  const columns = opts.columns ?? STAGE_W
+  const mod = createMod()
+  mod.idleSince = 0
+  if (opts.idle !== undefined) mod.idle = opts.idle
+  mod.director = createDirector(opts.scene ?? (opts.stage === undefined ? undefined : stageOf(w, opts.stage)?.scenes[0]) ?? FALLBACK_SCENE, false)
+  const at = (t: number) => {
+    mod.isBandWorking = t >= start && t < end
+    if (t >= end && mod.idleSince < end) mod.idleSince = end
+
+    return areaCells(mod, columns, t, quiet) ?? ''
+  }
+  // The turn's edges are drawn when they come, sampled or not, so each
+  // dissolve starts on time.
+  let drawnTo = 0
+  at(0)
+
+  return times.map(t => {
+    for (const edge of [start, end]) if (edge > drawnTo && edge < t) at(edge)
+    drawnTo = t
+
+    return cellsCanvas(at(t), columns, TOON_ROWS)
   })
 }

@@ -102,3 +102,11 @@ test('band takes --idle, the routine under the bar', () => {
   const result = main(['band', '--stage', 'done', '--idle', 'celebrate', '--columns', '80', '--count', '1', '--out', out])
   assert.equal(result.height, (2 + 7 + 1 + 2) * 16)
 })
+
+test('turn draws the area through a turn, 500 ms apart unless told, and takes no id', () => {
+  const out = join(dir, 'turn.png')
+  const result = main(['turn', '--stage', 'develop', '--count', '2', '--columns-per-row', '2', '--out', out])
+  assert.deepEqual(result, { path: out, width: (2 * (48 + 1) + 1) * 8, height: (7 + 1 + 2) * 16 })
+  assert.throws(() => main(['turn', 'dice']), /unexpected "dice" for turn/)
+  assert.throws(() => main(['turn', '--working']), /unknown option --working for turn/)
+})

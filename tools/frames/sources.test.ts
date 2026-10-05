@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import { hex } from '../../stage-toons/hooks/pixels'
 import { HELPER_COLORS } from '../../stage-toons/hooks/waiting'
 import { CELL_H, CELL_W, type Canvas } from './grid'
-import { bandFrames, idleFrames, sceneFrames, waitingFrames } from './sources'
+import { bandFrames, idleFrames, sceneFrames, turnFrames, waitingFrames } from './sources'
 
 const has = (c: Canvas, colour: number) => c.px.includes(colour)
 
@@ -83,4 +83,34 @@ test('the band in Done draws with the idle routine asked for under it', () => {
   const [celebrating] = bandFrames({ stage: 'done', columns: 100, idle: 'celebrate' }, [500])
   assert.equal(celebrating!.rows, 2 + 7)
   assert.notDeepEqual(celebrating!.px, classic!.px)
+})
+
+test('a turn: the idle Clawd, a dissolve into the scene at the start, the scene, a dissolve back at the end', () => {
+  const [idle, startFade, scene, endFade, after] = turnFrames({ scene: 'dice' }, [500, 1250, 3000, 5250, 6000])
+  const same = (a: Canvas, b: Canvas) => a.px.every((v, i) => v === b.px[i])
+  assert.ok(same(idle!, idleFrames('classic', false, [500])[0]!))
+  // Halfway through each dissolve, the frame is neither picture.
+  const sceneAt = (ms: number) => sceneFrames('dice', {}, [ms])[0]!
+  assert.ok(!same(startFade!, sceneAt(250)))
+  assert.ok(!same(endFade!, scene!))
+  // The scene came on at the turn's start, from its beginning.
+  assert.ok(same(scene!, sceneAt(2000)))
+  // After the end, the idle Clawd again, his idle period from the turn's end.
+  assert.ok(same(after!, idleFrames('classic', false, [1000])[0]!))
+})
+
+test("a turn's options are checked", () => {
+  assert.throws(() => turnFrames({ scene: 'nope' }, [0]), /unknown scene "nope"/)
+  assert.throws(() => turnFrames({ stage: 'nope' }, [0]), /unknown stage "nope"/)
+  assert.throws(() => turnFrames({ idle: 'nope' }, [0]), /unknown idle routine "nope"/)
+  assert.throws(() => turnFrames({ start: 3000, end: 2000 }, [0]), /--end \(2000\) is before --start \(3000\)/)
+})
+
+test("a scene sampled across a fading scene's loop point shows the seam's dissolve", () => {
+  // sweeping loops at 8 s and fades there.
+  const [before, seam, after] = sceneFrames('sweeping', {}, [7900, 8250, 8600])
+  const alone = sceneFrames('sweeping', {}, [8600])
+  assert.ok(seam!.px.some((v, i) => v !== before!.px[i]))
+  assert.ok(seam!.px.some((v, i) => v !== after!.px[i]))
+  assert.deepEqual(after!.px, alone[0]!.px)
 })
