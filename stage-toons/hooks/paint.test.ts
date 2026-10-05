@@ -9,7 +9,8 @@ const START = 1_000_000
 
 // Stand-in ports: a clock that moves only when the loop sleeps, blits that
 // answer as the test says, and a record of what the loop did.
-function fake(mod: Mod, opts: { cells?: (site: Site, now: number) => string | null; deny?: (n: number) => boolean; stopAt?: number } = {}) {
+// currentUntil: when a newer load of the module takes over.
+function fake(mod: Mod, opts: { cells?: (site: Site, now: number) => string | null; deny?: (n: number) => boolean; stopAt?: number; currentUntil?: number } = {}) {
   let now = START
   const blits: { at: number; key: string; cells: string }[] = []
   const events: string[] = []
@@ -35,6 +36,7 @@ function fake(mod: Mod, opts: { cells?: (site: Site, now: number) => string | nu
       polls += 1
       events.push('poll')
     },
+    isCurrent: async () => opts.currentUntil === undefined || now < opts.currentUntil,
     cells: opts.cells ?? (() => 'A'),
   }
 
@@ -193,4 +195,18 @@ test('a second start while the loop runs is ignored', async () => {
   animate(ports, mod, site)
   await finished(site)
   expect(blits.length).toBe(1)
+})
+
+test('a loop whose load a newer one replaced stops at its next frame, quietly: no redraw, the Raster left to the new load', async () => {
+  const mod = createMod()
+  working(mod)
+  const site = mounted(mod, true)
+  // stopAt bounds the loop should it never stop by itself.
+  const { ports, blits, counts } = fake(mod, { cells: (_, now) => String(now), currentUntil: START + 500, stopAt: START + 2000 })
+  animate(ports, mod, site)
+  await finished(site)
+  expect(blits.length).toBe(7)
+  expect(blits.every(b => b.at < START + 500)).toBe(true)
+  expect(counts().invalidations).toBe(0)
+  expect(site.requestId).toBe('r1')
 })

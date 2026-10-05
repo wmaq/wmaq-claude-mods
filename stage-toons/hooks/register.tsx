@@ -53,6 +53,12 @@ const sectionAtom = atom({ plugin: 'stage-toons', key: 'workflowText' } as const
 const workflowAtom = atom({ plugin: 'stage-toons', key: 'workflow' } as const, null)
 // Whether the store warning was given: kept across a reload, so it shows once a session.
 const warnedAtom = atom({ plugin: 'stage-toons', key: 'warned' } as const, false)
+// The load of this module that runs now. A hot reload cancels only the
+// waits pending as it lands, so a paint loop of the old load can live on,
+// painting its own state into the band's Raster: it stops once this names
+// another load.
+const loadAtom = atom({ plugin: 'stage-toons', key: 'loadId' } as const, null)
+const LOAD_ID = Math.random().toString(36).slice(2, 10)
 // The idle routine for the next idle period: picked when a turn starts, so
 // the band's render (which may not write $.state) only reads it; kept across
 // a hot reload.
@@ -425,6 +431,11 @@ function portsOf($: EngineInterface, mod: Mod): Ports {
     blit: frame => $.ui.blit(frame).catch(() => ({ deny: 'failed' })),
     invalidate: () => $.ui.invalidate('ui.render'),
     pollAgents: () => checkAgents($, mod),
+    isCurrent: async () => {
+      const id = await read($, loadAtom)
+
+      return id === null || id === LOAD_ID
+    },
     cells: (site, now) => areaCells(mod, site.columns, now, log),
   }
 }
@@ -583,6 +594,7 @@ export const register: Register = on => {
 
   on('session.start', async ($, e, next) => {
     const result = await next(e)
+    await update($, loadAtom, () => LOAD_ID)
     const now = await $.clock.now()
     mod.key = storeKey(e.cwd)
     let held = await read($, workflowAtom)

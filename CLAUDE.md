@@ -133,6 +133,11 @@ Learned building stage-toons on 2.1.287 to 2.1.289:
   accepts it. Only a live call shows this.
 - A loop detached from a dispatch (`void (async () => …)()`) needs a
   `.catch(...)`: a pending `$.clock.sleep` rejects when the plugin unloads.
+  Only a pending one: a loop caught between sleeps (awaiting `clock.now`
+  or a blit) when a hot reload lands lives on in the old load, and its
+  blits still reach the plugin's Raster. Each reload can leave another,
+  fighting over the picture. stage-toons' paint loop checks a `loadId`
+  in `$.state` every frame and stops once a newer load wrote its own.
 - A spinner's `requestId` is the agent's id, and a background agent's row has
   its own spinner. `turn.complete` fires for subagent turns too (with
   `agentId`); filter on it.

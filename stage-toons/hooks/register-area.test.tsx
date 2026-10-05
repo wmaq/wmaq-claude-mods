@@ -131,3 +131,20 @@ test("the spinner is Claude Code's own: no toon under it, the main one or an age
   await clock.advance(1000)
   expect(world.blits.filter(b => b.key !== 'area')).toHaveLength(0)
 })
+
+test('the area stops painting once a newer load of the module has taken over the session', async ($, on) => {
+  // What a hot reload leaves: the session's load id is another load's.
+  let newer: string | null = null
+  on('state.get', ($, e, next) => (e.key === 'loadId' && newer !== null ? { value: { value: newer, version: 99 } } : next(e)))
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  await mountBand($, 'terminal', WORKING)
+  await clock.advance(500)
+  const painted = blitsOf(world, 'area').length
+  const redraws = world.invalidations
+  expect(painted).toBeGreaterThan(0)
+  newer = 'a newer load'
+  await clock.advance(2000)
+  expect(blitsOf(world, 'area').length).toBe(painted)
+  expect(world.invalidations).toBe(redraws)
+})

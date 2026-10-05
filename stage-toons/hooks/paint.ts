@@ -11,6 +11,8 @@ export type Ports = {
   blit: (frame: { requestId: string; key: 'area'; cells: string; columns: number; rows: number }) => Promise<{ deny?: string }>
   invalidate: () => void
   pollAgents: () => Promise<void>
+  // Whether the load that started the loop is still the module's current one.
+  isCurrent: () => Promise<boolean>
   // The site's next frame, or null once the demo it plays is over.
   cells: (site: Site, now: number) => string | null
 }
@@ -25,11 +27,18 @@ export function animate(ports: Ports, mod: Mod, site: Site) {
   void (async () => {
     try {
       let refused = 0
+      // A newer load took over: it paints the Raster now, so this loop leaves
+      // it, and the site, as they are.
+      let isReplaced = false
       // The area checks the agent list before its first frame, so an agent
       // that ended while it was away is not drawn seated, then every
       // AGENT_POLL_MS while it knows of agents.
       let polledAt = -Infinity
       while (site.requestId !== undefined && !mod.isHidden && refused < (site.isSeen ? MAX_REFUSED : MAX_REFUSED_UNSEEN)) {
+        if (!(await ports.isCurrent())) {
+          isReplaced = true
+          break
+        }
         const { requestId, columns, rows } = site
         const now = await ports.now()
         if (polledAt === -Infinity) {
@@ -81,7 +90,7 @@ export function animate(ports: Ports, mod: Mod, site: Site) {
       // Refused until it gave up, the band's Raster may be gone for good
       // (the band collapsed) or for now: the hook decides again, and an
       // expanded band repaints instead of standing still.
-      if (site.requestId !== undefined && !mod.isHidden && !site.isAsleep) {
+      if (!isReplaced && site.requestId !== undefined && !mod.isHidden && !site.isAsleep) {
         site.requestId = undefined
         ports.invalidate()
       }

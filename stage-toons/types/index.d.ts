@@ -90,6 +90,10 @@ declare module 'claude-code' {
       // moves it to the session's cost. Kept across a reload, so dollars are
       // neither lost nor counted twice.
       usdCredited: number | null
+      // The id of the module's load that runs now: each load writes its own,
+      // so a paint loop an earlier load left running stops (a hot reload
+      // cancels only the waits pending as it lands).
+      loadId: string | null
     }
   }
 }
