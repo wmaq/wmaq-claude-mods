@@ -44,6 +44,20 @@ stage the work returns to:
  Reproducing the failing login test
 ```
 
+Past the last stage is **Done**: the feature is merged, finished. The
+whole track lights up, the bar reads `✓ Done · <feature>` with "Merged and
+done" under it, Clawd gets the confetti, and the fireworks scene plays:
+
+```
+ ●━●━●━●━●━●━●━●━●━●  ✓ Done · login
+ Merged and done
+```
+
+The next move starts a new round: the feature is cleared (Claude names the
+next one), and the track starts again from the beginning. A move back to
+the stage Done came from (`/stage back`) reopens the feature instead, as
+the undo of a mistaken Done.
+
 This is the default workflow. A project can define its own (below).
 
 ## How the bar moves
@@ -61,7 +75,8 @@ You can move it yourself with `/stage`:
 | `/stage` | Show the stage and the recent moves |
 | `/stage 5`, `/stage plan` | Move to a stage (`0` or `?` for Other) |
 | `/stage debugging` | Move to a side stage by its id |
-| `/stage next`, `/stage back` | One step |
+| `/stage next`, `/stage back` | One step (next from the last stage is Done; from Done, a new round) |
+| `/stage done` | The feature is finished (merged); the next move starts a new one |
 | `/stage feature <name>` | Name the feature (`/stage feature -` clears it) |
 | `/stage message <text>` | Set the message |
 | `/stage hide` | Hide or show the bar and the cartoons |
@@ -93,17 +108,24 @@ workflow and the [superpowers](https://github.com/obra/superpowers) skills:
 | starts a Fable subagent during Plan | Plan audit |
 | loads `superpowers:executing-plans` or `superpowers:subagent-driven-development` | Develop |
 | loads `superpowers:finishing-a-development-branch` | Cleanup |
+| runs `git push … main` or `gh pr merge` during Your testing or Cleanup | Done |
 | loads `superpowers:systematic-debugging` | Debugging |
 
-The bar only moves forward this way (or into a side stage): fixing the
-spec during its audit, or ticking the plan's boxes while developing, moves
-nothing. Only the main conversation counts, not subagents or teammates, and
-only files written with Write or Edit. Claude is told of each such move
-with the result of the call that made it (for a subagent, the call after
-it, as the Agent call answers before the subagent starts), and still calls `set_stage` for
-a better message or any other move. `/stage auto off` turns this off, for
-every project; a workflow file sets its own rules, and may start its
-project's sessions with them off (below).
+The bar only moves forward this way (or into Done, or a side stage):
+fixing the spec during its audit, or ticking the plan's boxes while
+developing, moves nothing. The merge rules match a command at the start of
+a line or after `;`, `&&` or `|`, so a commit message that mentions a push
+doesn't; `gh pr merge --auto` merges nothing yet and doesn't either; a
+push or merge they miss is a `/stage done` away. From Done only a skill
+you type moves the bar by itself (`/superpowers:brainstorming` starts the
+next feature): the chores after a merge, Claude's own, stay in Done. Only
+the main conversation counts, not subagents or teammates, and only files
+written with Write or Edit. Claude is told of each such move with the
+result of the call that made it (for a subagent, the call after it, as the
+Agent call answers before the subagent starts), and still calls
+`set_stage` for a better message or any other move. `/stage auto off`
+turns this off, for every project; a workflow file sets its own rules, and
+may start its project's sessions with them off (below).
 
 ### History
 
@@ -112,11 +134,13 @@ and why) and how long Claude worked in it, for the last 200 moves.
 `/stage log` lists the recent ones with how long each stage lasted;
 `/stage time` totals the time per feature and per stage. Wall-clock time
 counts the hours nobody worked (a night in Your testing); Claude's working
-time is the time its turns ran. Both also show what the work cost, where
-it was counted: dollars as `/cost` totals them (compaction and other
-plugins' model calls included) and the tokens in and out of Claude's
-turns and its agents'. While the session's cost can't be read, the dollars
-wait and go to the stage current when it can again.
+time is the time its turns ran. Done has no wall-clock time, as sitting
+there is no work on the feature: its line says `done`, with Claude's time
+after the merge. Both also show what the work cost, where it was counted:
+dollars as `/cost` totals them (compaction and other plugins' model calls
+included) and the tokens in and out of Claude's turns and its agents'.
+While the session's cost can't be read, the dollars wait and go to the
+stage current when it can again.
 
 ## While Claude waits for you
 
@@ -126,6 +150,16 @@ has five routines: the classic one (he blinks, glances at the prompt and
 the bar, taps a foot), Nyan Clawd, coffee (he sips from a steaming mug),
 reading (he turns the pages of a book) and yo-yo. One is picked each time a
 turn starts. Whichever it is, after a minute he sits down and dozes off.
+
+He marks a step finished, once: after the work moves forward on the track,
+the next idle period has him show off the step's prop (a map for the
+Roadmap, a light bulb for Brainstorm, a scroll for the Spec, a stamped page
+for its audit, a checklist for the Plan, a clipboard for its audit, a
+hammer for Develop, a test tube for Claude testing, a gift for Your
+testing, a broom for Cleanup; a page with a tick for a stage of your own).
+He lifts it, turns it over, then glances at you. In Done he celebrates
+under confetti, every idle period, until the work moves on. A move you
+make while Claude waits shows at once.
 
 ## While Claude waits on agents
 
@@ -173,7 +207,8 @@ status line, a `when` line telling Claude when to move there, and `scenes`:
 ```
 
 A stage may also list `auto` rules: what, done in the main conversation,
-moves the work into it (only forward on the track, or into a side stage).
+moves the work into it (only forward on the track, into Done, or into a
+side stage).
 Each rule has one of `skill` (a skill's name; without a `plugin:` part it
 matches any plugin's skill of that name), `write` (a glob on the file's
 path from the project directory: `**` any run, `*` within a folder, `?`
@@ -212,6 +247,23 @@ neither.
 { "auto": false, "hide": true, "track": [ ... ] }
 ```
 
+Every workflow has Done past its track. The file may set its `message`,
+`scenes` and `auto` rules in a `done` object (each optional; the rules as
+a stage's, up to 8); without it, Done has the default message and scene
+and no rules, as the default's name `user-test` and `cleanup`, which your
+track may not have. The exception is a file in which no stage has an
+`auto` field: Done then takes the default's merge rules too, from
+whichever of `user-test` and `cleanup` the file has. `/stage workflow
+init` writes the default's. A stage's rule may name `done` in its `from`,
+but from Done only a skill you type moves the work:
+
+```json
+"done": {
+  "message": "Shipped",
+  "auto": [{ "bash": "(?:^|[;&|\\n])\\s*npm\\s+publish\\b", "from": ["release"] }]
+}
+```
+
 A stage lists 1 to 5 scenes, dealt like a shuffled deck: each time the
 work enters the stage it shows the next one, every scene once before any
 repeats, never the same twice in a row. The
@@ -226,15 +278,15 @@ sweeping, bug-hunt, mystery-box, and the second and third scene of each
 default stage: stargazing, sticky-notes, blueprint, red-pen, dominoes,
 clipboard, terminal, control-panel, waiting-bench, dishes, flashlight,
 fishing; treasure-map, thought-clouds, scroll, stamp, ladder, scales,
-workbench, crash-test, cake, recycling, bug-net, dice. `/stage demo` plays
-them all, and a 37th, fable-audit, which plays while a
-Fable subagent runs rather than for a stage; `/stage workflow` shows the
-current workflow and its scenes.
+workbench, crash-test, cake, recycling, bug-net, dice; and Done's,
+fireworks. `/stage demo` plays them all, and a 38th, fable-audit, which
+plays while a Fable subagent runs rather than for a stage; `/stage
+workflow` shows the current workflow and its scenes.
 
 Limits: 1 to 15 track stages, up to 5 side stages; ids are lowercase
 letters, digits and dashes, and not one of `/stage`'s words (`next`,
 `back`, `hide`, `demo`, `feature`, `message`, `workflow`, `auto`, `log`,
-`time`, `help`). A mistake in the file is reported with where it
+`time`, `help`, `done`). A mistake in the file is reported with where it
 is, and the session keeps a working workflow.
 
 ## Install
