@@ -70,7 +70,7 @@ test('/stage workflow reload applies the settings even when the stages are uncha
   expect(await bandText($)).toContain('Not tracked yet')
   world.files[FILE] = fileWith({ hide: true, auto: false })
   const invalidations = world.invalidations
-  expect(text(await runStage($, 'workflow reload'))).toBe("workflow unchanged.\nThis project's workflow file starts automatic moves off and the bar hidden.")
+  expect(text(await runStage($, 'workflow reload'))).toBe('workflow unchanged; applied its settings: automatic moves off and the bar hidden.')
   expect(world.invalidations).toBeGreaterThan(invalidations)
   expect(await bandText($)).toBe('(engine)')
   expect(text(await runStage($, 'auto'))).toContain('Automatic moves are off')

@@ -14,7 +14,7 @@ import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { ended, reconcileRoster, rememberKind, spawned } from './agents'
 import { autoMatch, hasRules, type Heard, isWindowsPath, relativePath, type Signal, typedSkill, viaOf } from './auto'
 import { areaColumns, BAR_TONES, bandLayout, bandMode, type BandSite, TOON_MIN, toonColumns } from './band'
-import { autoText, hideText, moveFor, parseCommand, settingsText, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
+import { autoText, hideText, moveFor, parseCommand, settingsText, settingsWords, showText, unknownText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { demoAt, demoFor, demoLine, demoStep, idleDemoAt, idleDemoLine, startDemo, WAITING_DEMO_LINE } from './demo'
 import { createDirector, react, withAuditing, withScene } from './director'
 import { type Log, siteCells } from './frames'
@@ -520,10 +520,12 @@ async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promis
     // The settings ride in the session's workflow: kept for a hot reload.
     mod.workflowSource = next.source
     await update($, workflowAtom, () => next)
-    if (next.source === wasSource) return { text: withStarts('workflow unchanged.') }
+    const words = settingsWords(next.settings)
+    const applied = words === null ? '.' : `; applied its settings: ${words}.`
+    if (next.source === wasSource) return { text: `workflow unchanged${applied}` }
 
     // The same stages from another source: nothing for Claude or the cache.
-    return { text: withStarts(`workflow unchanged (now ${next.source === 'file' ? `from ${WORKFLOW_FILE}` : 'the default'}).`) }
+    return { text: `workflow unchanged (now ${next.source === 'file' ? `from ${WORKFLOW_FILE}` : 'the default'})${applied}` }
   }
   mod.workflow = next.workflow
   mod.workflowSource = next.source
@@ -724,7 +726,8 @@ export const register: Register = on => {
 
       return { text: autoText(mod.workflow, mod.isAuto, (await read($, workflowAtom))?.settings?.auto) }
     }
-    if (cmd.kind === 'usage') return { text: usage(mod.workflow) }
+    if (cmd.kind === 'help') return { text: usage(mod.workflow) }
+    if (cmd.kind === 'usage') return { text: unknownText(mod.workflow, e.args) }
     if (cmd.kind === 'demo' || cmd.kind === 'demo-idle' || cmd.kind === 'demo-waiting') {
       const { demo, label } = demoFor(cmd, mod.workflow, now)
       // The bar's lines with the demo's line under it, at the band's width.

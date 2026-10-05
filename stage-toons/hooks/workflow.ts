@@ -63,7 +63,7 @@ export function stageList(w: Workflow): string {
   return w.side.length > 0 ? `${track}; side: ${w.side.map(s => s.id).join(', ')}` : track
 }
 
-export const RESERVED_IDS = ['next', 'back', 'hide', 'demo', 'feature', 'message', 'workflow', 'auto', 'log', 'time'] as const
+export const RESERVED_IDS = ['next', 'back', 'hide', 'demo', 'feature', 'message', 'workflow', 'auto', 'log', 'time', 'help'] as const
 export const TRACK_MAX = 15
 export const SIDE_MAX = 5
 

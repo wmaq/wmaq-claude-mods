@@ -141,7 +141,7 @@ test('every error is listed with its path', () => {
   expect(errorsOf({ track: [stage('plan', { label: 'x'.repeat(21) })] })).toEqual(['track[0].label: 21 characters, at most 20'])
   expect(errorsOf({ track: [stage('Plan')] })).toEqual(['track[0].id "Plan": lowercase letters, digits and dashes, starting with a letter'])
   expect(errorsOf({ track: [stage('next')] })).toEqual([
-    `track[0].id "next" is one of /stage's words (next, back, hide, demo, feature, message, workflow, auto, log, time)`,
+    `track[0].id "next" is one of /stage's words (next, back, hide, demo, feature, message, workflow, auto, log, time, help)`,
   ])
   expect(errorsOf({ track: [stage('plan'), stage('plan')] })).toEqual(['track[1].id "plan" is used twice'])
   expect(errorsOf({ track: [stage('plan')], side: [stage('plan')] })).toEqual(['side[0].id "plan" is used twice'])

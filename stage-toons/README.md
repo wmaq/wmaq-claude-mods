@@ -74,6 +74,7 @@ You can move it yourself with `/stage`:
 | `/stage auto [on \| off]` | Show the rules that move the stage by itself; turn them on or off |
 | `/stage log [n]` | The last n moves (15; up to 200) with how long each stage lasted |
 | `/stage time` | Time per feature and per stage |
+| `/stage help` | The list of commands (a `/stage` it doesn't understand answers one line, with the stage you may have meant) |
 
 Claude is told about your moves.
 
@@ -233,7 +234,7 @@ current workflow and its scenes.
 Limits: 1 to 15 track stages, up to 5 side stages; ids are lowercase
 letters, digits and dashes, and not one of `/stage`'s words (`next`,
 `back`, `hide`, `demo`, `feature`, `message`, `workflow`, `auto`, `log`,
-`time`). A mistake in the file is reported with where it
+`time`, `help`). A mistake in the file is reported with where it
 is, and the session keeps a working workflow.
 
 ## Install

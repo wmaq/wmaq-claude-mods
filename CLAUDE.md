@@ -278,7 +278,10 @@ PC.
   terminal (a scene, the band, a layout), push the branch and give the
   person what to check: the branch name, the commands to see it
   (`/stage demo <stage>`, `/stage demo waiting`, ...) and what to look
-  for. Termie tests it with them (stage 8's visual part, and 9); carry
+  for. Give each check its starting state and exact steps (`/stage
+  roadmap` first, when a rule only moves forwards; that the repo has no
+  workflow file until `/stage workflow init`; that stage scenes play only
+  while Claude works, or use `/stage demo <stage>`). Termie tests it with them (stage 8's visual part, and 9); carry
   on with work that doesn't depend on the result, and fix what they report
   on the same branch.
 - **Linux, not Windows.** The Git Bash note above doesn't apply. There is

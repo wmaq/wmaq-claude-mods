@@ -165,7 +165,7 @@ test('/stage demo waiting plays the desk row, then the idle routine, then ends; 
   await clock.advance(3_000)
   await ui.redraw()
   expect((await ui.find({ key: 'stage-toons' }))?.text).not.toContain('Waiting demo')
-  expect(text(await runStage($, 'demo waiting 5'))).toContain('Usage')
+  expect(text(await runStage($, 'demo waiting 5'))).toBe('Not a /stage command: demo waiting 5. /stage help lists them all.')
 })
 
 test('agents that arrive during /stage demo waiting walk in after it', async ($, on) => {

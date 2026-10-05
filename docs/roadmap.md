@@ -47,9 +47,7 @@ Leftovers the plan schedules are listed in their phase instead.
   off` or `/stage hide` whose save failed (silently) is undone. Subagent
   tokens are summed in the mod, not `$.state`: a hot reload mid-turn loses
   them, and those of background agents ending in an untracked turn are
-  dropped. A slash command queued while a turn runs may lose its typed
-  skill's move if the engine hears the command when typed and expands the
-  skill after the turn's end (nothing moves; check live).
+  dropped.
 
 ### The plan after the frame tool (agreed 2026-10-04)
 

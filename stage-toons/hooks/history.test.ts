@@ -130,6 +130,8 @@ test('a cost reads as dollars to the cent and tokens in k and M', () => {
   expect(tokenCount(25_000_000)).toBe('25M')
 })
 
+const COST_NOTE = 'Costs count from when stage-toons loaded in each session, so /cost can show more.'
+
 test('/stage log adds each entry’s cost beside Claude’s time, lined up, and the entries without one as before', () => {
   const p = progress([
     { stage: 'spec', at: 0, by: 'claude', feature: 'login', workMs: 30 * MIN, cost: { usd: 3.2, in: 1_200_000, out: 48_000 } },
@@ -140,6 +142,7 @@ test('/stage log adds each entry’s cost beside Claude’s time, lined up, and 
     'login',
     '  3/10 Spec   40m (Claude 30m · $3.20 · 1.2M in, 48k out)   1h ago     by claude',
     `  5/10 Plan   20m so far (Claude <1m)${' '.repeat(20)}   20m ago    by user`,
+    COST_NOTE,
   ])
 })
 
@@ -159,5 +162,6 @@ test('/stage time adds the summed cost to the lines whose entries have one', () 
     '  5/10 Plan                          30m (Claude 5m · $0.25)',
     '  gone (no longer in the workflow)   10m (Claude <1m)',
     'From the last 4 moves, since 1h ago.',
+    COST_NOTE,
   ])
 })

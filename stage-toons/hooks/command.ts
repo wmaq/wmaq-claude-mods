@@ -5,7 +5,7 @@ import { ruleText } from './auto'
 import { DEMO_MAX, DEMO_MIN, DEMO_SECONDS } from './demo'
 import { ago, LOG_DEFAULT } from './history'
 import { applyMove, backStage, describe, HISTORY_MAX, nextStage, parseStage, stageLabel } from './stages'
-import { stageIds, zeroStage } from './workflow'
+import { RESERVED_IDS, stageIds, zeroStage } from './workflow'
 
 export type Command =
   | { kind: 'show' }
@@ -25,6 +25,7 @@ export type Command =
   | { kind: 'auto'; isOn: boolean | null }
   | { kind: 'log'; count: number }
   | { kind: 'time' }
+  | { kind: 'help' }
   | { kind: 'usage' }
 
 export const WORKFLOW_FILE = '.claude/stage-toons.json'
@@ -34,7 +35,7 @@ export function usage(w: Workflow): string {
   const stages = [...w.track.map((s, i) => `${i + 1} ${s.id}`), ...w.side.map(s => (s === zero ? `0 ${s.id}` : s.id))]
 
   return [
-    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo waiting | demo stop | workflow [init | reload] | auto [on | off] | log [n] | time]',
+    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo waiting | demo stop | workflow [init | reload] | auto [on | off] | log [n] | time | help]',
     '  /stage                  show the current stage and the recent moves',
     `  /stage 5, /stage plan   move to a stage${zero ? ` (0 or ? for ${zero.label})` : ''}`,
     '  /stage next, /stage back',
@@ -47,6 +48,7 @@ export function usage(w: Workflow): string {
     "  /stage auto [on | off]  show the workflow's rules for moving the stage by itself; turn them on or off",
     `  /stage log [n]          the last n moves (${LOG_DEFAULT}; up to ${HISTORY_MAX}) with how long each stage lasted`,
     '  /stage time             time per feature and per stage, wall-clock and Claude working',
+    '  /stage help             this list',
     `Stages: ${stages.join(', ')}`,
   ].join('\n')
 }
@@ -83,9 +85,21 @@ export function parseCommand(w: Workflow, args: string): Command {
   if (tail !== '') return { kind: 'usage' }
   if (word === 'next' || word === 'back' || word === 'hide') return { kind: word }
   if (word === 'time') return { kind: 'time' }
+  if (word === 'help') return { kind: 'help' }
   const stage = parseStage(w, word)
 
   return stage ? { kind: 'move', stage } : { kind: 'usage' }
+}
+
+// A /stage it doesn't understand: one line, with the stage it may have
+// meant when a word names one (/stage set plan), unless the first word is
+// a command of its own whose argument was wrong (/stage demo plan 99).
+export function unknownText(w: Workflow, args: string): string {
+  const words = args.trim().split(/\s+/)
+  const isCommand = (RESERVED_IDS as readonly string[]).includes(words[0]!.toLowerCase())
+  const meant = isCommand ? undefined : words.map(word => parseStage(w, word)).find(id => id !== undefined)
+
+  return `Not a /stage command: ${words.join(' ')}.${meant ? ` Did you mean /stage ${meant}?` : ''} /stage help lists them all.`
 }
 
 // Seconds as /stage demo takes them: none for the default, else 2 to 60.
@@ -146,12 +160,20 @@ export function showText(w: Workflow, p: Progress, now: number): string {
 
 // What the project's workflow file starts the session with, or null when
 // it sets nothing.
-export function settingsText(settings: WorkflowSettings | undefined): string | null {
+// What a workflow file's settings start, as words: 'automatic moves off and
+// the bar hidden'; null when it sets neither.
+export function settingsWords(settings: WorkflowSettings | undefined): string | null {
   const parts: string[] = []
   if (settings?.auto !== undefined) parts.push(`automatic moves ${settings.auto ? 'on' : 'off'}`)
   if (settings?.hide !== undefined) parts.push(`the bar ${settings.hide ? 'hidden' : 'shown'}`)
 
-  return parts.length === 0 ? null : `This project's workflow file starts ${parts.join(' and ')}.`
+  return parts.length === 0 ? null : parts.join(' and ')
+}
+
+export function settingsText(settings: WorkflowSettings | undefined): string | null {
+  const words = settingsWords(settings)
+
+  return words === null ? null : `This project's workflow file starts ${words}.`
 }
 
 export function workflowSummary(w: Workflow, source: 'file' | 'default', settings?: WorkflowSettings): string {

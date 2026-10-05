@@ -139,6 +139,10 @@ const widest = (texts: string[]): number => texts.reduce((n, t) => Math.max(n, c
 const pad = (text: string, width: number): string => text + ' '.repeat(Math.max(0, width - cellWidth(text)))
 
 const EMPTY = 'No moves yet: the history starts when the work enters a stage.'
+// Under a list that shows a cost: the dollars start at each session's load
+// of the mod, so they can fall short of /cost's.
+const COST_NOTE = 'Costs count from when stage-toons loaded in each session, so /cost can show more.'
+const withCostNote = (lines: string[], spans: Span[]): string[] => (spans.some(s => s.entry.cost !== undefined) ? [...lines, COST_NOTE] : lines)
 
 // /stage log: the last n entries, oldest first, grouped under their feature.
 export function logText(w: Workflow, p: Progress, now: number, n: number, runningMs = 0): string {
@@ -157,7 +161,7 @@ export function logText(w: Workflow, p: Progress, now: number, n: number, runnin
     lines.push(`  ${pad(labels[i]!, width)}   ${pad(times(s.wallMs, s.workMs, s.isLast, s.entry.cost), timeWidth)}   ${pad(ago(now - s.entry.at), 8)}   ${by}`)
   })
 
-  return lines.join('\n')
+  return withCostNote(lines, shown).join('\n')
 }
 
 // A line's sums; cost only when one of its entries has one.
@@ -191,11 +195,11 @@ export function timeText(w: Workflow, p: Progress, now: number, runningMs = 0): 
   const width = widest([...featureLabels, ...stageLabels])
   const row = (label: string, t: Total) => `  ${pad(label, width)}   ${times(t.wallMs, t.workMs, false, t.cost)}`
 
-  return [
+  return withCostNote([
     'Time per feature:',
     ...features.map((k, i) => row(featureLabels[i]!, byFeature.get(k)!)),
     'Time per stage:',
     ...stages.map((id, i) => row(stageLabels[i]!, byStage.get(id)!)),
     `From the last ${spans.length} move${spans.length === 1 ? '' : 's'}, since ${ago(now - spans[0]!.entry.at)}.`,
-  ].join('\n')
+  ], spans).join('\n')
 }
