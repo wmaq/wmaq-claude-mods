@@ -44,5 +44,9 @@ export function composeFrame(shot: Shot, now: number, width: number, cast: Cast)
     frame = overlay(frame, layer)
   }
 
-  return crop(frame, focusAt(sceneOf(shot.base), time), width)
+  // A reaction plays around the hero: a camera that panned away holds still
+  // on the scene's own focus while it lasts.
+  const base = sceneOf(shot.base)
+
+  return crop(frame, reaction ? base.focusX : focusAt(base, time), width)
 }

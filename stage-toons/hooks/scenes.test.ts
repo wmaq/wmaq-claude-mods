@@ -2,7 +2,7 @@ import { expect, test } from 'claude-code/testing'
 
 import { CLAWD_ORANGE, EYE_DARK, FABLE_VIOLET } from './clawd'
 import { createBuffer, type PixelBuffer } from './pixels'
-import { CLAWD_TOP, heroAt, renderFull, renderScene, type Scene, STAGE_H, STAGE_W } from './scene'
+import { CLAWD_TOP, focusAt, heroAt, renderFull, renderScene, type Scene, STAGE_H, STAGE_W } from './scene'
 import { REACTIONS, SCENES, STAGE_SCENES } from './scenes'
 import { DEFAULT_WORKFLOW } from './workflow'
 import { C, line } from './scenes/kit'
@@ -379,4 +379,17 @@ test('polish: the dishes and the wall clear away before their loops start again'
   const bricks = (t: number) => at('bricklaying', C.brick, t)
   expect(Math.min(...bricks(10.2).map(p => p.x))).toBeLessThan(Math.min(...bricks(11.5).map(p => p.x)))
   expect(bricks(11.99).length).toBeLessThan(bricks(10.2).length / 4)
+})
+
+test("polish: a scene's camera moves a few columns a frame at most, and is back at its focus at the loop point", () => {
+  for (const scene of SCENE_LIST) {
+    let last = focusAt(scene, 0)
+    expect(last).toBe(scene.focusX)
+    for (let t = 1 / 12; t <= scene.loop; t += 1 / 12) {
+      const now = focusAt(scene, t)
+      expect(Math.abs(now - last)).toBeLessThanOrEqual(6)
+      last = now
+    }
+    expect(focusAt(scene, scene.loop - 0.001)).toBe(scene.focusX)
+  }
 })

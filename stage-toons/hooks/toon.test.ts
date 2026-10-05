@@ -50,3 +50,21 @@ test('a scene that throws is replaced by idle and reported once', () => {
   expect(breaks).toEqual(['plan'])
   expect([...frame.px]).toEqual([...renderScene(SCENES.standing!, 0, 48).px])
 })
+
+test("a scene's camera crops where it points, and holds on the scene's focus while a reaction plays", () => {
+  // Column x painted in colour x + 1, a camera on the right half.
+  const striped: Scene = {
+    id: 'spec',
+    loop: 1,
+    focusX: 10,
+    focus: () => 40,
+    actors: [],
+    backdrop: b => {
+      for (let x = 0; x < STAGE_W; x++) fillRect(b, x, 0, 1, STAGE_H, x + 1)
+    },
+  }
+  const cast = castWith({ spec: striped })
+  const left = (reaction: { id: 'failure'; t: number } | null) => getPixel(composeFrame({ base: 'spec', wipe: null, reaction }, 0, 24, cast), 0, STAGE_H - 1)
+  expect(left(null)).toBe(24 + 1)
+  expect(left({ id: 'failure', t: 0.7 })).toBe(0 + 1)
+})
