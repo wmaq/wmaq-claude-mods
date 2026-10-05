@@ -149,7 +149,7 @@ The area below the bar, 48 columns by 7 rows, is where Clawd lives: it
 plays the stage's scene while Claude works, and the demos. When Claude
 isn't working, a small Clawd stands at its left. He has five routines: the
 classic one (he blinks, glances at the prompt and the bar, taps a foot),
-Nyan Clawd, coffee (he sips from a steaming mug), reading (he turns the
+Nyan Clawd (flying through a drifting starfield), coffee (he sips from a steaming mug), reading (he turns the
 pages of a book) and yo-yo. One is picked each time a turn starts.
 Whichever it is, after a minute he sits down and dozes off.
 
@@ -179,6 +179,12 @@ The area shows in a terminal at least 35 columns wide (30 for the band,
 beside Claude Code's own mark) with room for the bar and 7 rows (8 or 9
 rows of band), whether or not Claude works; otherwise the bar is text
 alone. A band you collapse shows no area.
+
+Whatever the area shows next (Claude starting or stopping, a move to
+another stage, Fable walking in or out, the helpers arriving, the doze, a
+demo's next step), it dissolves into it over half a second, cell by cell.
+A scene starts from its beginning each time it comes on, and a scene that
+builds something up dissolves back to its start when it loops.
 
 `/stage demo` plays all 37 scenes of the library in turn below the bar,
 each named with the stage that plays it, so you can see them without
