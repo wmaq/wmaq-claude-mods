@@ -18,7 +18,8 @@ import { autoText, hideText, moveFor, parseCommand, settingsText, settingsWords,
 import { demoAt, demoFor, demoLine, demoStep, idleDemoAt, idleDemoLine, startDemo, WAITING_DEMO_LINE } from './demo'
 import { createDirector, react, withAuditing, withScene } from './director'
 import { type Log, siteCells } from './frames'
-import { pickIdle } from './idle'
+import { CELEBRATE, pickIdle } from './idle'
+import { idleForMove } from './keepsake'
 import { createMod, createSite, endDemo, type Mod, queued, reseat, stopToon } from './mod'
 import { animate, type Ports } from './paint'
 import { dealCard } from './deck'
@@ -29,6 +30,7 @@ import type { SceneId } from './scene'
 import { STAGE_SCENES } from './scenes'
 import { applyMove, describe, freshProgress, isAdvance, reconcile, stageLabel } from './stages'
 import { TOON_ROWS } from './toon'
+import { isDone } from './track'
 import { DEFAULT_WORKFLOW, parseWorkflow, sameWorkflow, stageIds, stageList, stageOf, UNTRACKED_SCENE, withScenes, workflowJson } from './workflow'
 
 const HIDDEN_KEY = 'hidden'
@@ -185,12 +187,32 @@ async function sceneFor($: EngineInterface, mod: Mod, stage: StageId | null): Pr
   return scene
 }
 
+// The idle routine a move calls for (keepsake.ts), as the next idle
+// period's; while Claude is idle (no turn under way: /stage typed while he
+// waits), shown at once, the idle clock restarted, and a deep-asleep area
+// woken to show it.
+async function idleAfterMove($: EngineInterface, mod: Mod, before: Progress, after: Progress, now: number) {
+  const routine = idleForMove(mod.workflow, before, after, mod.idle, Math.random())
+  if (routine === null) return
+  mod.nextIdle = routine
+  await update($, idleAtom, () => routine)
+  if (mod.workSince !== null || mod.isBandWorking) return
+  mod.idle = routine
+  mod.idleSince = now
+  if (mod.band.isAsleep) {
+    mod.band.isAsleep = false
+    $.ui.invalidate('ui.render')
+  }
+}
+
 async function commit($: EngineInterface, mod: Mod, before: Progress, after: Progress, now: number) {
   await update($, progressAtom, () => after)
   // Claude's working time goes to the entry the move left the work in.
   mod.workEntry = currentEntry(after)
   mod.director = withScene(mod.director, await sceneFor($, mod, after.stage), now)
-  if (isAdvance(mod.workflow, before, after)) mod.director = react(mod.director, 'advance', now)
+  // Confetti for a step forward, and for the feature finished.
+  if (isAdvance(mod.workflow, before, after) || (isDone(after.stage) && !isDone(before.stage))) mod.director = react(mod.director, 'advance', now)
+  await idleAfterMove($, mod, before, after, now)
   if (!mod.isReadOnly && !(await saveProgress(storeOf($), mod.key, after))) await warnUnsaved($)
 }
 
@@ -598,7 +620,8 @@ export const register: Register = on => {
     mod.idleSince = now
     let routine = await read($, idleAtom)
     if (routine === null) {
-      const first = pickIdle(undefined, Math.random())
+      // A session that starts in Done celebrates; a show-off is not replayed.
+      const first = isDone(progress.stage) ? CELEBRATE : pickIdle(undefined, Math.random())
       await update($, idleAtom, () => first)
       routine = first
     }
@@ -644,16 +667,6 @@ export const register: Register = on => {
   })
 
   on('prompt.submit', async ($, e, next) => {
-    // The routine for the idle period after this turn, leaving out the one
-    // just shown. A prompt typed while a turn runs (turnId set) starts no
-    // idle period of its own, so it picks nothing. The box keeps the routine
-    // on show until the idle clock restarts: switched here, it could paint
-    // the new one for a frame before the turn hides it.
-    if (e.turnId === undefined) {
-      const routine = pickIdle(mod.idle, Math.random())
-      mod.nextIdle = routine
-      await update($, idleAtom, () => routine)
-    }
     // A turn starts: the toon under the spinner takes over from the demo.
     if (mod.demo) endDemo(mod, () => $.ui.invalidate('ui.render'))
     // Another session on this project may have moved the stage. On the move
@@ -662,6 +675,17 @@ export const register: Register = on => {
     // session's next move or turn's credit.
     const now = await $.clock.now()
     await settle($, "adopting another session's progress", queued(mod, () => latestProgress($, mod, now)))
+    // The routine for the idle period after this turn, leaving out the one
+    // just shown; in Done (another session's move adopted first), the
+    // celebration. A prompt typed while a turn runs (turnId set) starts no
+    // idle period of its own, so it picks nothing. The box keeps the routine
+    // on show until the idle clock restarts: switched here, it could paint
+    // the new one for a frame before the turn hides it.
+    if (e.turnId === undefined) {
+      const routine = isDone((await read($, progressAtom))?.stage ?? null) ? CELEBRATE : pickIdle(mod.idle, Math.random())
+      mod.nextIdle = routine
+      await update($, idleAtom, () => routine)
+    }
     if (mod.notes.length === 0) return next(e)
     const notes = mod.notes
     mod.notes = []
