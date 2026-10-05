@@ -36,6 +36,12 @@ Leftovers the plan schedules are listed in their phase instead.
 - **Review (0.6.2):** P6 (two loops during a demo while Claude works) is
   accepted; P7 (a slower poll for idle teammates) was declined, since the
   poll is what brings an idle teammate's helper back.
+- **Polish pass (phase 1):** in a toon under 48 columns, a reaction that
+  ends while crash-test's camera is on the wall cuts the crop back to the
+  wall in one frame (the hold could stay until the camera is home); stamp
+  shows its last page unstamped for one frame at exactly loop time 0
+  (older than the pass); in an area under about 40 columns the third and
+  fourth helpers at the desk row are cut off at the right (since 0.5).
 
 ### The plan after the frame tool (agreed 2026-10-04)
 
@@ -118,6 +124,10 @@ lets a cloud session check.
   behind Clawd's body and props pass in front of or behind him.
 - **A dissolve** between scenes, each on its own clock (#27); it replaces
   the wipe's jump back (a v0.2 leftover).
+  Found with the frame tool in the polish pass: about a dozen older
+  scenes restart a build-up at their loop point (sweeping's shelf,
+  road-trip's flags, sticky-notes' board, clipboard, blueprint, dominoes,
+  gift, writing-desk); a dissolve at the loop point would soften them all.
 - **Clawd's pose follows the spinner's mode** (#15): thinking, responding,
   tool use.
 - **Phases inside a stage** (#20): overlays for testing, building, git and

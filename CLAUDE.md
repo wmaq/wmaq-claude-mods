@@ -281,6 +281,12 @@ PC.
 - **Linux, not Windows.** The Git Bash note above doesn't apply. There is
   no `ping` and `sleep` is blocked; a background agent stays busy for the
   waiting toon with `timeout <seconds> tail -f /dev/null`.
+- **Keep the shell at the repository root.** The session's working
+  directory follows the shell's `cd`, and a hot reload's `session.start`
+  keys the project's progress by it: after a `cd stage-toons/hooks` the
+  reloaded mod saved to `progress:/home/user/claude-mods/stage-toons/hooks`,
+  a project of its own. Use absolute paths, or `cd` back before the turn
+  ends.
 
 ## Where things are
 
