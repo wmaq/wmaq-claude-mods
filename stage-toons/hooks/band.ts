@@ -7,6 +7,7 @@ import type { Progress, Workflow } from '../types'
 import { STAGE_W } from './scene'
 import { cellWidth, fitCells, NOT_TRACKED, position, stageLabel } from './stages'
 import { TOON_ROWS } from './toon'
+import { isDone } from './track'
 import { isTrack, rank, stageOf } from './workflow'
 
 export type Tone = 'done' | 'current' | 'future' | 'label' | 'tag' | 'message' | 'note'
@@ -66,10 +67,10 @@ export function bandMode(s: BandSite): BandMode {
 
 // The track as it stands: done steps and the links between them, the
 // current step, and the steps to come. In Other, the track as it stood at
-// the last track stage, all dim.
+// the last track stage, all dim. In Done, every step done, none current.
 export function trackSpans(w: Workflow, p: Progress): Span[] {
-  const isOff = !isTrack(w, p.stage)
-  const at = isTrack(w, p.stage) ? rank(w, p.stage) : rank(w, p.lastTrackStage)
+  const isOff = !isTrack(w, p.stage) && !isDone(p.stage)
+  const at = isDone(p.stage) ? w.track.length : isTrack(w, p.stage) ? rank(w, p.stage) : rank(w, p.lastTrackStage)
   const lit = (tone: Tone): Tone => (isOff ? 'future' : tone)
   const spans: Span[] = []
   w.track.forEach((_, i) => {
@@ -87,7 +88,8 @@ export function bandLayout(w: Workflow, p: Progress, isAuditing: boolean, column
   // One column spare, so a line never touches the edge.
   const width = Math.max(1, columns - 1)
   if (p.stage === null) return untrackedLayout(w, p, isAuditing, columns, width, message)
-  if (!isTrack(w, p.stage)) return sideLayout(w, p, isAuditing, columns, width, message ?? p.message)
+  // Done draws as a track stage does: the track, then its label.
+  if (!isTrack(w, p.stage) && !isDone(p.stage)) return sideLayout(w, p, isAuditing, columns, width, message ?? p.message)
   const line = message ?? p.message
   if (columns < WIDE_MIN) return [[{ text: fitCells(`${position(w, p)} — ${line}`, width), tone: 'label' }]]
   const track: Span[] = [{ text: ' ', tone: 'label' }, ...trackSpans(w, p)]

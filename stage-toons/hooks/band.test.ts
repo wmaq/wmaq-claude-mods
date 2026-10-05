@@ -162,3 +162,21 @@ test('the toon and the area are as wide as the terminal allows, 48 at most', () 
   expect(areaColumns(49)).toBe(48)
   expect(areaColumns(200)).toBe(48)
 })
+
+const done = applyMove(W, applyMove(W, plan, { stage: 'cleanup', by: 'claude', at: 2 }), { stage: 'done', by: 'claude', at: 3 })
+
+test('in Done the whole track is lit, none current', () => {
+  const spans = trackSpans(W, done)
+  expect(text(spans)).toBe('●━●━●━●━●━●━●━●━●━●')
+  expect(spans.every(s => s.tone === 'done')).toBe(true)
+})
+
+test('in Done the bar reads ✓ Done with the feature, and the message under it', () => {
+  expect(bandLayout(W, done, false, 100).map(text)).toEqual([' ●━●━●━●━●━●━●━●━●━●  ✓ Done · stage-toons', ' Merged and done'])
+  expect(text(bandLayout(W, done, true, 100)[0])).toBe(' ●━●━●━●━●━●━●━●━●━●  ✓ Done · stage-toons  ⌕ Fable reviewing')
+  // The Fable tag goes first, then the feature.
+  expect(text(bandLayout(W, done, true, 50)[0])).toBe(' ●━●━●━●━●━●━●━●━●━●  ✓ Done · stage-toons')
+  expect(text(bandLayout(W, { ...done, feature: 'x'.repeat(40) }, false, 50)[0])).toBe(' ●━●━●━●━●━●━●━●━●━●  ✓ Done')
+  // Narrow: one line.
+  expect(bandLayout(W, done, false, 40).map(text)).toEqual(['✓ Done — Merged and done'])
+})
