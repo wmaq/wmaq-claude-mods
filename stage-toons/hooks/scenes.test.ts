@@ -441,3 +441,22 @@ test('stargazing and fireworks have a drifting night sky behind them, and only t
     expect([...renderFull(scene, scene.loop + 0.1).px]).not.toEqual([...renderFull(scene, 0.1).px])
   }
 })
+
+test('bug-net: the free bug loops round behind Clawd, then back out in front of him', () => {
+  const scene = SCENES['bug-net']!
+  const red = (t: number) => [...renderFull(scene, t).px].flatMap((c, i) => (c === C.red ? [{ x: i % STAGE_W, y: Math.floor(i / STAGE_W) }] : []))
+  // Behind him at its farthest left: hidden by his body.
+  expect(red(1.6)).toHaveLength(0)
+  // On the way back, in front of his body (x 7 to 19).
+  expect(red(2.6).some(p => p.x >= 7 && p.x <= 19)).toBe(true)
+})
+
+test('light-bulbs: one idea peeks up from behind Clawd, another pops up in front of him', () => {
+  const scene = SCENES['light-bulbs']!
+  const behind = renderFull(scene, 2.5)
+  // The bulb at (19, 4): its glass shows above his head, its lower rows are behind him.
+  expect(behind.px[4 * STAGE_W + 20]).toBe(C.gold)
+  expect(behind.px[6 * STAGE_W + 20]).toBe(CLAWD_ORANGE)
+  // The bulb at (28, 8), over his body.
+  expect(renderFull(scene, 3.75).px[9 * STAGE_W + 29]).toBe(C.gold)
+})

@@ -1,4 +1,5 @@
-// Bug net: a bug flutters about while Clawd watches, net held up; he
+// Bug net: a bug flutters about while Clawd watches, net held up: it loops
+// round behind him and back out in front, and as it heads off again he
 // swings, catches it and lifts the net with the bug inside, as the next bug
 // flies in.
 
@@ -24,11 +25,22 @@ const BUG: Sprite = { palette: { w: C.white, r: C.red }, frames: [['w.w', '.rr']
 // The bug's flutter, up and down once a second; at CAUGHT_AT and at the
 // loop's end it is at CATCH.
 const flutterY = (t: number) => Math.round(CATCH.y + 3 * Math.sin(t * Math.PI * 2))
+// How far left the bug's loop takes it: past Clawd's body (x 7 to 19).
+const LOOP_LEFT = 24
+// The loop's dip below the catch's height, deepening as it goes: behind
+// Clawd it skims his back, half hidden; in front it crosses his middle.
+const dipAt = (t: number) => 2 + 3 * (t / CAUGHT_AT)
+// Halfway round, at Clawd's left, the bug comes from behind him to in front.
+const isBehind = (t: number) => t < CAUGHT_AT / 2
 
-// The free bug, if one is flying: the one Clawd catches, or the next one
-// coming in from the right.
+// The free bug, if one is flying: the one Clawd catches, looping round him
+// first, or the next one coming in from the right.
 function bugAt(t: number) {
-  if (t < CAUGHT_AT) return { x: Math.round(CATCH.x + 8 * Math.sin((t / CAUGHT_AT) * Math.PI * 2)), y: flutterY(t) }
+  if (t < CAUGHT_AT) {
+    const k = Math.sin((t / CAUGHT_AT) * Math.PI)
+
+    return { x: Math.round(CATCH.x - LOOP_LEFT * k), y: Math.round(CATCH.y + dipAt(t) * k) }
+  }
   if (t >= NEXT_AT) return { x: Math.round(lerp(50, CATCH.x, (t - NEXT_AT) / (LOOP - NEXT_AT))), y: flutterY(t) }
 
   return null
@@ -62,9 +74,18 @@ export const bugNet: Scene = {
         return {
           eyes: t >= CAUGHT_AT && t < LIFT_AT ? 'wide' : 'open',
           isBlinking: blinking(t, 1.9),
-          look: { x: 1, y: bug === null || bug.y < 3 ? -1 : 0 },
+          look: { x: bug !== null && bug.x < 13 ? -1 : 1, y: bug === null || bug.y < 3 ? -1 : 0 },
           arms: { left: 'down', right: isSwung(t) ? 'out' : 'up' },
         }
+      },
+    },
+    // The free bug: behind Clawd on its way round, in front on the way back.
+    {
+      kind: 'prop',
+      z: t => (isBehind(t) ? -1 : 1),
+      draw: (b, t) => {
+        const bug = bugAt(t)
+        if (bug) drawSprite(b, BUG, every(t, 0.1), bug.x - 1, bug.y - 1)
       },
     },
   ],
@@ -75,7 +96,5 @@ export const bugNet: Scene = {
     drawSprite(b, HOOP, 0, hoop.x - 2, hoop.y - 1)
     // The caught bug stays in the net.
     if (t >= CAUGHT_AT) drawSprite(b, BUG, every(t, 0.1), hoop.x - 1, hoop.y - 1)
-    const bug = bugAt(t)
-    if (bug) drawSprite(b, BUG, every(t, 0.1), bug.x - 1, bug.y - 1)
   },
 }
