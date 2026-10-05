@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { HistoryEntry, Progress } from '../types'
-import { credit, creditAt, currentEntry, currentIndex, duration, logText, timeText } from './history'
+import { costText, credit, creditAt, currentEntry, currentIndex, duration, logText, timeText, tokenCount } from './history'
 import { cellWidth, freshProgress } from './stages'
 import { DEFAULT_WORKFLOW as W } from './workflow'
 
@@ -103,4 +103,61 @@ test('/stage log lines up wide stage labels by terminal cells', () => {
   const rows = logText(w, p, 2 * MIN, 15).split(NL).slice(2)
   // Each row's duration starts in the same terminal column.
   expect(rows.map(r => cellWidth(r.slice(0, r.indexOf('1m'))))).toEqual([13, 13])
+})
+
+test('a credit with no time still goes in when its tokens or dollars are above zero, and adds to the cost there', () => {
+  const p = progress([{ stage: 'spec', at: 0, by: 'claude', workMs: 100 }])
+  const key = currentEntry(p)
+  expect(creditAt(p, key, 0, { usd: 0, in: 10, out: 2 }).history[0]).toEqual({ stage: 'spec', at: 0, by: 'claude', workMs: 100, cost: { usd: 0, in: 10, out: 2 } })
+  expect(creditAt(p, key, 0, { usd: 0.25, in: 0, out: 0 }).history[0]!.cost).toEqual({ usd: 0.25, in: 0, out: 0 })
+  const both = creditAt(creditAt(p, key, 50, { usd: 1, in: 10, out: 2 }), key, 25, { usd: 0.5, in: 5, out: 1 })
+  expect(both.history[0]).toEqual({ stage: 'spec', at: 0, by: 'claude', workMs: 175, cost: { usd: 1.5, in: 15, out: 3 } })
+  // Nothing above zero: the progress as it was, as before.
+  expect(creditAt(p, key, 0, { usd: 0, in: 0, out: 0 })).toBe(p)
+  expect(creditAt(p, key, 0)).toBe(p)
+  // Time alone adds no cost.
+  expect(creditAt(p, key, 50).history[0]!.cost).toBeUndefined()
+  expect(creditAt(p, null, 0, { usd: 1, in: 1, out: 1 })).toBe(p)
+})
+
+test('a cost reads as dollars to the cent and tokens in k and M', () => {
+  expect(costText({ usd: 3.2, in: 1_200_000, out: 48_000 })).toBe('$3.20 · 1.2M in, 48k out')
+  expect(costText({ usd: 0, in: 850, out: 1234 })).toBe('850 in, 1.2k out')
+  expect(costText({ usd: 0.004, in: 0, out: 0 })).toBe('<$0.01')
+  expect(costText({ usd: 0.126, in: 9950, out: 999_500 })).toBe('$0.13 · 10k in, 1M out')
+  expect(costText({ usd: 0, in: 0, out: 0 })).toBe('')
+  expect(tokenCount(999_499)).toBe('999k')
+  expect(tokenCount(25_000_000)).toBe('25M')
+})
+
+test('/stage log adds each entry’s cost beside Claude’s time, lined up, and the entries without one as before', () => {
+  const p = progress([
+    { stage: 'spec', at: 0, by: 'claude', feature: 'login', workMs: 30 * MIN, cost: { usd: 3.2, in: 1_200_000, out: 48_000 } },
+    { stage: 'plan', at: 40 * MIN, by: 'user', feature: 'login' },
+  ])
+  expect(logText(W, p, 60 * MIN, 15).split(NL)).toEqual([
+    'Stage history, last 2 moves:',
+    'login',
+    '  3/10 Spec   40m (Claude 30m · $3.20 · 1.2M in, 48k out)   1h ago     by claude',
+    `  5/10 Plan   20m so far (Claude <1m)${' '.repeat(20)}   20m ago    by user`,
+  ])
+})
+
+test('/stage time adds the summed cost to the lines whose entries have one', () => {
+  const p = progress([
+    { stage: 'spec', at: 0, by: 'claude', feature: 'login', workMs: 20 * MIN, cost: { usd: 1, in: 1000, out: 100 } },
+    { stage: 'plan', at: 30 * MIN, by: 'claude', feature: 'login', workMs: 5 * MIN, cost: { usd: 0.25, in: 0, out: 0 } },
+    { stage: 'spec', at: 60 * MIN, by: 'user', feature: null, cost: { usd: 0, in: 500, out: 50 } },
+    { stage: 'gone', at: 70 * MIN, by: 'claude', feature: null },
+  ])
+  expect(timeText(W, p, 80 * MIN).split(NL)).toEqual([
+    'Time per feature:',
+    '  (no feature)                       20m (Claude <1m · 500 in, 50 out)',
+    '  login                              1h 00m (Claude 25m · $1.25 · 1k in, 100 out)',
+    'Time per stage:',
+    '  3/10 Spec                          40m (Claude 20m · $1.00 · 1.5k in, 150 out)',
+    '  5/10 Plan                          30m (Claude 5m · $0.25)',
+    '  gone (no longer in the workflow)   10m (Claude <1m)',
+    'From the last 4 moves, since 1h ago.',
+  ])
 })

@@ -1,6 +1,9 @@
-// Stage history: Claude's working time credited to the current entry, and
-// what /stage log and /stage time show. Times are wall-clock from one
-// entry to the next (the last runs to now) and Claude's working time.
+// Stage history: Claude's working time and what its turns cost credited to
+// the current entry, and what /stage log and /stage time show. Times are
+// wall-clock from one entry to the next (the last runs to now) and Claude's
+// working time.
+
+import type { ModelUsage } from 'claude-code'
 
 import type { HistoryEntry, Progress, StageId, Workflow } from '../types'
 import { cellWidth, stageLabel } from './stages'
@@ -27,13 +30,44 @@ export function currentEntry(p: Progress): EntryKey | null {
   return i < 0 ? null : { stage: p.history[i]!.stage, at: p.history[i]!.at }
 }
 
-// Claude's working time added to the entry it was spent in (the last one
-// so named); with none, the progress as it was.
-export function creditAt(p: Progress, key: EntryKey | null, ms: number): Progress {
-  const i = key === null ? -1 : p.history.findLastIndex(h => h.stage === key.stage && h.at === key.at)
-  if (i < 0 || !(ms > 0)) return p
+// What turns cost: dollars, input tokens (uncached, cache read and cache
+// write) and output tokens.
+export type Cost = NonNullable<HistoryEntry['cost']>
 
-  return { ...p, history: p.history.map((h, j) => (j === i ? { ...h, workMs: (h.workMs ?? 0) + Math.round(ms) } : h)) }
+export const NO_COST: Cost = { usd: 0, in: 0, out: 0 }
+
+const hasCost = (c: Cost | undefined): c is Cost => c !== undefined && (c.usd > 0 || c.in > 0 || c.out > 0)
+
+export const addCost = (a: Cost, b: Cost): Cost => ({ usd: a.usd + b.usd, in: a.in + b.in, out: a.out + b.out })
+
+// A turn's token counts as a cost of no dollars; none when it counted nothing.
+export function tokensOf(usage: ModelUsage | undefined): Cost {
+  if (usage === undefined) return NO_COST
+  const n = (x: unknown): number => (typeof x === 'number' && Number.isFinite(x) && x > 0 ? x : 0)
+
+  return { usd: 0, in: n(usage.input_tokens) + n(usage.cache_read_input_tokens) + n(usage.cache_creation_input_tokens), out: n(usage.output_tokens) }
+}
+
+// Claude's working time, and what its turns cost, added to the entry they
+// were spent in (the last one so named); with none, or nothing above zero
+// to add, the progress as it was. The time is added only when above zero,
+// the cost only when any of it is.
+export function creditAt(p: Progress, key: EntryKey | null, ms: number, cost?: Cost): Progress {
+  const i = key === null ? -1 : p.history.findLastIndex(h => h.stage === key.stage && h.at === key.at)
+  const isTime = ms > 0
+  const isCost = hasCost(cost)
+  if (i < 0 || (!isTime && !isCost)) return p
+
+  return {
+    ...p,
+    history: p.history.map((h, j) => {
+      if (j !== i) return h
+      const next = isTime ? { ...h, workMs: (h.workMs ?? 0) + Math.round(ms) } : { ...h }
+      if (isCost) next.cost = addCost(h.cost ?? NO_COST, cost)
+
+      return next
+    }),
+  }
 }
 
 // Claude's working time added to the current entry.
@@ -74,7 +108,32 @@ function spansOf(p: Progress, now: number, runningMs: number): Span[] {
 
 const featureOf = (entry: HistoryEntry): string | null => entry.feature ?? null
 const featureName = (feature: string | null): string => feature ?? '(no feature)'
-const times = (wallMs: number, workMs: number, soFar = false): string => `${duration(wallMs)}${soFar ? ' so far' : ''} (Claude ${duration(workMs)})`
+
+// A token count as /stage log shows it: 850, 1.2k, 48k, 1.2M, 25M.
+export function tokenCount(n: number): string {
+  const r = Math.round(Math.max(0, n))
+  if (r < 1000) return String(r)
+  const [size, unit] = r < 999_500 ? [1e3, 'k'] : r < 999_500_000 ? [1e6, 'M'] : [1e9, 'B']
+  const v = r / size
+
+  return `${v < 9.95 ? v.toFixed(1).replace(/\.0$/, '') : Math.round(v)}${unit}`
+}
+
+// A cost as shown: dollars to the cent (rounded here only), then the
+// tokens; each left out when zero, so a cost of nothing reads as ''.
+export function costText(c: Cost): string {
+  const parts: string[] = []
+  if (c.usd > 0) parts.push(c.usd < 0.005 ? '<$0.01' : `$${c.usd.toFixed(2)}`)
+  if (c.in > 0 || c.out > 0) parts.push(`${tokenCount(c.in)} in, ${tokenCount(c.out)} out`)
+
+  return parts.join(' · ')
+}
+
+function times(wallMs: number, workMs: number, soFar = false, cost?: Cost): string {
+  const spent = cost === undefined ? '' : costText(cost)
+
+  return `${duration(wallMs)}${soFar ? ' so far' : ''} (Claude ${duration(workMs)}${spent === '' ? '' : ` · ${spent}`})`
+}
 // Columns line up in terminal cells, as the band's text does.
 const widest = (texts: string[]): number => texts.reduce((n, t) => Math.max(n, cellWidth(t)), 0)
 const pad = (text: string, width: number): string => text + ' '.repeat(Math.max(0, width - cellWidth(text)))
@@ -87,7 +146,7 @@ export function logText(w: Workflow, p: Progress, now: number, n: number, runnin
   if (shown.length === 0) return EMPTY
   const labels = shown.map(s => stageLabel(w, s.entry.stage))
   const width = widest(labels)
-  const timeWidth = widest(shown.map(s => times(s.wallMs, s.workMs, s.isLast)))
+  const timeWidth = widest(shown.map(s => times(s.wallMs, s.workMs, s.isLast, s.entry.cost)))
   const lines = [`Stage history, last ${shown.length} move${shown.length === 1 ? '' : 's'}:`]
   let group: string | null | undefined
   shown.forEach((s, i) => {
@@ -95,17 +154,19 @@ export function logText(w: Workflow, p: Progress, now: number, n: number, runnin
     if (i === 0 || feature !== group) lines.push(featureName(feature))
     group = feature
     const by = `by ${s.entry.by}${s.entry.via ? `: ${s.entry.via}` : ''}`
-    lines.push(`  ${pad(labels[i]!, width)}   ${pad(times(s.wallMs, s.workMs, s.isLast), timeWidth)}   ${pad(ago(now - s.entry.at), 8)}   ${by}`)
+    lines.push(`  ${pad(labels[i]!, width)}   ${pad(times(s.wallMs, s.workMs, s.isLast, s.entry.cost), timeWidth)}   ${pad(ago(now - s.entry.at), 8)}   ${by}`)
   })
 
   return lines.join('\n')
 }
 
-type Total = { wallMs: number; workMs: number }
+// A line's sums; cost only when one of its entries has one.
+type Total = { wallMs: number; workMs: number; cost?: Cost }
 
 function add<K>(totals: Map<K, Total>, key: K, s: Span) {
   const t = totals.get(key) ?? { wallMs: 0, workMs: 0 }
-  totals.set(key, { wallMs: t.wallMs + s.wallMs, workMs: t.workMs + s.workMs })
+  const cost = s.entry.cost === undefined ? t.cost : addCost(t.cost ?? NO_COST, s.entry.cost)
+  totals.set(key, { wallMs: t.wallMs + s.wallMs, workMs: t.workMs + s.workMs, ...(cost === undefined ? {} : { cost }) })
 }
 
 // /stage time: the kept history's time per feature, the most recent first,
@@ -128,7 +189,7 @@ export function timeText(w: Workflow, p: Progress, now: number, runningMs = 0): 
   const featureLabels = features.map(featureName)
   const stageLabels = stages.map(id => stageLabel(w, id))
   const width = widest([...featureLabels, ...stageLabels])
-  const row = (label: string, t: Total) => `  ${pad(label, width)}   ${times(t.wallMs, t.workMs)}`
+  const row = (label: string, t: Total) => `  ${pad(label, width)}   ${times(t.wallMs, t.workMs, false, t.cost)}`
 
   return [
     'Time per feature:',
