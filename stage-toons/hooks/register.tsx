@@ -12,7 +12,7 @@ import type { EngineInterface, Register, ToolCallInput } from 'claude-code'
 import type { Progress, ScenePick, SessionWorkflow, StageId, Workflow } from '../types'
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { ended, reconcileRoster, rememberKind, spawned } from './agents'
-import { autoMatch, hasRules, isWindowsPath, relativePath, type Signal, viaOf } from './auto'
+import { autoMatch, hasRules, type Heard, isWindowsPath, relativePath, type Signal, typedSkill, viaOf } from './auto'
 import { areaColumns, BAR_TONES, bandLayout, bandMode, type BandSite, TOON_MIN, toonColumns } from './band'
 import { autoText, moveFor, parseCommand, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { demoAt, demoFor, demoLine, demoStep, idleDemoAt, idleDemoLine, startDemo, WAITING_DEMO_LINE } from './demo'
@@ -250,6 +250,29 @@ async function autoMove($: EngineInterface, mod: Mod, signal: Signal) {
   mod.notes.push(
     `[stage-toons] The stage moved by itself to ${stageLabel(mod.workflow, target)} (${via}). Now: ${describe(mod.workflow, after)}. Call ${mod.toolName} if a more specific message or another stage fits.`,
   )
+}
+
+// Where a command the person typed comes from: a terminal, a phone (the
+// bridge) or their own SDK host. A plugin's command is not the person's.
+const PERSON_ORIGINS: readonly string[] = ['composer', 'bridge', 'sdk']
+
+// A skill the person typed: command.run hears the command, skill.prompt the
+// skill expanded, in either order. Whichever comes second makes the match,
+// and the move goes on the queue as the Skill tool's call does.
+async function hearSkill($: EngineInterface, mod: Mod, side: 'command' | 'skill', name: string) {
+  const heard: Heard = { name, at: await $.clock.now() }
+  const skill = side === 'command' ? typedSkill(heard, mod.expandedSkill) : typedSkill(mod.typedCommand, heard)
+  if (skill === null) {
+    if (side === 'command') mod.typedCommand = heard
+    else mod.expandedSkill = heard
+
+    return
+  }
+  mod.typedCommand = null
+  mod.expandedSkill = null
+  if (!mod.isAuto || !hasRules(mod.workflow, 'skill')) return
+  const signal: Signal = { kind: 'skill', name: skill }
+  await settle($, 'an automatic move', queued(mod, () => autoMove($, mod, signal)))
 }
 
 // The main turn's end: the rest of its working time credited and saved,
@@ -592,7 +615,12 @@ export const register: Register = on => {
   })
 
   on('command.run', async ($, e, next) => {
-    if (e.command !== mod.commandName) return next(e)
+    if (e.command !== mod.commandName) {
+      // Heard before it runs: the skill it expands may be heard while it does.
+      if (PERSON_ORIGINS.includes(e.origin.kind)) await hearSkill($, mod, 'command', e.command)
+
+      return next(e)
+    }
     const cmd = parseCommand(mod.workflow, e.args)
     const now = await $.clock.now()
     // Read on the move queue: a move still running (an automatic one just
@@ -648,6 +676,15 @@ export const register: Register = on => {
 
       return { text: `Stage ${describe(mod.workflow, after)}`, context: [`[stage-toons] The user set the stage: ${describe(mod.workflow, after)}`] }
     })
+  })
+
+  // Typed, through the Skill tool or preloaded into a subagent: only one
+  // the person just typed moves the stage here (the Skill tool's calls go
+  // through tool.call). The text passes untouched.
+  on('skill.prompt', async ($, e, next) => {
+    await hearSkill($, mod, 'skill', e.skill)
+
+    return next(e)
   })
 
   on('prompt.compose', async ($, e, next) => {
@@ -717,6 +754,9 @@ export const register: Register = on => {
 
       return next(e)
     }
+    // A typed command or an expanded skill still waiting for the other is forgotten.
+    mod.typedCommand = null
+    mod.expandedSkill = null
     // The main spinner's toon stops; an agent at work keeps its row's.
     for (const id of [...mod.toons.keys()]) if (mod.roster.get(id)?.isAtWork !== true) stopToon(mod, id)
     await settle($, "crediting the turn's working time", queued(mod, () => creditTurn($, mod, e.durationMs)))

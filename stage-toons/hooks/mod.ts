@@ -3,6 +3,7 @@
 
 import type { IdleId, Workflow } from '../types'
 import { EMPTY_ROSTER, type Roster } from './agents'
+import type { Heard } from './auto'
 import type { BandSite } from './band'
 import { COMMAND, toolNameFor } from './prompt'
 import type { Demo } from './demo'
@@ -107,6 +108,11 @@ export type Mod = {
   isAuto: boolean
   isWindows: boolean
   notes: string[]
+  // A skill the person types: the command heard (command.run) and the
+  // skill expanded (skill.prompt), each kept until the other comes, for
+  // TYPED_SKILL_MS, or until the main turn's end.
+  typedCommand: Heard | null
+  expandedSkill: Heard | null
   // Since when Claude's working time is counted for the current history
   // entry: the main turn's start or the last move in it; null between turns.
   workSince: number | null
@@ -148,6 +154,8 @@ export const createMod = (): Mod => ({
   isAuto: true,
   isWindows: false,
   notes: [],
+  typedCommand: null,
+  expandedSkill: null,
   workSince: null,
   workEntry: null,
   isReadOnly: false,

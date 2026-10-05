@@ -205,7 +205,9 @@ export function ruleMatches(rule: AutoRule, signal: Signal, isWindows: boolean):
       const name = signal.name.toLowerCase()
       const want = value.toLowerCase()
 
-      return name === want || (!want.includes(':') && name.endsWith(`:${want}`))
+      // A bare name on either side matches the other's part after the
+      // plugin's name: skill.prompt may name a skill bare.
+      return name === want || (!want.includes(':') && name.endsWith(`:${want}`)) || (!name.includes(':') && want.endsWith(`:${name}`))
     }
     case 'write':
       return regExpOf(`write ${isWindows} ${value}`, () => globRegExp(value, isWindows)).test(signal.path)
@@ -218,6 +220,29 @@ export function ruleMatches(rule: AutoRule, signal: Signal, isWindows: boolean):
         return false
       }
   }
+}
+
+// How long a command the person typed and a skill's expansion wait for
+// each other: the engine does not say which of the two comes first.
+export const TYPED_SKILL_MS = 10_000
+
+// A name heard, and when: the command typed, or the skill expanded.
+export type Heard = { name: string; at: number }
+
+// The skill the person just typed, when the command and the skill expanded
+// name the same one (exactly, or one bare and the other with its plugin's
+// name) within TYPED_SKILL_MS of each other: the more qualified of the two
+// names. Otherwise null: a skill expanded with no command around it (a
+// preload into a subagent, or the Skill tool's) is not one the person typed.
+export function typedSkill(typed: Heard | null, expanded: Heard | null): string | null {
+  if (typed === null || expanded === null || Math.abs(typed.at - expanded.at) > TYPED_SKILL_MS) return null
+  const a = typed.name.toLowerCase()
+  const b = expanded.name.toLowerCase()
+  if (a === b) return typed.name
+  if (!b.includes(':') && a.endsWith(`:${b}`)) return typed.name
+  if (!a.includes(':') && b.endsWith(`:${a}`)) return expanded.name
+
+  return null
 }
 
 // The stage what was done moves the work to, or null: the first stage, in

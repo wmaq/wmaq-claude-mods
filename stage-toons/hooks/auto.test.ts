@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Progress, StageId } from '../types'
-import { autoMatch, autoTarget, globRegExp, isRiskyPattern, relativePath, ruleMatches, rulesAt, ruleText, type Signal, unknownFrom, viaOf } from './auto'
+import { autoMatch, autoTarget, TYPED_SKILL_MS, typedSkill, globRegExp, isRiskyPattern, relativePath, ruleMatches, rulesAt, ruleText, type Signal, unknownFrom, viaOf } from './auto'
 import { freshProgress } from './stages'
 import { DEFAULT_WORKFLOW as W } from './workflow'
 
@@ -70,11 +70,13 @@ test('paths are read relative to the project', () => {
   expect(relativePath(['c:', 'dev', 'proj', 'docs', 'a.md'].join(bs), 'C:/Dev/proj')).toBe('docs/a.md')
 })
 
-test('skills match by name, or by the name after the plugin', () => {
+test('skills match by name, or by the name after the plugin, on either side', () => {
   expect(ruleMatches({ skill: 'superpowers:brainstorming' }, skill('superpowers:brainstorming'), false)).toBe(true)
   expect(ruleMatches({ skill: 'superpowers:brainstorming' }, skill('Superpowers:Brainstorming'), false)).toBe(true)
   expect(ruleMatches({ skill: 'brainstorming' }, skill('superpowers:brainstorming'), false)).toBe(true)
-  expect(ruleMatches({ skill: 'superpowers:brainstorming' }, skill('brainstorming'), false)).toBe(false)
+  // A bare name, as skill.prompt may give it, matches a qualified rule.
+  expect(ruleMatches({ skill: 'superpowers:brainstorming' }, skill('brainstorming'), false)).toBe(true)
+  expect(ruleMatches({ skill: 'superpowers:brainstorming' }, skill('other:brainstorming'), false)).toBe(false)
   expect(ruleMatches({ skill: 'storming' }, skill('superpowers:brainstorming'), false)).toBe(false)
   expect(ruleMatches({ skill: 'brainstorming' }, write('brainstorming'), false)).toBe(false)
 })
@@ -168,4 +170,20 @@ test('a rule reads at most the first 500 characters of a command, and stays fast
 test('the matched rule comes with the target; three stars read as two', () => {
   expect(autoMatch(W, at(null), skill('superpowers:brainstorming'), false)).toEqual({ stage: 'brainstorm', rule: { skill: 'superpowers:brainstorming' } })
   expect(globRegExp('docs/***/a.md', false).test('docs/x/y/a.md')).toBe(true)
+})
+
+test('a typed command and a skill expanded within TYPED_SKILL_MS of each other name the typed skill, the more qualified name', () => {
+  const heard = (name: string, ms: number) => ({ name, at: ms })
+  expect(typedSkill(heard('superpowers:brainstorming', 0), heard('brainstorming', 5))).toBe('superpowers:brainstorming')
+  expect(typedSkill(heard('brainstorming', 0), heard('superpowers:brainstorming', 5))).toBe('superpowers:brainstorming')
+  expect(typedSkill(heard('brainstorming', 0), heard('Brainstorming', 5))).toBe('brainstorming')
+  // Either may come first.
+  expect(typedSkill(heard('superpowers:brainstorming', 5), heard('brainstorming', 0))).toBe('superpowers:brainstorming')
+  expect(typedSkill(heard('superpowers:brainstorming', 0), heard('brainstorming', TYPED_SKILL_MS))).toBe('superpowers:brainstorming')
+  expect(typedSkill(heard('superpowers:brainstorming', 0), heard('brainstorming', TYPED_SKILL_MS + 1))).toBeNull()
+  expect(typedSkill(heard('superpowers:brainstorming', 0), heard('writing-plans', 5))).toBeNull()
+  expect(typedSkill(heard('superpowers:brainstorming', 0), heard('other:brainstorming', 5))).toBeNull()
+  expect(typedSkill(heard('storming', 0), heard('superpowers:brainstorming', 5))).toBeNull()
+  expect(typedSkill(null, heard('brainstorming', 5))).toBeNull()
+  expect(typedSkill(heard('brainstorming', 5), null)).toBeNull()
 })
