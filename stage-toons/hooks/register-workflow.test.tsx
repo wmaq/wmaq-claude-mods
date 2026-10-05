@@ -20,13 +20,13 @@ test("a project's file sets the workflow: set_stage, the prompt, /stage and the 
   const { world } = engine(on)
   world.files[FILE] = json(CUSTOM)
   await $.session.start(START)
-  expect(enumOf(world.schemas.at(-1))).toEqual(['plan', 'build', 'ship', 'debugging'])
+  expect(enumOf(world.schemas.at(-1))).toEqual(['plan', 'build', 'ship', 'done', 'debugging'])
   expect(await sectionText($)).toContain('stages, in order: plan (planning the work), build (writing the code), ship (releasing it).')
   expect(answerText(await setStage($, { stage: 'build', message: 'Wiring it up' }))).toBe('Stage 2/3 Build · no feature · "Wiring it up"')
   expect(await bandText($)).toContain('●━◉─○  2/3 Build')
   expect(text(await runStage($, 'workflow'))).toContain('Workflow: from .claude/stage-toons.json')
   const refused = (await setStage($, { stage: 'roadmap', message: 'x' })) as { deny?: string }
-  expect(refused.deny).toContain('plan, build, ship, debugging')
+  expect(refused.deny).toContain('plan, build, ship, done, debugging')
 })
 
 test('no file: the default workflow, silently', async ($, on) => {
@@ -76,12 +76,12 @@ test('reload switches: set_stage, the section and Claude learn the new stages', 
   world.files[FILE] = json(CUSTOM)
   const answer = (await runStage($, 'workflow reload')) as { text?: string; context?: string[] }
   expect(answer.text).toContain('workflow from .claude/stage-toons.json: 3 track stages, 1 side stages.')
-  expect(answer.context?.[0]).toContain('[stage-toons] The workflow changed: track: plan, build, ship; side: debugging.')
-  expect(enumOf(world.schemas.at(-1))).toEqual(['plan', 'build', 'ship', 'debugging'])
+  expect(answer.context?.[0]).toContain('[stage-toons] The workflow changed: track: plan, build, ship, then done; side: debugging.')
+  expect(enumOf(world.schemas.at(-1))).toEqual(['plan', 'build', 'ship', 'done', 'debugging'])
   expect(await sectionText($)).not.toBe(before)
   expect(await sectionText($)).toContain('plan (planning the work)')
   const stale = (await setStage($, { stage: 'develop', message: 'Building' })) as { deny?: string }
-  expect(stale.deny).toContain('plan, build, ship, debugging')
+  expect(stale.deny).toContain('plan, build, ship, done, debugging')
 })
 
 test('reload of an unchanged workflow registers nothing', async ($, on) => {
@@ -130,7 +130,7 @@ test("a hot reload keeps the session's workflow without reading the file", async
   on('state.get', ($, e, next) => (e.key === 'workflow' ? { value: { value: { workflow: CUSTOM, source: 'file' }, version: 1 } } : next(e)))
   const { world } = engine(on)
   await $.session.start(START)
-  expect(enumOf(world.schemas.at(-1))).toEqual(['plan', 'build', 'ship', 'debugging'])
+  expect(enumOf(world.schemas.at(-1))).toEqual(['plan', 'build', 'ship', 'done', 'debugging'])
   expect(text(await runStage($, 'workflow'))).toContain('  2 build: Build (bricklaying)')
 })
 

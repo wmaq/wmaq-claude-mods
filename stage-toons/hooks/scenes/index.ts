@@ -3,6 +3,7 @@
 // entry below.
 
 import { FABLE_SCENE, type Scene, type SceneId } from '../scene'
+import { allStages } from '../track'
 import { DEFAULT_WORKFLOW } from '../workflow'
 import { blueprint } from './blueprint'
 import { bricklaying } from './bricklaying'
@@ -16,6 +17,7 @@ import { dice } from './dice'
 import { dishes } from './dishes'
 import { dominoes } from './dominoes'
 import { fableAudit } from './fable-audit'
+import { fireworks } from './fireworks'
 import { fishing } from './fishing'
 import { flashlight } from './flashlight'
 import { gift } from './gift'
@@ -83,6 +85,7 @@ const LIBRARY = {
   recycling,
   'bug-net': bugNet,
   dice,
+  fireworks,
 } satisfies Record<SceneId, Scene>
 
 // A scene's name in the library, checked by tsc: what the default workflow
@@ -98,7 +101,7 @@ export const SCENES: Record<SceneId, Scene> = LIBRARY
 export const STAGE_SCENES: readonly SceneId[] = Object.keys(SCENES).filter(n => n !== 'fable-audit' && n !== 'standing')
 
 // /stage demo's order: the default workflow's scenes stage by stage (track,
-// then side), then Fable's.
-export const DEMO_ORDER: readonly SceneId[] = [...new Set([...DEFAULT_WORKFLOW.track, ...DEFAULT_WORKFLOW.side].flatMap(s => s.scenes)), FABLE_SCENE]
+// Done, then side), then Fable's.
+export const DEMO_ORDER: readonly SceneId[] = [...new Set(allStages(DEFAULT_WORKFLOW).flatMap(s => s.scenes)), FABLE_SCENE]
 
 export { REACTIONS } from './reactions'

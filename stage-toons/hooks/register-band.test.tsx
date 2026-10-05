@@ -113,11 +113,11 @@ test('/stage demo plays every scene below the bar, then gives the band back', as
   const { world, clock } = engine(on)
   await $.session.start(START)
   const ui = await mountBand($)
-  expect(text(await runStage($, 'demo 2'))).toContain('Playing 37 scenes, 2 s each')
+  expect(text(await runStage($, 'demo 2'))).toContain('Playing 38 scenes, 2 s each')
   expect(world.invalidations).toBeGreaterThan(0)
   await ui.redraw()
   expect((await ui.find({ key: 'area' }))?.props).toMatchObject({ columns: 48, rows: 7 })
-  expect((await ui.find({ key: 'stage-toons' }))?.text).toContain('Demo 1/37: road-trip (Roadmap) · /stage demo stop ends it')
+  expect((await ui.find({ key: 'stage-toons' }))?.text).toContain('Demo 1/38: road-trip (Roadmap) · /stage demo stop ends it')
   // The line under the bar is text: the band is drawn again for each scene.
   const started = world.invalidations
   await clock.advance(1_500)
@@ -127,9 +127,9 @@ test('/stage demo plays every scene below the bar, then gives the band back', as
   // Scenes move: about half their frames are new, and only those are sent.
   expect(blitsOf(world, 'area').length).toBeGreaterThan(10)
   await ui.redraw()
-  expect((await ui.find({ key: 'stage-toons' }))?.text).toContain('Demo 2/37: stargazing (Roadmap)')
+  expect((await ui.find({ key: 'stage-toons' }))?.text).toContain('Demo 2/38: stargazing (Roadmap)')
   const before = world.invalidations
-  await clock.advance(72_000)
+  await clock.advance(74_000)
   expect(world.invalidations).toBeGreaterThan(before)
   await ui.redraw()
   expect(await ui.find({ key: 'area' })).toBeDefined()

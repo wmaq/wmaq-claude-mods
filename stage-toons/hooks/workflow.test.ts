@@ -61,7 +61,7 @@ test('a workflow kept by an older version, with scene, reads as scenes', () => {
 })
 
 test('lookups answer for any workflow', () => {
-  expect(stageIds(SMALL)).toEqual(['plan', 'build', 'ship', 'debugging'])
+  expect(stageIds(SMALL)).toEqual(['plan', 'build', 'ship', 'done', 'debugging'])
   expect(isTrack(SMALL, 'build')).toBe(true)
   expect(isTrack(SMALL, 'debugging')).toBe(false)
   expect(isTrack(SMALL, null)).toBe(false)
@@ -78,8 +78,8 @@ test('/stage 0 goes to Other when there is one, else to the first side stage', (
 })
 
 test('the stage list names the track in order and the side stages', () => {
-  expect(stageList(SMALL)).toBe('track: plan, build, ship; side: debugging')
-  expect(stageList({ track: SMALL.track, side: [] })).toBe('track: plan, build, ship')
+  expect(stageList(SMALL)).toBe('track: plan, build, ship, then done; side: debugging')
+  expect(stageList({ track: SMALL.track, side: [] })).toBe('track: plan, build, ship, then done')
 })
 
 const stage = (id: string, extra: Record<string, unknown> = {}) => ({ id, label: 'L', message: 'M', when: 'W', scene: 'gift', ...extra })
@@ -114,8 +114,9 @@ test("a file's auto and hide set the project's starting state; anything but true
   expect(errorsOf({ track: [stage('plan')], auto: null })).toEqual(['auto: must be true or false'])
 })
 
-test('what init writes holds neither auto nor hide', () => {
-  expect(Object.keys(JSON.parse(workflowJson(W)))).toEqual(['track', 'side'])
+test('what init writes holds neither auto nor hide; it holds Done', () => {
+  expect(Object.keys(JSON.parse(workflowJson(W)))).toEqual(['track', 'side', 'done'])
+  expect(JSON.parse(workflowJson(W)).done).toEqual({ message: 'Merged and done', scenes: ['fireworks'], auto: W.done!.auto })
 })
 
 test('a byte-order mark and Windows line endings are fine', () => {
@@ -128,7 +129,7 @@ test('every error is listed with its path', () => {
   expect(errorsOf('nope')).toEqual(['the file must hold an object with "track" and, if any, "side"'])
   const broken = parseWorkflow('{ "track": [', STAGE_SCENES)
   expect('errors' in broken && broken.errors.length === 1 && broken.errors[0]!.startsWith('not valid JSON: ')).toBe(true)
-  expect(errorsOf({ track: [stage('plan')], extra: 1 })).toEqual(['extra: not a field (track, side, auto, hide)'])
+  expect(errorsOf({ track: [stage('plan')], extra: 1 })).toEqual(['extra: not a field (track, side, done, auto, hide)'])
   expect(errorsOf({ side: [] })).toEqual(['track: missing, or not a list of stages'])
   expect(errorsOf({ track: [] })).toEqual(['track: 0 stages, at least 1'])
   expect(errorsOf({ track: ['plan'] })).toEqual(['track[0]: not a stage (an object with id, label, message, when, scene, scenes, auto)'])
@@ -141,7 +142,7 @@ test('every error is listed with its path', () => {
   expect(errorsOf({ track: [stage('plan', { label: 'x'.repeat(21) })] })).toEqual(['track[0].label: 21 characters, at most 20'])
   expect(errorsOf({ track: [stage('Plan')] })).toEqual(['track[0].id "Plan": lowercase letters, digits and dashes, starting with a letter'])
   expect(errorsOf({ track: [stage('next')] })).toEqual([
-    `track[0].id "next" is one of /stage's words (next, back, hide, demo, feature, message, workflow, auto, log, time, help)`,
+    `track[0].id "next" is one of /stage's words (next, back, hide, demo, feature, message, workflow, auto, log, time, help, done)`,
   ])
   expect(errorsOf({ track: [stage('plan'), stage('plan')] })).toEqual(['track[1].id "plan" is used twice'])
   expect(errorsOf({ track: [stage('plan')], side: [stage('plan')] })).toEqual(['side[0].id "plan" is used twice'])
@@ -162,7 +163,9 @@ test('the limits: 15 track stages, 5 side stages', () => {
 })
 
 test('two workflows are the same when their stages are', () => {
-  expect(sameWorkflow(W, { track: [...W.track], side: [...W.side] })).toBe(true)
+  expect(sameWorkflow(W, { ...W, track: [...W.track], side: [...W.side] })).toBe(true)
+  // Done's rules count.
+  expect(sameWorkflow(W, { track: W.track, side: W.side })).toBe(false)
   expect(sameWorkflow(W, { track: W.track.slice(1), side: W.side })).toBe(false)
 })
 
@@ -198,4 +201,56 @@ test('a file that gives any stage an "auto" list, even an empty one, keeps its o
   expect('workflow' in none && none.workflow.track.map(s => s.auto)).toEqual([undefined, undefined])
   const own = parse({ track: [stage('plan'), stage('develop', { auto: [{ bash: '^make' }] })] })
   expect('workflow' in own && own.workflow.track.map(s => s.auto)).toEqual([undefined, [{ bash: '^make' }]])
+})
+
+test('every workflow has Done past its track; no stage may be called done', () => {
+  expect(stageOf(SMALL, 'done')).toMatchObject({ id: 'done', label: 'Done', message: 'Merged and done', when: 'merged to main: the feature is finished', scenes: ['fireworks'] })
+  expect(stageOf(SMALL, 'done')?.auto).toBeUndefined()
+  expect(isTrack(W, 'done')).toBe(false)
+  expect(rank(W, 'done')).toBe(-1)
+  expect(stageIds(W).indexOf('done')).toBe(W.track.length)
+  expect(errorsOf({ track: [stage('done')] })).toEqual([
+    `track[0].id "done" is one of /stage's words (next, back, hide, demo, feature, message, workflow, auto, log, time, help, done)`,
+  ])
+})
+
+test('the default moves to Done on a push to main or a merged pull request, from Your testing or Cleanup', () => {
+  expect(W.done?.auto?.map(r => r.from)).toEqual([['user-test', 'cleanup'], ['user-test', 'cleanup']])
+  expect(W.done?.auto?.map(r => ('bash' in r ? r.bash : '').length)).toEqual([66, 52])
+})
+
+test("a file's done section sets Done's message, scenes and rules; each mistake with its path", () => {
+  const r = parse({ track: [stage('plan')], done: { message: ' Shipped ', scenes: ['cake'], auto: [{ bash: '^make release', from: ['plan'] }] } })
+  expect('workflow' in r && r.workflow.done).toEqual({ message: 'Shipped', scenes: ['cake'], auto: [{ bash: '^make release', from: ['plan'] }] })
+  expect('workflow' in r && stageOf(r.workflow, 'done')).toMatchObject({ message: 'Shipped', scenes: ['cake'] })
+  expect(errorsOf({ track: [stage('plan')], done: 'yes' })).toEqual(['done: not an object (with message, scenes, auto, each optional)'])
+  expect(errorsOf({ track: [stage('plan')], done: { msg: 'x' } })).toEqual(['done.msg: not a field (message, scenes, auto)'])
+  expect(errorsOf({ track: [stage('plan')], done: { message: 3 } })).toEqual(['done.message: must be text'])
+  expect(errorsOf({ track: [stage('plan')], done: { message: ' ' } })).toEqual(['done.message: empty'])
+  expect(errorsOf({ track: [stage('plan')], done: { message: 'x'.repeat(81) } })).toEqual(['done.message: 81 characters, at most 80'])
+  expect(errorsOf({ track: [stage('plan')], done: { scenes: ['bug-hnt'] } })).toEqual([`done.scenes[0] "bug-hnt" is not a scene (${STAGE_SCENES.join(', ')})`])
+  expect(errorsOf({ track: [stage('plan')], done: { auto: 'x' } })).toEqual(['done.auto: must be a list of rules'])
+  expect(errorsOf({ track: [stage('plan')], done: { auto: [{ bash: '^x', from: ['spek'] }] } })).toEqual(['done.auto[0].from[0]: "spek" is not a stage of this workflow'])
+  // A rule may fire from Done.
+  expect('workflow' in parse({ track: [stage('plan', { auto: [{ skill: 'x', from: ['done'] }] })] })).toBe(true)
+  // An empty list is no rules, and counts as the file listing its own.
+  const none = parse({ track: [stage('cleanup')], done: { auto: [] } })
+  expect('workflow' in none && none.workflow.done).toEqual({})
+})
+
+test("a file that lists no rules gets Done's default rules, cut to its stages", () => {
+  const cut = W.done!.auto!.map(rule => ({ ...rule, from: ['cleanup'] }))
+  const r = parse({ track: [stage('plan'), stage('cleanup')] })
+  expect('workflow' in r && r.workflow.done).toEqual({ message: 'Merged and done', scenes: ['fireworks'], auto: cut })
+  const own = parse({ track: [stage('cleanup')], done: { message: 'Shipped' } })
+  expect('workflow' in own && own.workflow.done).toEqual({ message: 'Shipped', scenes: ['fireworks'], auto: cut })
+  // With neither Your testing nor Cleanup, no rule is left.
+  const bare = parse({ track: [stage('plan')] })
+  expect('workflow' in bare && bare.workflow.done).toBeUndefined()
+})
+
+test('Done survives a round trip through the file, and an older workflow read as this version', () => {
+  const r = parseWorkflow(workflowJson(W), STAGE_SCENES)
+  expect('workflow' in r && r.workflow.done).toEqual(W.done)
+  expect(withScenes(W).done).toEqual(W.done)
 })

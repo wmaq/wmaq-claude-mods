@@ -38,9 +38,15 @@ export type AutoRule = ({ skill: string } | { write: string } | { agent: string 
 // each time the work enters it), and the rules that move the work here.
 export type StageDef = { id: string; label: string; message: string; when: string; scenes: readonly string[]; auto?: readonly AutoRule[] }
 
-// The stages the work moves through: the track, in order, and the side
-// stages, entered from any point and left again.
-export type Workflow = { track: readonly StageDef[]; side: readonly StageDef[] }
+// What a workflow says about Done, the stage past the track (hooks/track.ts):
+// its message on entering, its scenes, and the rules that move the work
+// there. Each left to its default where the workflow says nothing.
+export type DoneDef = { message?: string; scenes?: readonly string[]; auto?: readonly AutoRule[] }
+
+// The stages the work moves through: the track, in order, the side stages,
+// entered from any point and left again, and what the workflow says about
+// Done (absent: the defaults, no rules).
+export type Workflow = { track: readonly StageDef[]; side: readonly StageDef[]; done?: DoneDef }
 
 // What a project's workflow file sets for the session's start: whether
 // rules move the stage (auto) and whether the bar is hidden (hide). Each

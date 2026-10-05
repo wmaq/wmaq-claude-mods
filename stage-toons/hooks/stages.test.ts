@@ -1,7 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Progress, StageId } from '../types'
-import { applyMove, backStage, cellWidth, cut, describe, fitCells, freshProgress, isAdvance, nextStage, parseStage, reconcile, stageLabel } from './stages'
+import { applyMove, backStage, cellWidth, cut, describe, fitCells, freshProgress, isAdvance, isReopen, nextStage, parseStage, reconcile, stageLabel } from './stages'
+import { standing } from './track'
 import { DEFAULT_WORKFLOW as W, type Workflow } from './workflow'
 
 const at = (stage: StageId, extra: Partial<Progress> = {}): Progress => ({
@@ -51,14 +52,18 @@ test('Other remembers the last track stage', () => {
   expect(nextStage(W, p)).toBe('claude-test')
 })
 
-test('next and back stop at the ends of the track', () => {
-  expect(nextStage(W, at('cleanup'))).toBe('cleanup')
+test('next and back: the start of the track, and Done past its end', () => {
+  expect(nextStage(W, at('cleanup'))).toBe('done')
   expect(backStage(W, at('roadmap'))).toBe('roadmap')
   expect(nextStage(W, at('spec'))).toBe('spec-audit')
   expect(backStage(W, at('spec'))).toBe('brainstorm')
   expect(nextStage(W, freshProgress(0))).toBe('roadmap')
   expect(backStage(W, freshProgress(0))).toBeNull()
-  expect(nextStage(W, at('other', { lastTrackStage: 'cleanup' }))).toBe('cleanup')
+  expect(nextStage(W, at('other', { lastTrackStage: 'cleanup' }))).toBe('done')
+  // From Done, next starts a new round; back reopens the stage it came from.
+  expect(nextStage(W, at('done', { lastTrackStage: 'cleanup' }))).toBe('roadmap')
+  expect(backStage(W, at('done', { lastTrackStage: 'cleanup' }))).toBe('cleanup')
+  expect(backStage(W, at('done', { lastTrackStage: null }))).toBe('done')
 })
 
 test('history keeps the last 200 moves', () => {
@@ -185,4 +190,33 @@ test('text is measured in terminal cells: wide characters two, marks and joiners
   expect(fitCells('日本語', 6)).toBe('日本語')
   expect(fitCells('ab🚀cd', 4)).toBe('ab…')
   expect(fitCells('abc', 0)).toBe('')
+})
+
+test('Done parses by name, not by number, and reads with a tick', () => {
+  expect(parseStage(W, ' Done ')).toBe('done')
+  expect(parseStage(W, '11')).toBeUndefined()
+  expect(stageLabel(W, 'done')).toBe('✓ Done')
+  expect(standing(W, at('done', { lastTrackStage: 'cleanup' }))).toBe(-1)
+})
+
+test('a move into Done keeps the feature; out of it a new round starts, unless it goes back to reopen', () => {
+  const done = applyMove(W, at('cleanup', { feature: 'login' }), { stage: 'done', by: 'claude', at: 5 })
+  expect(done).toMatchObject({ stage: 'done', feature: 'login', lastTrackStage: 'cleanup', message: 'Merged and done' })
+  expect(done.history.at(-1)).toMatchObject({ stage: 'done', feature: 'login' })
+  // Into Done is no advance: commit plays the confetti for it separately.
+  expect(isAdvance(W, at('cleanup', { feature: 'login' }), done)).toBe(false)
+  // Back to the stage it came from: the feature reopened, no confetti.
+  const reopened = applyMove(W, done, { stage: 'cleanup', by: 'user', at: 6 })
+  expect(isReopen(done, 'cleanup')).toBe(true)
+  expect(reopened).toMatchObject({ stage: 'cleanup', feature: 'login', lastTrackStage: 'cleanup' })
+  expect(isAdvance(W, done, reopened)).toBe(false)
+  // Any other move: a new round, with the feature it names or none.
+  const round = applyMove(W, done, { stage: 'brainstorm', by: 'auto', at: 7 })
+  expect(isReopen(done, 'brainstorm')).toBe(false)
+  expect(round).toMatchObject({ stage: 'brainstorm', feature: null, lastTrackStage: 'brainstorm' })
+  expect(isAdvance(W, done, round)).toBe(true)
+  expect(applyMove(W, done, { stage: 'roadmap', feature: 'signup', by: 'claude', at: 7 }).feature).toBe('signup')
+  expect(applyMove(W, done, { stage: 'debugging', by: 'user', at: 7 })).toMatchObject({ feature: null, lastTrackStage: null })
+  // A message alone in Done changes nothing else.
+  expect(applyMove(W, done, { stage: 'done', message: 'Tagged v1', by: 'claude', at: 8 })).toMatchObject({ feature: 'login', lastTrackStage: 'cleanup', message: 'Tagged v1' })
 })

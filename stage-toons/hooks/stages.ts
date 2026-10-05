@@ -3,7 +3,7 @@
 
 import type { HistoryEntry, Progress, StageId } from '../types'
 import { VIA_MAX } from './auto'
-import { standing } from './track'
+import { DONE_ID, isDone, standing } from './track'
 import { isTrack, rank, stageIds, stageOf, type Workflow, zeroStage } from './workflow'
 
 export const MESSAGE_MAX = 80
@@ -94,15 +94,22 @@ export function freshProgress(now: number): Progress {
 // work is in, which may be untracked. via: why an automatic move happened.
 export type Move = { stage: StageId | null; message?: string; feature?: string; by: HistoryEntry['by']; via?: string; at: number }
 
+// Whether a move out of Done goes back to the track stage it came from: the
+// undo of a mistaken Done, which reopens the feature.
+export const isReopen = (p: Progress, stage: StageId | null): boolean => isDone(p.stage) && stage !== null && !isDone(stage) && stage === p.lastTrackStage
+
 // A move to another stage, or a change of feature in the stage the work is
 // in, adds an entry with the feature it leaves; a message alone, or any
-// move while untracked, adds none.
+// move while untracked, adds none. Any move out of Done but a reopen starts
+// a new round: no feature unless the move names one, no track stage to
+// return to.
 export function applyMove(w: Workflow, p: Progress, m: Move): Progress {
   const isNewStage = m.stage !== p.stage
+  const isNewRound = isDone(p.stage) && isNewStage && !isReopen(p, m.stage)
   const entered = stageOf(w, m.stage)?.message ?? p.message
   const message = m.message !== undefined ? cut(m.message, MESSAGE_MAX) : isNewStage ? entered : p.message
-  const feature = m.feature !== undefined ? cut(m.feature, FEATURE_MAX) || null : p.feature
-  const lastTrackStage = isTrack(w, m.stage) ? m.stage : p.lastTrackStage
+  const feature = m.feature !== undefined ? cut(m.feature, FEATURE_MAX) || null : isNewRound ? null : p.feature
+  const lastTrackStage = isTrack(w, m.stage) ? m.stage : isNewRound ? null : p.lastTrackStage
   const entry: HistoryEntry = { stage: m.stage ?? '', at: m.at, by: m.by, feature, ...(m.via ? { via: cut(m.via, VIA_MAX) } : {}) }
   const isRecorded = m.stage !== null && (isNewStage || feature !== p.feature)
   const history: HistoryEntry[] = isRecorded ? [...p.history, entry].slice(-HISTORY_MAX) : p.history
@@ -110,10 +117,13 @@ export function applyMove(w: Workflow, p: Progress, m: Move): Progress {
   return { ...p, v: 2, stage: m.stage, lastTrackStage, feature, message, history, updatedAt: m.at }
 }
 
+// The stage after the one the work stands at: from the last track stage,
+// Done; from Done (a new round) or untracked, the first track stage.
 export function nextStage(w: Workflow, p: Progress): StageId {
-  if (!isTrack(w, p.stage) && rank(w, p.lastTrackStage) < 0) return w.track[0]!.id
+  if (isDone(p.stage) || (!isTrack(w, p.stage) && rank(w, p.lastTrackStage) < 0)) return w.track[0]!.id
+  const at = standing(w, p)
 
-  return w.track[Math.min(standing(w, p) + 1, w.track.length - 1)]!.id
+  return at >= w.track.length - 1 ? DONE_ID : w.track[at + 1]!.id
 }
 
 // From a side stage, back to the track stage left; with none (or from
@@ -124,14 +134,17 @@ export function backStage(w: Workflow, p: Progress): StageId | null {
   return w.track[Math.max(rank(w, p.stage) - 1, 0)]!.id
 }
 
+// A move to a later track stage (from Done, any track stage: a new round;
+// but not a reopen).
 export const isAdvance = (w: Workflow, before: Progress, after: Progress): boolean =>
-  isTrack(w, after.stage) && rank(w, after.stage) > standing(w, before)
+  isTrack(w, after.stage) && rank(w, after.stage) > standing(w, before) && !isReopen(before, after.stage)
 
 // A stage as the bar and /stage name it; an id the workflow no longer has
 // (in history) says so.
 export function stageLabel(w: Workflow, stage: StageId): string {
   const def = stageOf(w, stage)
   if (!def) return `${stage} (no longer in the workflow)`
+  if (isDone(stage)) return `✓ ${def.label}`
 
   return isTrack(w, stage) ? `${rank(w, stage) + 1}/${w.track.length} ${def.label}` : `${def.label} (side stage)`
 }

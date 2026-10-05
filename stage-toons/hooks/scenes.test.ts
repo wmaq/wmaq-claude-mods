@@ -16,6 +16,7 @@ const LIBRARY = [
   'treasure-map', 'thought-clouds', 'scroll', 'stamp',
   'ladder', 'scales', 'workbench', 'crash-test',
   'cake', 'recycling', 'bug-net', 'dice',
+  'fireworks',
 ]
 
 const SCENE_LIST: Scene[] = Object.values(SCENES)
@@ -392,4 +393,15 @@ test("polish: a scene's camera moves a few columns a frame at most, and is back 
     }
     expect(focusAt(scene, scene.loop - 0.001)).toBe(scene.focusX)
   }
+})
+
+test('fireworks: three rockets burst one after another, in gold, blue and green, eight sparks each; the sky is clear between them', () => {
+  const sky = (t: number) => [C.gold, C.blue, C.green].map(color => count(renderFull(SCENES.fireworks!, t), color))
+  expect(sky(0.5)).toEqual([0, 0, 0])
+  expect(sky(1.1)).toEqual([8, 0, 0])
+  expect(sky(3.0)).toEqual([0, 0, 0])
+  expect(sky(4.2)).toEqual([0, 8, 0])
+  expect(sky(7.0)).toEqual([0, 0, 8])
+  expect(sky(7.9)).toEqual([0, 0, 0])
+  expect(SCENES.fireworks!.loop).toBe(8)
 })

@@ -1,8 +1,8 @@
 // An 8x16 bitmap font for the frame tool: the subset of unscii-16 (public
 // domain, http://viznut.fi/unscii/) the drawing needs, written by
 // gen_font.py (see README.md). Each glyph is 16 rows of one byte, the high
-// bit the leftmost pixel, as 32 hex digits. U+2315 and U+21A9 are drawn by
-// hand: unscii lacks them.
+// bit the leftmost pixel, as 32 hex digits. U+2315, U+21A9 and U+2713 are
+// drawn by hand: unscii lacks them.
 
 const GLYPHS: Record<number, string> = {
   0x0020: '00000000000000000000000000000000',
@@ -110,6 +110,7 @@ const GLYPHS: Record<number, string> = {
   0x25C9: '3C3C6666C3C3DBDBDBDBC3C366663C3C',
   0x25CB: '00003C3C66664242424266663C3C0000',
   0x25CF: '00003C3C7E7E7E7E7E7E7E7E3C3C0000',
+  0x2713: '00000000000102048850200000000000',
 }
 
 export const GLYPH_W = 8

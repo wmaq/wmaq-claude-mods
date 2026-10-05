@@ -31,11 +31,20 @@ test('the section is built from the workflow: the track in order, then the side 
 
 test('the tool schema offers exactly the stage ids', () => {
   expect(toolSchema(W).properties.stage.enum).toEqual(stageIds(W))
-  expect(toolSchema(SMALL).properties.stage.enum).toEqual(['plan', 'build', 'debugging'])
+  expect(toolSchema(SMALL).properties.stage.enum).toEqual(['plan', 'build', 'done', 'debugging'])
   expect(toolSchema(W).required).toEqual(['stage', 'message'])
   expect(toolNameFor('stage-toons')).toBe('mcp__stage-toons__set_stage')
 })
 
 test("the tool's description says only the main conversation may call it", () => {
   expect(TOOL_DESCRIPTION).toContain('subagent')
+})
+
+test('the section tells Claude about Done: call it after a merge, and name the next feature', () => {
+  const text = workflowText(W, freshProgress(0), 'set_stage')
+  expect(text).toContain('Past the last stage: done (merged to main: the feature is finished). When the work is merged')
+  expect(text).toContain('to main, the feature is finished: call set_stage with done. The next')
+  expect(text).toContain('move after done starts a new feature: pass its name as feature.')
+  const done = applyMove(W, applyMove(W, freshProgress(0), { stage: 'cleanup', feature: 'login', by: 'claude', at: 1 }), { stage: 'done', by: 'claude', at: 2 })
+  expect(workflowText(W, done, 'set_stage').split('\n').at(-1)).toBe('At session start: ✓ Done · login · "Merged and done".')
 })

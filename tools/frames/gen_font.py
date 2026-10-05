@@ -13,6 +13,8 @@ DRAWN = {
     0x2315: [0x00, 0x00, 0x00, 0x00, 0x38, 0x44, 0x44, 0x44, 0x38, 0x04, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00],
     # ↩ (U+21A9): a hook on the right, an arrow pointing left below it.
     0x21A9: [0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x02, 0x22, 0x7E, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
+    # ✓ (U+2713), Done's label: a short stroke down, a long one up to the right.
+    0x2713: [0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x04, 0x88, 0x50, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00],
 }
 
 glyphs = {}
@@ -32,8 +34,8 @@ lines = [
     '// An 8x16 bitmap font for the frame tool: the subset of unscii-16 (public',
     '// domain, http://viznut.fi/unscii/) the drawing needs, written by',
     "// gen_font.py (see README.md). Each glyph is 16 rows of one byte, the high",
-    '// bit the leftmost pixel, as 32 hex digits. U+2315 and U+21A9 are drawn by',
-    '// hand: unscii lacks them.',
+    '// bit the leftmost pixel, as 32 hex digits. U+2315, U+21A9 and U+2713 are',
+    '// drawn by hand: unscii lacks them.',
     '',
     'const GLYPHS: Record<number, string> = {',
 ]

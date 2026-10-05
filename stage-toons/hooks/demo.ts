@@ -14,7 +14,7 @@ import { FABLE_SCENE, type SceneId } from './scene'
 import { DEMO_ORDER } from './scenes'
 import { TOON_ROWS } from './toon'
 import { WAITING_DEMO_MS } from './waiting/demo'
-import { stageOf } from './workflow'
+import { allStages, stageOf } from './workflow'
 
 export const DEMO_SECONDS = 10
 export const DEMO_MIN = 2
@@ -65,7 +65,7 @@ export function idleDemoAt(demo: Demo, now: number): IdleDemoFrame | null {
 // then side) that lists it.
 function labelOf(id: SceneId, w: Workflow): string {
   if (id === FABLE_SCENE) return `${id} (Fable reviewing)`
-  const stage = [...w.track, ...w.side].find(s => s.scenes.includes(id))
+  const stage = allStages(w).find(s => s.scenes.includes(id))
 
   return stage ? `${id} (${stage.label})` : id
 }

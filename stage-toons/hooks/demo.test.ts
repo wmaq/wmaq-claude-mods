@@ -14,7 +14,8 @@ const after = (ms: number, demo: Demo = library) => demoAt(demo, demo.at + ms)
 test("the library demo plays the default workflow's scenes stage by stage, then Fable", () => {
   expect(DEMO_ORDER.slice(0, 4)).toEqual(['road-trip', 'stargazing', 'treasure-map', 'light-bulbs'])
   expect(DEMO_ORDER.at(-1)).toBe('fable-audit')
-  expect(DEMO_ORDER).toHaveLength(37)
+  expect(DEMO_ORDER).toHaveLength(38)
+  expect(DEMO_ORDER[DEMO_ORDER.indexOf('recycling') + 1]).toBe('fireworks')
   for (const id of STAGE_SCENES) expect(DEMO_ORDER).toContain(id)
 })
 
@@ -23,8 +24,8 @@ test('each scene plays for its seconds, on its own clock from 0, wiping in over 
   expect(after(10_000)).toMatchObject({ index: 1, sceneMs: 0, shot: { base: 'stargazing' } })
   expect(after(10_000 + WIPE_MS / 2)?.shot.wipe).toEqual({ from: 'road-trip', progress: 0.5 })
   expect(after(WIPE_MS / 2)?.shot.wipe).toBeNull()
-  expect(after(369_999)).not.toBeNull()
-  expect(after(370_000)).toBeNull()
+  expect(after(379_999)).not.toBeNull()
+  expect(after(380_000)).toBeNull()
 })
 
 test("a stage's demo plays its scenes; its line names them by the first stage that lists them", () => {
@@ -32,7 +33,8 @@ test("a stage's demo plays its scenes; its line names them by the first stage th
   expect(demoLine(after(5_000, develop)!, develop, DEFAULT_WORKFLOW)).toBe('Demo 2/3: terminal (Develop) · /stage demo stop ends it')
   expect(demoLine(after(10_000, develop)!, develop, DEFAULT_WORKFLOW)).toBe('Demo 3/3: workbench (Develop) · /stage demo stop ends it')
   expect(after(15_000, develop)).toBeNull()
-  expect(demoLine(after(360_000)!, library, DEFAULT_WORKFLOW)).toBe('Demo 37/37: fable-audit (Fable reviewing) · /stage demo stop ends it')
+  expect(demoLine(after(370_000)!, library, DEFAULT_WORKFLOW)).toBe('Demo 38/38: fable-audit (Fable reviewing) · /stage demo stop ends it')
+  expect(demoLine(after(300_000)!, library, DEFAULT_WORKFLOW)).toBe('Demo 31/38: fireworks (Done) · /stage demo stop ends it')
 })
 
 test('the idle demo plays each routine, then the doze', () => {

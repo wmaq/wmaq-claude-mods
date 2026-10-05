@@ -2,12 +2,13 @@
 // beside it, each naming the scenes it may play. Data and lookups; the default
 // is the workflow stage-toons ships with.
 
-import type { StageDef, Workflow, WorkflowSettings } from '../types'
+import type { AutoRule, DoneDef, StageDef, Workflow, WorkflowSettings } from '../types'
 import { chars, rulesAt, unknownFrom } from './auto'
 import type { LibraryScene } from './scenes'
+import { allStages, DONE_ID, DONE_MESSAGE, DONE_SCENES, doneOf } from './track'
 
-export type { StageDef, Workflow, WorkflowSettings }
-export { isTrack, rank } from './track'
+export type { DoneDef, StageDef, Workflow, WorkflowSettings }
+export { allStages, DONE_ID, doneOf, isDone, isTrack, rank } from './track'
 
 // What plays while the work is in no stage of the workflow.
 export const UNTRACKED_SCENE: LibraryScene = 'mystery-box'
@@ -15,6 +16,17 @@ export const UNTRACKED_SCENE: LibraryScene = 'mystery-box'
 // A default stage names scenes of the library only: a misspelt one is a tsc
 // error. (A workflow file's stages are checked when it is read.)
 type DefaultStage = StageDef & { scenes: readonly LibraryScene[] }
+
+// The default's rules into Done: a push to main, or a pull request merged,
+// from Your testing or Cleanup only, so a stray push early in a feature
+// doesn't end it. Each matches a command at the start of a line (spaces
+// before it allowed) or after ;, &, |: a commit message or an echo that
+// mentions a push does not (a heredoc line starting with one does, an
+// accepted miss); gh pr merge --auto merges nothing yet.
+const MERGE_RULES: readonly AutoRule[] = [
+  { bash: `(?:^|[;&|\\n])\\s*git\\s+push\\b[^;&|\\n]*[\\s:]["']?main["']?(?![-.\\w])`, from: ['user-test', 'cleanup'] },
+  { bash: `(?:^|[;&|\\n])\\s*gh\\s+pr\\s+merge\\b(?![^;&|\\n]*--auto)`, from: ['user-test', 'cleanup'] },
+]
 
 export const DEFAULT_WORKFLOW: Workflow = {
   track: [
@@ -47,23 +59,24 @@ export const DEFAULT_WORKFLOW: Workflow = {
     { id: 'debugging', label: 'Debugging', message: 'Hunting a bug', when: 'finding and fixing a bug, at any point', scenes: ['bug-hunt', 'flashlight', 'bug-net'], auto: [{ skill: 'superpowers:systematic-debugging' }] },
     { id: 'other', label: 'Other', message: 'Work outside the usual stages', when: 'work that fits none of the stages', scenes: ['mystery-box', 'fishing', 'dice'] },
   ],
-} satisfies { track: readonly DefaultStage[]; side: readonly DefaultStage[] }
+  done: { message: DONE_MESSAGE, scenes: ['fireworks'], auto: MERGE_RULES },
+} satisfies { track: readonly DefaultStage[]; side: readonly DefaultStage[]; done: DoneDef & { scenes: readonly LibraryScene[] } }
 
-export const stageIds = (w: Workflow): string[] => [...w.track, ...w.side].map(s => s.id)
+export const stageIds = (w: Workflow): string[] => allStages(w).map(s => s.id)
 
 export const stageOf = (w: Workflow, id: string | null): StageDef | undefined =>
-  id === null ? undefined : (w.track.find(s => s.id === id) ?? w.side.find(s => s.id === id))
+  id === null ? undefined : id === DONE_ID ? doneOf(w) : (w.track.find(s => s.id === id) ?? w.side.find(s => s.id === id))
 
 // Where /stage 0 and /stage ? go: Other, else the first side stage.
 export const zeroStage = (w: Workflow): StageDef | undefined => w.side.find(s => s.id === 'other') ?? w.side[0]
 
 export function stageList(w: Workflow): string {
-  const track = `track: ${w.track.map(s => s.id).join(', ')}`
+  const track = `track: ${w.track.map(s => s.id).join(', ')}, then ${DONE_ID}`
 
   return w.side.length > 0 ? `${track}; side: ${w.side.map(s => s.id).join(', ')}` : track
 }
 
-export const RESERVED_IDS = ['next', 'back', 'hide', 'demo', 'feature', 'message', 'workflow', 'auto', 'log', 'time', 'help'] as const
+export const RESERVED_IDS = ['next', 'back', 'hide', 'demo', 'feature', 'message', 'workflow', 'auto', 'log', 'time', 'help', 'done'] as const
 export const TRACK_MAX = 15
 export const SIDE_MAX = 5
 
@@ -179,8 +192,35 @@ function stagesAt(value: unknown, name: 'track' | 'side', min: number, max: numb
   return found
 }
 
-// The file's top-level fields: the stages, and the settings for the start.
-const TOP_FIELDS = ['track', 'side', 'auto', 'hide'] as const
+// The file's top-level fields: the stages, Done, and the settings for the
+// start.
+const TOP_FIELDS = ['track', 'side', 'done', 'auto', 'hide'] as const
+const DONE_FIELDS = ['message', 'scenes', 'auto'] as const
+
+// The file's "done": what it sets of Done's message, scenes and rules, or
+// null with its mistakes listed. Rules' from ids are checked with the rest.
+function doneAt(value: unknown, errors: string[], sceneNames: readonly string[]): DoneDef | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    errors.push(`done: not an object (with ${DONE_FIELDS.join(', ')}, each optional)`)
+
+    return null
+  }
+  const raw = value as Record<string, unknown>
+  const before = errors.length
+  for (const key of Object.keys(raw)) if (!(DONE_FIELDS as readonly string[]).includes(key)) errors.push(`done.${key}: not a field (${DONE_FIELDS.join(', ')})`)
+  let message: string | undefined
+  if (raw.message !== undefined) {
+    if (typeof raw.message !== 'string') errors.push('done.message: must be text')
+    else if (raw.message.trim() === '') errors.push('done.message: empty')
+    else if (chars(raw.message.trim()) > LIMITS.message) errors.push(`done.message: ${chars(raw.message.trim())} characters, at most ${LIMITS.message}`)
+    else message = raw.message.trim()
+  }
+  const scenes = raw.scenes === undefined ? undefined : scenesAt({ scenes: raw.scenes }, 'done', errors, sceneNames)
+  const auto = raw.auto === undefined ? undefined : rulesAt(raw.auto, 'done.auto', errors)
+  if (errors.length !== before) return null
+
+  return { ...(message ? { message } : {}), ...(scenes ? { scenes } : {}), ...(auto && auto.length > 0 ? { auto } : {}) }
+}
 const SETTINGS = ['auto', 'hide'] as const
 
 // A workflow file's text: the workflow and the settings it gives (absent
@@ -205,8 +245,11 @@ export function parseWorkflow(json: string, sceneNames: readonly string[]): { wo
     if (seen.has(stage.id)) errors.push(`${path}.id "${stage.id}" is used twice`)
     seen.add(stage.id)
   }
-  const ids = [...seen]
+  const done = top.done === undefined ? undefined : doneAt(top.done, errors, sceneNames)
+  // A rule may fire from Done too.
+  const ids = [...seen, DONE_ID]
   for (const { path, stage } of [...track, ...side]) errors.push(...unknownFrom(stage.auto ?? [], `${path}.auto`, ids))
+  errors.push(...unknownFrom(done?.auto ?? [], 'done.auto', ids))
   const settings: WorkflowSettings = {}
   for (const name of SETTINGS) {
     const value = top[name]
@@ -214,7 +257,7 @@ export function parseWorkflow(json: string, sceneNames: readonly string[]): { wo
     else if (value !== undefined) errors.push(`${name}: must be true or false`)
   }
   if (errors.length > 0) return { errors }
-  const workflow = { track: track.map(f => f.stage), side: side.map(f => f.stage) }
+  const workflow: Workflow = { track: track.map(f => f.stage), side: side.map(f => f.stage), ...(done ? { done } : {}) }
 
   return { workflow: listsRules(top) ? workflow : withDefaultRules(workflow), ...(Object.keys(settings).length > 0 ? { settings } : {}) }
 }
@@ -223,22 +266,33 @@ export function parseWorkflow(json: string, sceneNames: readonly string[]): { wo
 // included: a file that has none (as /stage workflow init wrote before
 // 0.6) takes the default's rules.
 const listsRules = (top: Record<string, unknown>): boolean =>
-  [top.track, top.side].some(list => Array.isArray(list) && list.some(item => typeof item === 'object' && item !== null && 'auto' in item))
+  [top.track, top.side].some(list => Array.isArray(list) && list.some(item => typeof item === 'object' && item !== null && 'auto' in item)) ||
+  (typeof top.done === 'object' && top.done !== null && 'auto' in top.done)
 
 // Each stage the default has by id, with the default's rules; the file's
-// own stages get none.
+// own stages get none. Done gets the default's rules too, each one's from
+// cut to the file's stages, a rule left with none dropped.
 function withDefaultRules(w: Workflow): Workflow {
   const ruled = (s: StageDef): StageDef => {
     const auto = stageOf(DEFAULT_WORKFLOW, s.id)?.auto
 
     return auto ? { ...s, auto } : s
   }
+  const ids = [...w.track, ...w.side].map(s => s.id)
+  const doneRules = (DEFAULT_WORKFLOW.done?.auto ?? []).flatMap(rule => {
+    if (rule.from === undefined) return [rule]
+    const from = rule.from.filter(id => ids.includes(id))
 
-  return { track: w.track.map(ruled), side: w.side.map(ruled) }
+    return from.length > 0 ? [{ ...rule, from }] : []
+  })
+  const done = doneRules.length > 0 ? { message: DONE_MESSAGE, scenes: DONE_SCENES, ...w.done, auto: doneRules } : w.done
+
+  return { ...w, track: w.track.map(ruled), side: w.side.map(ruled), ...(done ? { done } : {}) }
 }
 
 // The file /stage workflow init writes: two-space JSON, a trailing newline.
-export const workflowJson = (w: Workflow): string => `${JSON.stringify({ track: w.track, side: w.side }, null, 2)}\n`
+export const workflowJson = (w: Workflow): string =>
+  `${JSON.stringify({ track: w.track, side: w.side, ...(w.done ? { done: w.done } : {}) }, null, 2)}\n`
 
 export const sameWorkflow = (a: Workflow, b: Workflow): boolean => workflowJson(a) === workflowJson(b)
 
@@ -252,5 +306,5 @@ export function withScenes(w: Workflow): Workflow {
     return { id: old.id, label: old.label, message: old.message, when: old.when, scenes: [old.scene ?? UNTRACKED_SCENE] }
   }
 
-  return { track: w.track.map(fit), side: w.side.map(fit) }
+  return { ...w, track: w.track.map(fit), side: w.side.map(fit) }
 }

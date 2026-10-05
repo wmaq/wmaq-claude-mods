@@ -4,7 +4,7 @@
 import type { Progress, StageDef, Workflow } from '../types'
 import { hasRules } from './auto'
 import { describe } from './stages'
-import { stageIds } from './workflow'
+import { DONE_ID, doneOf, stageIds } from './workflow'
 
 export const TOOL = 'set_stage'
 export const COMMAND = 'stage'
@@ -35,7 +35,13 @@ const listed = (stages: readonly StageDef[]): string => stages.map(s => `${s.id}
 // The same text for the same workflow, progress and tool name, byte for
 // byte: the section sits in the cached part of the prompt.
 export function workflowText(w: Workflow, p: Progress, toolName: string): string {
-  const lines = ["Workflow tracker (stage-toons). This project's work moves through these", `stages, in order: ${listed(w.track)}.`]
+  const lines = [
+    "Workflow tracker (stage-toons). This project's work moves through these",
+    `stages, in order: ${listed(w.track)}.`,
+    `Past the last stage: ${DONE_ID} (${doneOf(w).when}). When the work is merged`,
+    `to main, the feature is finished: call ${toolName} with ${DONE_ID}. The next`,
+    'move after done starts a new feature: pass its name as feature.',
+  ]
   if (w.side.length > 0) lines.push(`Side stages, entered from any point and left again: ${listed(w.side)}.`)
   lines.push(
     'When the work moves to a different stage, forwards, backwards or',

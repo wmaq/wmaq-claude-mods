@@ -28,8 +28,8 @@ test('the font has every character the bar can print', () => {
   assert.deepEqual([...missing], [])
 })
 
-test('the two characters unscii lacks are drawn', () => {
-  for (const cp of [0x2315, 0x21a9]) assert.ok(glyph(cp)?.some(row => row !== 0))
+test('the three characters unscii lacks are drawn', () => {
+  for (const cp of [0x2315, 0x21a9, 0x2713]) assert.ok(glyph(cp)?.some(row => row !== 0))
 })
 
 test('a character the font lacks has no glyph', () => {
