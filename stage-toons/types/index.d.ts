@@ -42,9 +42,12 @@ export type Workflow = { track: readonly StageDef[]; side: readonly StageDef[] }
 // The session's workflow and where it came from.
 export type SessionWorkflow = { workflow: Workflow; source: 'file' | 'default' }
 
-// The scene the work's stage shows, picked when the stage changed, and the
-// scene each stage showed last in this session (never pruned).
-export type ScenePick = { stage: StageId | null; scene: string; lastByStage: Record<StageId, string> }
+// The scene the work's stage shows, picked when the stage changed (stage is
+// null while untracked), the scene each stage showed last in this session
+// (never pruned), and each stage's deck: the scenes it still has to play, in
+// order (hooks/deck.ts). decks is optional: a state an older version left
+// has none, which reads as every deck empty.
+export type ScenePick = { stage: StageId | null; scene: string; lastByStage: Record<StageId, string>; decks?: Record<StageId, string[]> }
 
 // An idle routine's name (hooks/idle/).
 export type IdleId = string

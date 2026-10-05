@@ -21,7 +21,7 @@ import { type Log, siteCells } from './frames'
 import { pickIdle } from './idle'
 import { createMod, createSite, endDemo, type Mod, queued, reseat, stopToon } from './mod'
 import { animate, type Ports } from './paint'
-import { pickOne } from './pick'
+import { dealCard } from './deck'
 import { creditAt, currentEntry, logText, timeText } from './history'
 import { type KV, loadProgress, PRUNE_EVERY_MS, saveProgress, staleKeys, storeKey, validate } from './progress'
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolSchema, workflowText } from './prompt'
@@ -145,16 +145,22 @@ async function latestProgress($: EngineInterface, mod: Mod, now: number): Promis
 }
 
 // The scene for the stage the work is in: the one already picked while the
-// stage stays and still lists it, else a new pick that leaves out the scene
-// the stage showed last. Untracked shows the Other scene and picks nothing.
-// Never called while a ui.render hook draws: it writes $.state.
+// stage stays and still lists it, else the next card of the stage's deck
+// (hooks/deck.ts: every scene plays once before any repeats, never the one
+// shown last). Untracked shows the Other scene and clears the held pick's
+// stage, so coming back to the same stage deals the next card; the deck
+// stays. Never called while a ui.render hook draws: it writes $.state.
 async function sceneFor($: EngineInterface, mod: Mod, stage: StageId | null): Promise<SceneId> {
-  if (stage === null) return UNTRACKED_SCENE
   const held = await read($, sceneAtom)
+  if (stage === null) {
+    if (held && held.stage !== null) await update($, sceneAtom, () => ({ ...held, stage: null }))
+
+    return UNTRACKED_SCENE
+  }
   const scenes = stageOf(mod.workflow, stage)?.scenes ?? [UNTRACKED_SCENE]
   if (held && held.stage === stage && scenes.includes(held.scene)) return held.scene
-  const scene = pickOne(scenes, held?.lastByStage[stage], Math.random())
-  const next: ScenePick = { stage, scene, lastByStage: { ...held?.lastByStage, [stage]: scene } }
+  const { scene, deck } = dealCard(scenes, held?.decks?.[stage], held?.lastByStage[stage], Math.random)
+  const next: ScenePick = { stage, scene, lastByStage: { ...held?.lastByStage, [stage]: scene }, decks: { ...held?.decks, [stage]: deck } }
   await update($, sceneAtom, () => next)
 
   return scene
