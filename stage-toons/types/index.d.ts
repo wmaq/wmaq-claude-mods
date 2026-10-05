@@ -79,6 +79,11 @@ declare module 'claude-code' {
       // Each agent's kind, by id, as its spawn told it: a reload's roster
       // starts empty, and the agent list names no model.
       agentKinds: Record<string, ModelKind>
+      // The session's cost (in dollars) already credited to the history, or
+      // not yet known: every main turn's end credits the cost since, and
+      // moves it to the session's cost. Kept across a reload, so dollars are
+      // neither lost nor counted twice.
+      usdCredited: number | null
     }
   }
 }

@@ -22,7 +22,7 @@ import { pickIdle } from './idle'
 import { createMod, createSite, endDemo, type Mod, queued, reseat, stopToon } from './mod'
 import { animate, type Ports } from './paint'
 import { dealCard } from './deck'
-import { creditAt, currentEntry, logText, timeText } from './history'
+import { addCost, type Cost, costText, creditAt, currentEntry, logText, NO_COST, timeText, tokensOf } from './history'
 import { type KV, loadProgress, PRUNE_EVERY_MS, saveProgress, staleKeys, storeKey, validate } from './progress'
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolSchema, workflowText } from './prompt'
 import type { SceneId } from './scene'
@@ -65,6 +65,9 @@ const autoAtom = atom({ plugin: 'stage-toons', key: 'auto' } as const, true)
 // Each agent's kind, as its spawn told it: kept across reloads, which
 // start the roster empty, so the list's agents keep their colours.
 const kindsAtom = atom({ plugin: 'stage-toons', key: 'agentKinds' } as const, {})
+// The session's cost already credited to the history (null: not known yet):
+// kept across reloads, so dollars are neither lost nor counted twice.
+const usdAtom = atom({ plugin: 'stage-toons', key: 'usdCredited' } as const, null)
 
 // A queued step of the mod's own (an automatic move, a turn's credit) that
 // must not fail the call or event it rides on: a failure goes to the debug log.
@@ -291,24 +294,55 @@ async function hearSkill($: EngineInterface, mod: Mod, side: 'command' | 'skill'
   await settle($, 'an automatic move', queued(mod, () => autoMove($, mod, signal)))
 }
 
-// The main turn's end: the rest of its working time credited and saved,
-// so another session on the project picks it up. A turn whose start was
-// missed credits its duration, at most the time since the entry began.
-async function creditTurn($: EngineInterface, mod: Mod, durationMs: number) {
+// The session's cost so far, as /cost totals it; null when the engine
+// answers none (no ledger) or the call fails.
+async function sessionUsd($: EngineInterface): Promise<number | null> {
+  try {
+    const usd = (await $.session.usage()).cost?.usd
+
+    return typeof usd === 'number' && Number.isFinite(usd) && usd >= 0 ? usd : null
+  } catch {
+    return null
+  }
+}
+
+// The dollars spent since the last main turn's end, the baseline moved to
+// the session's cost whatever becomes of them. A cost below the baseline
+// (the ledger restarted) or a first figure only starts it: nothing spent.
+// A session with no figure leaves it as it was, and spent nothing.
+async function dollarsSpent($: EngineInterface): Promise<number> {
+  const usd = await sessionUsd($)
+  if (usd === null) return 0
+  const baseline = await read($, usdAtom)
+  await update($, usdAtom, () => usd)
+
+  return baseline !== null && usd >= baseline ? usd - baseline : 0
+}
+
+// The main turn's end: the rest of its working time, and what its turns
+// cost (tokens: the main turn's and its subagents'; dollars since the last
+// main turn's end), credited and saved, so another session on the project
+// picks it up. A turn whose start was missed credits its duration, at most
+// the time since the entry began.
+async function creditTurn($: EngineInterface, mod: Mod, durationMs: number, tokens: Cost) {
   const now = await $.clock.now()
   const since = mod.workSince
   const counted = mod.workEntry
   mod.workSince = null
   mod.workEntry = null
+  // Moved at every main turn's end, credited or not (untracked, no entry),
+  // so dollars never pile onto a later entry.
+  const cost: Cost = { ...tokens, usd: await dollarsSpent($) }
   if ((await read($, progressAtom)) === null) return
   const { progress, raw } = await latestProgress($, mod, now)
   const entry = since !== null ? counted : currentEntry(progress)
   if (entry === null) return
   const ms = since !== null ? now - since : Math.min(Math.max(0, durationMs), now - entry.at)
-  const after = creditAt(raw, entry, ms)
+  const after = creditAt(raw, entry, ms, cost)
   if (after === raw) {
     // The entry is gone from the copy (an older version's session cut the history).
-    if (ms > 0) $.ui.log(`stage-toons: ${Math.round(ms / 1000)} s of working time had no history entry to go to`, { to: 'debug' })
+    const lost = [ms > 0 ? `${Math.round(ms / 1000)} s of working time` : '', costText(cost)].filter(part => part !== '').join(' and ')
+    if (lost !== '') $.ui.log(`stage-toons: ${lost} had no history entry to go to`, { to: 'debug' })
 
     return
   }
@@ -590,6 +624,13 @@ export const register: Register = on => {
     // Computed once per session and kept across reloads: the section sits
     // in the cached part of the prompt.
     if ((await read($, sectionAtom)) === null) await update($, sectionAtom, () => workflowText(mod.workflow, progress, mod.toolName))
+    // Dollars count from the session's cost now: what it cost before (a
+    // resumed session's) is not this history's to claim. A reload keeps the
+    // baseline it finds, unless the session's cost is below it (the ledger
+    // restarted).
+    const usdNow = await sessionUsd($)
+    const usdBaseline = await read($, usdAtom)
+    if (usdNow !== null && (usdBaseline === null || usdNow < usdBaseline)) await update($, usdAtom, () => usdNow)
     // Agents at work before a reload: the roster starts empty, and the list
     // finds them, in the colours their spawns left (grey for one unseen).
     await checkAgents($, mod)
@@ -791,6 +832,8 @@ export const register: Register = on => {
 
   on('turn.complete', async ($, e, next) => {
     if (e.agentId !== undefined) {
+      // Its tokens wait for the main turn's end, to go to the entry with it.
+      mod.turnTokens = addCost(mod.turnTokens, tokensOf(e.usage))
       // A subagent's turn: the end of an auditor, perhaps, and of the
       // spinner on its row, which carries the agent's id. Its helper gets
       // up at once, whatever the list says yet.
@@ -808,7 +851,11 @@ export const register: Register = on => {
     mod.expandedSkill = null
     // The main spinner's toon stops; an agent at work keeps its row's.
     for (const id of [...mod.toons.keys()]) if (mod.roster.get(id)?.isAtWork !== true) stopToon(mod, id)
-    await settle($, "crediting the turn's working time", queued(mod, () => creditTurn($, mod, e.durationMs)))
+    // The tokens so far, this turn's own with its subagents': a background
+    // agent's turn that ends after this goes to the next main turn's.
+    const tokens = addCost(mod.turnTokens, tokensOf(e.usage))
+    mod.turnTokens = NO_COST
+    await settle($, "crediting the turn's working time", queued(mod, () => creditTurn($, mod, e.durationMs, tokens)))
     const now = await $.clock.now()
     mod.idleSince = now
     mod.idle = mod.nextIdle

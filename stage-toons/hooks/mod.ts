@@ -8,7 +8,7 @@ import type { BandSite } from './band'
 import { COMMAND, toolNameFor } from './prompt'
 import type { Demo } from './demo'
 import { createDirector, type Director } from './director'
-import type { EntryKey } from './history'
+import { type Cost, type EntryKey, NO_COST } from './history'
 import { DEEP_SLEEP_MS, DOZE_MS } from './idle'
 import { storeKey } from './progress'
 import { type SceneId, STAGE_W } from './scene'
@@ -119,6 +119,9 @@ export type Mod = {
   // The history entry that time goes to, found again by stage and start
   // in a copy another session saved.
   workEntry: EntryKey | null
+  // The tokens of the turns that ended since the main turn's last end (its
+  // subagents'), credited with the next main turn's end.
+  turnTokens: Cost
   // Whether a newer version's progress is in the store: nothing is saved.
   isReadOnly: boolean
   // Every move runs in turn on this queue.
@@ -158,6 +161,7 @@ export const createMod = (): Mod => ({
   expandedSkill: null,
   workSince: null,
   workEntry: null,
+  turnTokens: NO_COST,
   isReadOnly: false,
   queue: Promise.resolve(),
 })
