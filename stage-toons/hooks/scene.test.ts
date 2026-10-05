@@ -77,3 +77,61 @@ test('overlay and wipe combine frames', () => {
   expect([...wipe(a, b, 1).px]).toEqual([...b.px])
   expect(renderScene(scene, 0, 24).px).toHaveLength(24 * STAGE_H)
 })
+
+// A block over the top of Clawd's body (orange at x 22, CLAWD_TOP), at a
+// depth.
+const block = (z: number | ((t: number) => number)) => ({ kind: 'prop' as const, z, draw: (b: Parameters<typeof fillRect>[0]) => fillRect(b, 22, CLAWD_TOP, 2, 1, 0x555555) })
+const withBlock = (z: number | ((t: number) => number)): Scene => ({
+  id: 'depth',
+  loop: 2,
+  focusX: 24,
+  actors: [block(z), { kind: 'clawd', isHero: true, at: () => ({ x: 20, y: CLAWD_TOP }), look: () => ({}) }],
+})
+
+test('actors paint by depth: a prop nearer than Clawd covers him, a farther one hides behind him', () => {
+  expect(getPixel(renderFull(withBlock(1), 0), 22, CLAWD_TOP)).toBe(0x555555)
+  expect(getPixel(renderFull(withBlock(-1), 0), 22, CLAWD_TOP)).toBe(CLAWD_ORANGE)
+})
+
+test('actors of equal depth paint in the order written', () => {
+  // The block is written first, at Clawd's depth: he covers it.
+  expect(getPixel(renderFull(withBlock(0), 0), 22, CLAWD_TOP)).toBe(CLAWD_ORANGE)
+})
+
+test("a depth that changes with the loop's time moves a prop from behind Clawd to in front", () => {
+  const scene = withBlock(t => (t < 1 ? -1 : 1))
+  expect(getPixel(renderFull(scene, 0.5), 22, CLAWD_TOP)).toBe(CLAWD_ORANGE)
+  expect(getPixel(renderFull(scene, 1.5), 22, CLAWD_TOP)).toBe(0x555555)
+  // Read at the loop's time: 3.5 s is 1.5 s into the second loop.
+  expect(getPixel(renderFull(scene, 3.5), 22, CLAWD_TOP)).toBe(0x555555)
+})
+
+test('the backdrop and the front stay outermost, whatever the depths', () => {
+  const scene: Scene = {
+    ...withBlock(5),
+    backdrop: b => fillRect(b, 0, 0, STAGE_W, STAGE_H, 0x010101),
+    front: b => setPixel(b, 22, CLAWD_TOP, 0x020202),
+    actors: [block(-5)],
+  }
+  const b = renderFull(scene, 0)
+  expect(getPixel(b, 0, 0)).toBe(0x010101)
+  expect(getPixel(b, 22, CLAWD_TOP)).toBe(0x020202)
+  expect(getPixel(b, 23, CLAWD_TOP)).toBe(0x555555)
+})
+
+test("the background paints first and is given the scene's time unwrapped", () => {
+  const seen: number[] = []
+  const scene: Scene = {
+    ...withBlock(0),
+    background: (b, time) => {
+      seen.push(time)
+      fillRect(b, 0, 0, STAGE_W, STAGE_H, 0x0a0a0a)
+    },
+    backdrop: b => setPixel(b, 0, 0, 0x0b0b0b),
+  }
+  const b = renderFull(scene, 5.25)
+  expect(seen).toEqual([5.25])
+  expect(getPixel(b, 0, 0)).toBe(0x0b0b0b)
+  expect(getPixel(b, 1, 0)).toBe(0x0a0a0a)
+  expect(getPixel(b, 22, CLAWD_TOP)).toBe(CLAWD_ORANGE)
+})

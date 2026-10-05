@@ -22,14 +22,33 @@ export type Mood = 'flinch' | 'jump' | null
 export type Sprite = { palette: Record<string, number>; frames: string[][] }
 export type Paint = (b: PixelBuffer, t: number) => void
 
+// How near the viewer an actor is: higher is nearer, 0 when not given. A
+// function of the loop's time moves it, from behind Clawd to in front.
+export type Depth = number | ((t: number) => number)
+
+// A prop draws where it likes, at a depth like any actor.
 export type Actor =
-  | { kind: 'sprite'; sprite: Sprite; frame: (t: number) => number; at: (t: number) => Point }
-  | { kind: 'clawd'; look: (t: number) => Partial<ClawdLook>; at: (t: number) => Point; isHero?: boolean }
+  | { kind: 'sprite'; sprite: Sprite; frame: (t: number) => number; at: (t: number) => Point; z?: Depth }
+  | { kind: 'clawd'; look: (t: number) => Partial<ClawdLook>; at: (t: number) => Point; isHero?: boolean; z?: Depth }
+  | { kind: 'prop'; draw: Paint; z?: Depth }
 
 // A looping scene: t runs from 0 to loop seconds. focusX is the column kept
 // in view when the raster is narrower than the stage; focus, when given,
-// moves it with the action instead (a camera that pans).
-export type Scene = { id: SceneId; loop: number; focusX: number; focus?: (t: number) => number; backdrop?: Paint; actors: Actor[]; front?: Paint }
+// moves it with the action instead (a camera that pans). A frame paints the
+// background, the backdrop, the actors by depth (equal depths in the order
+// written), then the front. The background is given the scene's time
+// unwrapped (seconds since it came on), so it can drift with no jump at the
+// loop point; the rest are given the loop's time.
+export type Scene = {
+  id: SceneId
+  loop: number
+  focusX: number
+  focus?: (t: number) => number
+  background?: Paint
+  backdrop?: Paint
+  actors: Actor[]
+  front?: Paint
+}
 
 // A reaction plays once over a scene, drawn on its own layer relative to
 // the hero's head, and may set the hero's mood.
@@ -51,11 +70,25 @@ export function drawSprite(b: PixelBuffer, sprite: Sprite, frame: number, x: num
 
 export const loopTime = (scene: Scene, time: number): number => ((time % scene.loop) + scene.loop) % scene.loop
 
+const depthOf = (actor: Actor, t: number): number => (typeof actor.z === 'function' ? actor.z(t) : (actor.z ?? 0))
+
+// The actors nearest last; a stable sort keeps equal depths as written.
+const byDepth = (actors: readonly Actor[], t: number): Actor[] =>
+  actors
+    .map((actor, i) => ({ actor, i, z: depthOf(actor, t) }))
+    .sort((a, b) => a.z - b.z || a.i - b.i)
+    .map(e => e.actor)
+
 export function renderFull(scene: Scene, time: number, mood: Mood = null): PixelBuffer {
   const t = loopTime(scene, time)
   const b = createBuffer(STAGE_W, STAGE_H)
+  scene.background?.(b, time)
   scene.backdrop?.(b, t)
-  for (const actor of scene.actors) {
+  for (const actor of byDepth(scene.actors, t)) {
+    if (actor.kind === 'prop') {
+      actor.draw(b, t)
+      continue
+    }
     const p = actor.at(t)
     if (actor.kind === 'sprite') {
       drawSprite(b, actor.sprite, actor.frame(t), p.x, p.y)
@@ -76,7 +109,7 @@ export const focusAt = (scene: Scene, time: number): number => scene.focus?.(loo
 
 // Where the hero's head is: its centre column and top row.
 export function heroAt(scene: Scene, time: number): Point {
-  const hero = scene.actors.find(a => a.kind === 'clawd' && a.isHero)
+  const hero = scene.actors.find((a): a is Extract<Actor, { kind: 'clawd' }> => a.kind === 'clawd' && a.isHero === true)
   if (!hero) return { x: scene.focusX, y: CLAWD_TOP }
   const p = hero.at(loopTime(scene, time))
 
