@@ -20,8 +20,14 @@ export type Ports = {
 // Repaints a site while it is mounted, detached from the render that
 // started it: a sleep inside a dispatch would spend its time budget. The
 // band's size may change under it.
+// A render while the loop sleeps wakes it: what changed (a dissolve
+// starting, say) is drawn at once, not after an idle rate's sleep.
 export function animate(ports: Ports, mod: Mod, site: Site) {
-  if (site.isAnimating) return
+  if (site.isAnimating) {
+    site.wake?.()
+
+    return
+  }
   site.isAnimating = true
   site.isAsleep = false
   void (async () => {
@@ -85,7 +91,9 @@ export function animate(ports: Ports, mod: Mod, site: Site) {
           site.isAsleep = true
           break
         }
-        await ports.sleep(frameMs(mod, now))
+        // A wake ends the sleep early; the sleep itself runs out unheeded.
+        await Promise.race([ports.sleep(frameMs(mod, now)), new Promise<void>(resolve => (site.wake = resolve))])
+        site.wake = null
       }
       // Refused until it gave up, the band's Raster may be gone for good
       // (the band collapsed) or for now: the hook decides again, and an

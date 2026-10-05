@@ -62,15 +62,24 @@ const drawn = (r: IdleRoutine, idleMs: number): PixelBuffer => {
   return b
 }
 
-// The box idleMs into an idle period. A routine that throws is replaced by
-// classic from then on (broken), and reported once (onBreak).
-export function idleFrame(routine: IdleId, idleMs: number, broken: Set<IdleId> = new Set(), onBreak?: (id: IdleId, error: unknown) => void): PixelBuffer {
-  if (idleMs >= DOZE_MS) {
-    const b = createBuffer(IDLE_COLS, IDLE_ROWS * 2)
-    drawDoze(b, idleMs >= DOZE_MS + DEEP_SLEEP_MS ? STILL_T : (idleMs - DOZE_MS) / 1000)
+// The box idleMs into an idle period: the routine, or the doze after
+// DOZE_MS. A routine that throws is replaced by classic from then on
+// (broken), and reported once (onBreak).
+export const idleFrame = (routine: IdleId, idleMs: number, broken: Set<IdleId> = new Set(), onBreak?: (id: IdleId, error: unknown) => void): PixelBuffer =>
+  idleMs >= DOZE_MS ? dozeFrame(idleMs) : routineFrame(routine, idleMs, broken, onBreak)
 
-    return b
-  }
+// The doze's box idleMs into an idle period (DOZE_MS or more): still once
+// DEEP_SLEEP_MS has passed.
+export function dozeFrame(idleMs: number): PixelBuffer {
+  const b = createBuffer(IDLE_COLS, IDLE_ROWS * 2)
+  drawDoze(b, idleMs >= DOZE_MS + DEEP_SLEEP_MS ? STILL_T : Math.max(0, idleMs - DOZE_MS) / 1000)
+
+  return b
+}
+
+// The routine's box idleMs into an idle period, however long: a routine
+// dissolving into the doze plays on.
+export function routineFrame(routine: IdleId, idleMs: number, broken: Set<IdleId> = new Set(), onBreak?: (id: IdleId, error: unknown) => void): PixelBuffer {
   const found = broken.has(routine) ? undefined : routineOf(routine)
   const id = found === undefined ? FALLBACK_ROUTINE : routine
   try {
@@ -84,10 +93,10 @@ export function idleFrame(routine: IdleId, idleMs: number, broken: Set<IdleId> =
 }
 
 // The routine's background on the whole area (48 x 14) idleMs into an idle
-// period, or null: the doze, a routine with none, an unknown or broken one.
-// A background that throws breaks its routine like its drawing would.
+// period, or null: a routine with none, an unknown or broken one. A
+// background that throws breaks its routine like its drawing would.
 export function idleBackground(routine: IdleId, idleMs: number, broken: Set<IdleId> = new Set(), onBreak?: (id: IdleId, error: unknown) => void): PixelBuffer | null {
-  if (idleMs >= DOZE_MS || broken.has(routine)) return null
+  if (broken.has(routine)) return null
   const background = routineOf(routine)?.background
   if (background === undefined) return null
   const b = createBuffer(STAGE_W, STAGE_H)

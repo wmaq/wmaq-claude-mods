@@ -83,9 +83,10 @@ test("nyan's background: a starfield over the whole area, in three depths, no ju
   expect(far(5)).toBe(JSON.stringify(shifted))
 })
 
-test('only a routine with a background has one, and never in the doze; one that throws breaks its routine', () => {
+test('only a routine with a background has one; one that throws breaks its routine', () => {
   expect(idleBackground('classic', 1000)).toBe(null)
-  expect(idleBackground('nyan', DOZE_MS)).toBe(null)
+  // Past the doze's start too: a routine dissolving into the doze plays on.
+  expect(idleBackground('nyan', DOZE_MS + 100)).not.toBe(null)
   expect(idleBackground('unknown', 1000)).toBe(null)
   const broken = new Set<string>()
   const breaks: string[] = []

@@ -10,8 +10,9 @@ import type { Demo } from './demo'
 import { createDirector, type Director } from './director'
 import { type Cost, type EntryKey, NO_COST } from './history'
 import { DEEP_SLEEP_MS, DOZE_MS } from './idle'
+import type { PixelBuffer } from './pixels'
 import { storeKey } from './progress'
-import { type SceneId, STAGE_W } from './scene'
+import { FADE_MS, type SceneId, STAGE_W } from './scene'
 import { type Cast, TOON_ROWS } from './toon'
 import { EMPTY_LOG, seat, type SeatLog } from './waiting/seats'
 import { DEFAULT_WORKFLOW } from './workflow'
@@ -36,29 +37,46 @@ export type Site = {
   lastCells: string | null
   blittedAt: number
   isAsleep: boolean
+  // Wakes the loop from its sleep between frames (paint.ts), while it
+  // sleeps.
+  wake: (() => void) | null
 }
 
-// How often a site repaints: a scene, a demo and the waiting toon about
-// twelve times a second; the idle Clawd is calm, and calmer dozing.
+// What the area shows, by name, and how to draw it at any later time and
+// width, on its own clock (frames.ts): the name changes exactly when the
+// picture changes to another one.
+export type Picture = { name: string; draw: (now: number, columns: number) => PixelBuffer }
+
+// Whether the area is dissolving from one picture into the next.
+export const isFading = (mod: Mod, now: number): boolean => mod.fade !== null && now - mod.fade.at < FADE_MS
+
+// How often a site repaints: a scene, a demo, the waiting toon and a
+// dissolve about twelve times a second; the idle Clawd is calm, and calmer
+// dozing.
 export function frameMs(mod: Mod, now: number): number {
-  if (mod.isBandWorking || mod.demo !== null || (mod.seats.since !== null && !mod.isWaitingBroken)) return 83
+  if (mod.isBandWorking || mod.demo !== null || (mod.seats.since !== null && !mod.isWaitingBroken) || isFading(mod, now)) return 83
 
   return now - mod.idleSince >= DOZE_MS ? 333 : 166
 }
 // How often the area checks the agent list while it knows of agents.
 export const AGENT_POLL_MS = 2000
 
-export const createSite = (): Site => ({ requestId: undefined, columns: STAGE_W, rows: TOON_ROWS, isAnimating: false, isSeen: false, lastCells: null, blittedAt: 0, isAsleep: false })
+export const createSite = (): Site => ({ requestId: undefined, columns: STAGE_W, rows: TOON_ROWS, isAnimating: false, isSeen: false, lastCells: null, blittedAt: 0, isAsleep: false, wake: null })
 
 // A frame the same as the one shown is not sent again, but one is sent at
 // least this often: a blit is how the loop learns its Raster is gone.
 export const RESEND_MS = 2000
 
 // Whether the idle Clawd is deep asleep: Claude does not work, nothing
-// else plays in the area, and he has dozed for DEEP_SLEEP_MS. (idleSince
-// is the last turn's end: a long turn must not count as dozing.)
+// else plays in the area, nothing dissolves, and he has dozed for
+// DEEP_SLEEP_MS. (idleSince is the last turn's end: a long turn must not
+// count as dozing.)
 export const isDeepAsleep = (mod: Mod, now: number): boolean =>
-  !mod.isBandWorking && mod.demo === null && (mod.seats.since === null || mod.isWaitingBroken) && now - mod.idleSince >= DOZE_MS + DEEP_SLEEP_MS
+  !mod.isBandWorking &&
+  mod.demo === null &&
+  (mod.seats.since === null || mod.isWaitingBroken) &&
+  !isFading(mod, now) &&
+  now - mod.idleSince >= DOZE_MS + DEEP_SLEEP_MS
 
 // The module's own state: made fresh by every load, so it starts over on a
 // reload. What must outlive a reload is in $.state.
@@ -89,6 +107,10 @@ export type Mod = {
   demo: Demo | null
   // The demo scene the band's text line names.
   demoLineIndex: number
+  // The picture the area showed last, drawn as it was in that frame, and
+  // the dissolve from an older one into what shows now, if one runs.
+  shown: Picture | null
+  fade: { from: Picture; at: number } | null
   broken: Set<SceneId>
   // What the scenes draw with (frames.ts's castOf), built once.
   cast: Cast | null
@@ -143,6 +165,8 @@ export const createMod = (): Mod => ({
   lastBand: null,
   demo: null,
   demoLineIndex: 0,
+  shown: null,
+  fade: null,
   broken: new Set(),
   cast: null,
   roster: EMPTY_ROSTER,

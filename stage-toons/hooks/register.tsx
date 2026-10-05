@@ -16,7 +16,7 @@ import { autoMatch, hasRules, type Heard, isWindowsPath, relativePath, type Sign
 import { areaColumns, BAR_TONES, bandLayout, bandMode, type BandSite } from './band'
 import { autoText, hideText, moveFor, parseCommand, settingsText, settingsWords, showText, unknownText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { demoAt, demoFor, demoLine, demoStep, idleDemoAt, idleDemoLine, startDemo, WAITING_DEMO_LINE } from './demo'
-import { createDirector, react, withAuditing, withScene } from './director'
+import { createDirector, react, restarted, withAuditing, withScene } from './director'
 import { areaCells, type Log } from './frames'
 import { CELEBRATE, pickIdle } from './idle'
 import { idleForMove } from './keepsake'
@@ -912,10 +912,14 @@ export const register: Register = on => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const now = await $.clock.now()
     if (mod.demo && !demoStep(mod.demo, now)) mod.demo = null
+    // Claude has just started: his scene starts from its beginning, even if
+    // the area was away (hidden, or the bar alone) since it last showed it.
     // Claude has just stopped: the idle clock starts here if the band hears
     // of it before the turn's end does.
-    if (e.props.isWorking) mod.isBandWorking = true
-    else if (mod.isBandWorking) {
+    if (e.props.isWorking) {
+      if (!mod.isBandWorking) mod.director = restarted(mod.director, now)
+      mod.isBandWorking = true
+    } else if (mod.isBandWorking) {
       mod.isBandWorking = false
       mod.idleSince = now
       mod.idle = mod.nextIdle

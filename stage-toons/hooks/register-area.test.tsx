@@ -52,7 +52,7 @@ test('a Fable spawn walks Fable into the area and tags the bar until the Fable a
   expect(colorInRows(lastArea(world), [2, 3, 4, 5], FABLE_VIOLET)).toBe(false)
 })
 
-test('the area cuts from the idle Clawd to the scene when Claude starts, and back when he stops', async ($, on) => {
+test('the area dissolves from the idle Clawd into the scene when Claude starts, and back when he stops', async ($, on) => {
   const { world, clock } = engine(on)
   await $.session.start(START)
   const ui = await mountBand($)
@@ -62,14 +62,57 @@ test('the area cuts from the idle Clawd to the scene when Claude starts, and bac
   await clock.advance(700)
   expect(colorInRows(lastArea(world), [0, 1], C.red)).toBe(true)
   const scene = lastArea(world)?.cells
-  // Claude stops while the red mark still shows: the Raster is drawn
-  // again at once with the idle Clawd.
+  // Claude stops while the red mark still shows: the scene, mark and all,
+  // dissolves into the idle Clawd over half a second, at twelve frames a
+  // second.
   await endTurn($)
   await ui.redraw(bandProps(100))
   const cells = String((await ui.find({ key: 'area' }))?.props.cells ?? '')
   expect(cells).not.toBe('')
-  expect(cells).not.toBe(scene)
-  expect(colorInRows({ key: 'area', cells, columns: 48, rows: 7 }, [0, 1], C.red)).toBe(false)
+  expect(colorInRows({ key: 'area', cells, columns: 48, rows: 7 }, [0, 1], C.red)).toBe(true)
+  const before = blitsOf(world, 'area').length
+  await clock.advance(600)
+  expect(blitsOf(world, 'area').length - before).toBeGreaterThanOrEqual(5)
+  expect(lastArea(world)?.cells).not.toBe(scene)
+  expect(colorInRows(lastArea(world), [0, 1], C.red)).toBe(false)
+})
+
+test('a turn starts its scene from the beginning even while the area was away, and the area comes back dissolving from what it last showed', async ($, on) => {
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  await setStage($, { stage: 'plan', message: 'Writing the plan' })
+  // The move's jump is over before the turn starts.
+  await clock.advance(5000)
+  const ui = await mountBand($, 'terminal', WORKING)
+  // The scene, at 83 ms steps from its start.
+  const firstTurn: string[] = []
+  for (let k = 0; k <= 24; k++) {
+    firstTurn.push(lastArea(world)?.cells ?? '')
+    await clock.advance(83)
+  }
+  // The bar alone (too few rows for the area) from mid-turn, through the
+  // turn's end and the next turn's start.
+  const SHORT = { maxRows: 7 }
+  await ui.redraw(bandProps(100, { isWorking: true, ...SHORT }))
+  await endTurn($)
+  await ui.redraw(bandProps(100, SHORT))
+  await clock.advance(3000)
+  await ui.redraw(bandProps(100, { isWorking: true, ...SHORT }))
+  await clock.advance(830)
+  // The area again, 830 ms into the turn: it dissolves from the first
+  // turn's scene into this turn's, which started with the turn.
+  await ui.redraw(WORKING)
+  const back = [String((await ui.find({ key: 'area' }))?.props.cells ?? '')]
+  for (let m = 1; m <= 12; m++) {
+    await clock.advance(83)
+    back.push(lastArea(world)?.cells ?? '')
+  }
+  // The scene moves (so the match below is no accident), a mid-dissolve
+  // frame is neither turn's scene, and the dissolved-in frames are the
+  // first turn's at the same scene time.
+  expect(new Set(firstTurn.slice(17)).size).toBeGreaterThan(1)
+  expect(back[3]).not.toBe(firstTurn[13])
+  for (let m = 7; m <= 12; m++) expect(back[m]).toBe(firstTurn[10 + m])
 })
 
 test('a demo started while Claude works plays over the scene; the scene comes back when it ends', async ($, on) => {

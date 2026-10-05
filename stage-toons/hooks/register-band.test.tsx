@@ -89,7 +89,8 @@ test('the idle Clawd dozes after a minute and is awake again after the next turn
   expect(colorInRows(blitsOf(world, 'area').at(-1), ALL_ROWS, Z_COLOR)).toBe(true)
   await $.prompt.submit({ text: 'hi' } as never)
   await endTurn($)
-  await clock.advance(500)
+  // The doze dissolves into the awake Clawd over half a second.
+  await clock.advance(600)
   expect(colorInRows(blitsOf(world, 'area').at(-1), ALL_ROWS, Z_COLOR)).toBe(false)
 })
 

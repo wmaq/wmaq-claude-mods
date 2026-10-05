@@ -52,6 +52,11 @@ function mounted(mod: Mod, isSeen: boolean): Site {
   return site
 }
 
+// Lets the detached loop run until it waits on something.
+async function settled() {
+  for (let i = 0; i < 1000; i++) await Promise.resolve()
+}
+
 // The loop runs detached: wait until it has ended.
 async function finished(site: Site) {
   for (let i = 0; i < 100_000 && site.isAnimating; i++) await Promise.resolve()
@@ -195,6 +200,29 @@ test('a second start while the loop runs is ignored', async () => {
   animate(ports, mod, site)
   await finished(site)
   expect(blits.length).toBe(1)
+})
+
+test('a start while the loop sleeps wakes it: the next frame comes at once, on the same loop', async () => {
+  const mod = createMod()
+  // Idle, awake: a 166 ms sleep between frames.
+  mod.idleSince = START
+  const site = mounted(mod, true)
+  let frames = 0
+  let wakeUp: () => void = () => undefined
+  const { ports, blits } = fake(mod, { cells: () => `F${frames++}` })
+  // A sleep that lasts until the test ends it.
+  ports.sleep = () => new Promise<void>(resolve => (wakeUp = resolve))
+  animate(ports, mod, site)
+  await settled()
+  expect(blits.length).toBe(1)
+  animate(ports, mod, site)
+  await settled()
+  expect(blits.map(b => b.cells)).toEqual(['F0', 'F1'])
+  expect(site.isAnimating).toBe(true)
+  site.requestId = undefined
+  wakeUp()
+  await finished(site)
+  expect(blits.length).toBe(2)
 })
 
 test('a loop whose load a newer one replaced stops at its next frame, quietly: no redraw, the Raster left to the new load', async () => {
