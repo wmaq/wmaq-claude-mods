@@ -9,12 +9,12 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, ToolCallInput } from 'claude-code'
 
-import type { Progress, ScenePick, SessionWorkflow, StageId, Workflow } from '../types'
+import type { Progress, ScenePick, SessionWorkflow, StageId, Workflow, WorkflowSettings } from '../types'
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { ended, reconcileRoster, rememberKind, spawned } from './agents'
 import { autoMatch, hasRules, type Heard, isWindowsPath, relativePath, type Signal, typedSkill, viaOf } from './auto'
 import { areaColumns, BAR_TONES, bandLayout, bandMode, type BandSite, TOON_MIN, toonColumns } from './band'
-import { autoText, moveFor, parseCommand, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
+import { autoText, hideText, moveFor, parseCommand, settingsText, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { demoAt, demoFor, demoLine, demoStep, idleDemoAt, idleDemoLine, startDemo, WAITING_DEMO_LINE } from './demo'
 import { createDirector, react, withAuditing, withScene } from './director'
 import { type Log, siteCells } from './frames'
@@ -34,6 +34,9 @@ import { DEFAULT_WORKFLOW, parseWorkflow, sameWorkflow, stageIds, stageList, sta
 const HIDDEN_KEY = 'hidden'
 const AUTO_KEY = 'auto'
 const PRUNED_KEY = 'pruned-at'
+// Set once the first session's welcome toast was given.
+const WELCOMED_KEY = 'welcomed'
+const WELCOME = "stage-toons: the bar above the prompt follows the work's stage; /stage shows it and its commands, /stage demo plays the cartoons."
 const UNSAVED = "stage-toons: couldn't save progress; it lasts for this session only"
 const NEWER = "stage-toons: a newer version saved this project's progress; this session won't save over it"
 const BAD_FILE = 'stage-toons: .claude/stage-toons.json has errors; using the default workflow. /stage workflow reload lists them.'
@@ -55,8 +58,9 @@ const idleAtom = atom({ plugin: 'stage-toons', key: 'idle' } as const, null)
 // The scene the stage shows: kept across a hot reload, so the toon does not
 // change under the person when the module reloads.
 const sceneAtom = atom({ plugin: 'stage-toons', key: 'scene' } as const, null)
-// Whether rules move the stage by itself: mirrors the store, so a reload
-// keeps it when the store fails.
+// Whether rules move the stage by itself, for this session: the project's
+// file's setting or the store's at the start, then /stage auto's; kept
+// across a hot reload.
 const autoAtom = atom({ plugin: 'stage-toons', key: 'auto' } as const, true)
 // Each agent's kind, as its spawn told it: kept across reloads, which
 // start the roster empty, so the list's agents keep their colours.
@@ -96,6 +100,18 @@ const storeOf = ($: EngineInterface): KV => ({
   get: key => $.store.get(key),
   set: (key, value) => $.store.set(key, value),
 })
+
+// The first session's toast: once the store has saved that it was given,
+// so a store that can't be read or written shows nothing.
+async function welcome($: EngineInterface) {
+  try {
+    if ((await $.store.get(WELCOMED_KEY)) !== undefined) return
+    await $.store.set(WELCOMED_KEY, true)
+  } catch {
+    return
+  }
+  $.ui.toast(WELCOME)
+}
 
 async function warnUnsaved($: EngineInterface) {
   if (await read($, warnedAtom)) return
@@ -373,7 +389,7 @@ async function checkAgents($: EngineInterface, mod: Mod) {
 // A workflow file is a few KB; anything far bigger is not one.
 const WORKFLOW_FILE_MAX = 64 * 1024
 
-type FileWorkflow = { kind: 'none' } | { kind: 'ok'; workflow: Workflow } | { kind: 'bad'; errors: string[] }
+type FileWorkflow = { kind: 'none' } | { kind: 'ok'; workflow: Workflow; settings?: WorkflowSettings } | { kind: 'bad'; errors: string[] }
 
 // The project's workflow file: absent, a workflow, or what is wrong with it.
 async function readWorkflowFile($: EngineInterface): Promise<FileWorkflow> {
@@ -383,14 +399,45 @@ async function readWorkflowFile($: EngineInterface): Promise<FileWorkflow> {
     if (typeof text === 'string' && text.length > WORKFLOW_FILE_MAX) return { kind: 'bad', errors: [`${text.length} characters; a workflow file holds at most ${WORKFLOW_FILE_MAX}`] }
     const parsed = parseWorkflow(typeof text === 'string' ? text : '', STAGE_SCENES)
 
-    return 'workflow' in parsed ? { kind: 'ok', workflow: parsed.workflow } : { kind: 'bad', errors: parsed.errors }
+    return 'workflow' in parsed ? { kind: 'ok', workflow: parsed.workflow, ...(parsed.settings ? { settings: parsed.settings } : {}) } : { kind: 'bad', errors: parsed.errors }
   } catch (error) {
     return { kind: 'bad', errors: [`could not read it: ${String(error)}`] }
   }
 }
 
 const sessionWorkflowOf = (file: FileWorkflow): SessionWorkflow =>
-  file.kind === 'ok' ? { workflow: file.workflow, source: 'file' } : { workflow: DEFAULT_WORKFLOW, source: 'default' }
+  file.kind === 'ok' ? { workflow: file.workflow, source: 'file', ...(file.settings ? { settings: file.settings } : {}) } : { workflow: DEFAULT_WORKFLOW, source: 'default' }
+
+// The project's starting state, at a fresh session start and at /stage
+// workflow reload: the file's auto and hide where it sets them, else the
+// person's own (the store's), else as the session has it. Nothing is
+// saved: the store keeps the person's own settings.
+async function applySettings($: EngineInterface, mod: Mod, settings: WorkflowSettings | undefined) {
+  let isAuto = await read($, autoAtom)
+  if (settings?.auto !== undefined) isAuto = settings.auto
+  else {
+    try {
+      isAuto = (await $.store.get(AUTO_KEY)) !== false
+    } catch {
+      // As this session had it.
+    }
+  }
+  const wasHidden = await read($, hiddenAtom)
+  let isHidden = wasHidden
+  if (settings?.hide !== undefined) isHidden = settings.hide
+  else {
+    try {
+      isHidden = (await $.store.get(HIDDEN_KEY)) === true
+    } catch {
+      // As this session had it.
+    }
+  }
+  mod.isAuto = isAuto
+  mod.isHidden = isHidden
+  await update($, autoAtom, () => isAuto)
+  await update($, hiddenAtom, () => isHidden)
+  if (isHidden !== wasHidden) $.ui.invalidate('ui.render')
+}
 
 // Registers set_stage for the workflow; false when the engine refused.
 async function registerTool($: EngineInterface, mod: Mod): Promise<boolean> {
@@ -430,13 +477,19 @@ async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promis
   const file = await readWorkflowFile($)
   if (file.kind === 'bad') return { text: [`${WORKFLOW_FILE} has errors; kept the current workflow:`, ...file.errors.map(e => `  ${e}`)].join('\n') }
   const next = sessionWorkflowOf(file)
+  // The file's settings apply whether or not its stages changed.
+  await applySettings($, mod, next.settings)
+  const starts = settingsText(next.settings)
+  const withStarts = (text: string) => (starts ? `${text}\n${starts}` : text)
   if (sameWorkflow(next.workflow, mod.workflow)) {
-    if (next.source === mod.workflowSource) return { text: 'workflow unchanged.' }
-    // The same stages from another source: nothing for Claude or the cache.
+    const wasSource = mod.workflowSource
+    // The settings ride in the session's workflow: kept for a hot reload.
     mod.workflowSource = next.source
     await update($, workflowAtom, () => next)
+    if (next.source === wasSource) return { text: withStarts('workflow unchanged.') }
 
-    return { text: `workflow unchanged (now ${next.source === 'file' ? `from ${WORKFLOW_FILE}` : 'the default'}).` }
+    // The same stages from another source: nothing for Claude or the cache.
+    return { text: withStarts(`workflow unchanged (now ${next.source === 'file' ? `from ${WORKFLOW_FILE}` : 'the default'}).`) }
   }
   mod.workflow = next.workflow
   mod.workflowSource = next.source
@@ -461,6 +514,7 @@ async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promis
   const from = next.source === 'file' ? `from ${WORKFLOW_FILE}` : `the default (no ${WORKFLOW_FILE})`
   const lines = [`workflow ${from}: ${mod.workflow.track.length} track stages, ${mod.workflow.side.length} side stages.`]
   if (moved) lines.push(moved)
+  if (starts) lines.push(starts)
   if (!isRegistered) lines.push("set_stage could not be registered again (the debug log says why): Claude's tool may still list the old stages.")
 
   return { text: lines.join('\n'), context: [`[stage-toons] The workflow changed: ${stageList(mod.workflow)}. Now: ${describe(mod.workflow, progress)}`] }
@@ -474,6 +528,8 @@ export const register: Register = on => {
     const now = await $.clock.now()
     mod.key = storeKey(e.cwd)
     let held = await read($, workflowAtom)
+    // No session workflow yet: a fresh session, not a hot reload.
+    const isFresh = held === null
     if (held === null) {
       const file = await readWorkflowFile($)
       held = sessionWorkflowOf(file)
@@ -494,21 +550,14 @@ export const register: Register = on => {
     const loaded = await loadProgress(storeOf($), mod.key, now)
     if (!loaded.isAvailable) await warnUnsaved($)
     const progress = reconcile(mod.workflow, loaded.progress).progress
-    let isHidden = false
-    try {
-      isHidden = (await $.store.get(HIDDEN_KEY)) === true
-    } catch {
-      // Shown, then.
+    // A fresh session starts as the project's file and the person's own
+    // settings say; a hot reload keeps the session's own (a /stage auto off
+    // typed earlier stands).
+    if (isFresh) await applySettings($, mod, held.settings)
+    else {
+      mod.isAuto = await read($, autoAtom)
+      mod.isHidden = await read($, hiddenAtom)
     }
-    mod.isHidden = isHidden
-    let isAuto = await read($, autoAtom)
-    try {
-      isAuto = (await $.store.get(AUTO_KEY)) !== false
-    } catch {
-      // As this session had it.
-    }
-    mod.isAuto = isAuto
-    await update($, autoAtom, () => isAuto)
     mod.surface = e.surface
     mod.idleSince = now
     let routine = await read($, idleAtom)
@@ -522,7 +571,6 @@ export const register: Register = on => {
     // A reload forgets which agents were Fable, so the auditor stands down.
     mod.auditors.clear()
     await update($, progressAtom, () => progress)
-    await update($, hiddenAtom, () => isHidden)
     await update($, auditingAtom, () => false)
     mod.director = createDirector(await sceneFor($, mod, progress.stage), false)
     await registerTool($, mod)
@@ -547,6 +595,7 @@ export const register: Register = on => {
     await checkAgents($, mod)
     // Last, so the tool and the command are there first.
     if (loaded.isAvailable) await pruneStore($, mod, now)
+    await welcome($)
 
     return result
   })
@@ -632,7 +681,7 @@ export const register: Register = on => {
     if (cmd.kind === 'auto') {
       if (cmd.isOn !== null) await setAuto($, mod, cmd.isOn)
 
-      return { text: autoText(mod.workflow, mod.isAuto) }
+      return { text: autoText(mod.workflow, mod.isAuto, (await read($, workflowAtom))?.settings?.auto) }
     }
     if (cmd.kind === 'usage') return { text: usage(mod.workflow) }
     if (cmd.kind === 'demo' || cmd.kind === 'demo-idle' || cmd.kind === 'demo-waiting') {
@@ -651,7 +700,7 @@ export const register: Register = on => {
 
       return { text: 'Demo stopped.' }
     }
-    if (cmd.kind === 'workflow') return { text: workflowSummary(mod.workflow, mod.workflowSource) }
+    if (cmd.kind === 'workflow') return { text: workflowSummary(mod.workflow, mod.workflowSource, (await read($, workflowAtom))?.settings) }
     if (cmd.kind === 'workflow-init') return { text: await initWorkflow($, mod) }
     if (cmd.kind === 'workflow-reload') return reloadWorkflow($, mod, now)
     if (cmd.kind === 'hide') {
@@ -664,7 +713,7 @@ export const register: Register = on => {
         // Lasts for this session.
       }
 
-      return { text: isHidden ? 'stage-toons is hidden. /stage hide shows it again.' : 'stage-toons is shown.' }
+      return { text: hideText(isHidden, (await read($, workflowAtom))?.settings?.hide) }
     }
     // Untracked, a message would be shown nowhere and lost at the first stage.
     if (cmd.kind === 'message' && before.stage === null) return { text: 'a message belongs to a stage; set one first (/stage next, or /stage <id>).' }

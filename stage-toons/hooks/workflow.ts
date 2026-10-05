@@ -2,11 +2,11 @@
 // beside it, each naming the scenes it may play. Data and lookups; the default
 // is the workflow stage-toons ships with.
 
-import type { StageDef, Workflow } from '../types'
+import type { StageDef, Workflow, WorkflowSettings } from '../types'
 import { chars, rulesAt, unknownFrom } from './auto'
 import type { LibraryScene } from './scenes'
 
-export type { StageDef, Workflow }
+export type { StageDef, Workflow, WorkflowSettings }
 export { isTrack, rank } from './track'
 
 // What plays while the work is in no stage of the workflow.
@@ -179,9 +179,14 @@ function stagesAt(value: unknown, name: 'track' | 'side', min: number, max: numb
   return found
 }
 
-// A workflow file's text: the workflow, or every mistake in it with where
-// it is. sceneNames are the library scenes a stage may use.
-export function parseWorkflow(json: string, sceneNames: readonly string[]): { workflow: Workflow } | { errors: string[] } {
+// The file's top-level fields: the stages, and the settings for the start.
+const TOP_FIELDS = ['track', 'side', 'auto', 'hide'] as const
+const SETTINGS = ['auto', 'hide'] as const
+
+// A workflow file's text: the workflow and the settings it gives (absent
+// when it gives none), or every mistake in it with where it is. sceneNames
+// are the library scenes a stage may use.
+export function parseWorkflow(json: string, sceneNames: readonly string[]): { workflow: Workflow; settings?: WorkflowSettings } | { errors: string[] } {
   let data: unknown
   try {
     // A byte-order mark, as some Windows editors save, is not JSON.
@@ -192,7 +197,7 @@ export function parseWorkflow(json: string, sceneNames: readonly string[]): { wo
   if (typeof data !== 'object' || data === null || Array.isArray(data)) return { errors: ['the file must hold an object with "track" and, if any, "side"'] }
   const top = data as Record<string, unknown>
   const errors: string[] = []
-  for (const key of Object.keys(top)) if (key !== 'track' && key !== 'side') errors.push(`${key}: not a field (track, side)`)
+  for (const key of Object.keys(top)) if (!(TOP_FIELDS as readonly string[]).includes(key)) errors.push(`${key}: not a field (${TOP_FIELDS.join(', ')})`)
   const track = stagesAt(top.track, 'track', 1, TRACK_MAX, errors, sceneNames)
   const side = top.side === undefined ? [] : stagesAt(top.side, 'side', 0, SIDE_MAX, errors, sceneNames)
   const seen = new Set<string>()
@@ -202,10 +207,16 @@ export function parseWorkflow(json: string, sceneNames: readonly string[]): { wo
   }
   const ids = [...seen]
   for (const { path, stage } of [...track, ...side]) errors.push(...unknownFrom(stage.auto ?? [], `${path}.auto`, ids))
+  const settings: WorkflowSettings = {}
+  for (const name of SETTINGS) {
+    const value = top[name]
+    if (typeof value === 'boolean') settings[name] = value
+    else if (value !== undefined) errors.push(`${name}: must be true or false`)
+  }
   if (errors.length > 0) return { errors }
   const workflow = { track: track.map(f => f.stage), side: side.map(f => f.stage) }
 
-  return { workflow: listsRules(top) ? workflow : withDefaultRules(workflow) }
+  return { workflow: listsRules(top) ? workflow : withDefaultRules(workflow), ...(Object.keys(settings).length > 0 ? { settings } : {}) }
 }
 
 // Whether any stage of the file has an "auto" field, an empty list

@@ -65,8 +65,10 @@ export type World = {
   storeReads: number
 }
 
+// The store starts with the welcome given (a test that wants the first
+// session's toast presets welcomed: undefined).
 export function engine(on: On, preset: { store?: Record<string, unknown> } = {}) {
-  const world: World = { store: { ...preset.store }, isStoreBroken: false, isBlitRefused: false, blits: [], invalidations: 0, commands: [], toasts: [], files: {}, isFsBroken: false, schemas: [], agents: [], spawnModel: 'claude-sonnet-5-5', spawned: 0, cwd: START.cwd, prompts: [], isBashFailing: true, isCwdBroken: false, isExistsBroken: false, isRegisterBroken: false, storeReads: 0 }
+  const world: World = { store: { welcomed: true, ...preset.store }, isStoreBroken: false, isBlitRefused: false, blits: [], invalidations: 0, commands: [], toasts: [], files: {}, isFsBroken: false, schemas: [], agents: [], spawnModel: 'claude-sonnet-5-5', spawned: 0, cwd: START.cwd, prompts: [], isBashFailing: true, isCwdBroken: false, isExistsBroken: false, isRegisterBroken: false, storeReads: 0 }
   const clock = mock.clock(on, { now: NOW })
   const guard = () => {
     if (world.isStoreBroken) throw new Error('store unavailable')

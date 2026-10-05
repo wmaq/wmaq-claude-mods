@@ -101,7 +101,8 @@ only files written with Write or Edit. Claude is told of each such move
 with the result of the call that made it (for a subagent, the call after
 it, as the Agent call answers before the subagent starts), and still calls `set_stage` for
 a better message or any other move. `/stage auto off` turns this off, for
-every project; a workflow file sets its own rules (below).
+every project; a workflow file sets its own rules, and may start its
+project's sessions with them off (below).
 
 ### History
 
@@ -192,6 +193,19 @@ system prompt, as CLAUDE.md is. A workflow file in which no stage has an
 `auto` field (as `/stage workflow init` wrote before 0.6) takes the
 default's rules for the stages it shares with the default by id; give any
 stage an `auto` list, even an empty one, and the file has only its own.
+
+Beside `track` and `side`, the file may set how a session on the project
+starts: `"auto": false` with the rules off, `"hide": true` with the bar and
+the cartoons hidden (and `true` or `false` the other way). Where the file
+sets one, it wins over your own `/stage auto` or `/stage hide` setting, at
+each session's start and at `/stage workflow reload`; where it says
+nothing, yours applies. The commands still change the session at once, and
+say when the file starts it otherwise. `/stage workflow init` writes
+neither.
+
+```json
+{ "auto": false, "hide": true, "track": [ ... ] }
+```
 
 A stage lists 1 to 5 scenes. One is picked at random each time the work
 enters the stage, never the one it showed last when it has another. The

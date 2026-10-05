@@ -1,6 +1,6 @@
 // /stage: what its arguments ask for, the move it makes, and what it shows.
 
-import type { Progress, StageDef, StageId, Workflow } from '../types'
+import type { Progress, StageDef, StageId, Workflow, WorkflowSettings } from '../types'
 import { ruleText } from './auto'
 import { DEMO_MAX, DEMO_MIN, DEMO_SECONDS } from './demo'
 import { ago, LOG_DEFAULT } from './history'
@@ -144,10 +144,22 @@ export function showText(w: Workflow, p: Progress, now: number): string {
   return lines.join('\n')
 }
 
-export function workflowSummary(w: Workflow, source: 'file' | 'default'): string {
+// What the project's workflow file starts the session with, or null when
+// it sets nothing.
+export function settingsText(settings: WorkflowSettings | undefined): string | null {
+  const parts: string[] = []
+  if (settings?.auto !== undefined) parts.push(`automatic moves ${settings.auto ? 'on' : 'off'}`)
+  if (settings?.hide !== undefined) parts.push(`the bar ${settings.hide ? 'hidden' : 'shown'}`)
+
+  return parts.length === 0 ? null : `This project's workflow file starts ${parts.join(' and ')}.`
+}
+
+export function workflowSummary(w: Workflow, source: 'file' | 'default', settings?: WorkflowSettings): string {
   const zero = zeroStage(w)
+  const starts = settingsText(settings)
   const lines = [
     source === 'file' ? `Workflow: from ${WORKFLOW_FILE}` : `Workflow: the default (no ${WORKFLOW_FILE}; /stage workflow init writes it there to edit)`,
+    ...(starts ? [starts] : []),
     'Track:',
     ...w.track.map((s, i) => `  ${i + 1} ${s.id}: ${s.label} (${s.scenes.join(', ')})${rulesOf(s)}`),
   ]
@@ -158,12 +170,22 @@ export function workflowSummary(w: Workflow, source: 'file' | 'default'): string
 
 const rulesOf = (s: StageDef): string => (s.auto && s.auto.length > 0 ? ` · auto: ${s.auto.map(ruleText).join('; ')}` : '')
 
-// /stage auto: whether the stage moves by itself, and on what.
-export function autoText(w: Workflow, isOn: boolean): string {
+// /stage auto: whether the stage moves by itself, and on what; fileAuto,
+// what the project's workflow file starts the session with, if it says.
+export function autoText(w: Workflow, isOn: boolean, fileAuto?: boolean): string {
   const stages = [...w.track, ...w.side].filter(s => s.auto && s.auto.length > 0)
-  const head = isOn ? 'Automatic moves are on: /stage auto off turns them off.' : 'Automatic moves are off: /stage auto on turns them on.'
-  if (stages.length === 0) return [head, `This workflow has no rules: give a stage an "auto" list in ${WORKFLOW_FILE}.`].join('\n')
+  const state = isOn ? 'Automatic moves are on: /stage auto off turns them off.' : 'Automatic moves are off: /stage auto on turns them on.'
+  const head = fileAuto === undefined ? [state] : [state, `This project's workflow file starts it ${fileAuto ? 'on' : 'off'}.`]
+  if (stages.length === 0) return [...head, `This workflow has no rules: give a stage an "auto" list in ${WORKFLOW_FILE}.`].join('\n')
   const rows = stages.map(s => `  ${s.id}: ${s.auto!.map(ruleText).join('; ')}`)
 
-  return [head, 'Rules, by the stage they move the work to (only forward on the track, or into a side stage):', ...rows].join('\n')
+  return [...head, 'Rules, by the stage they move the work to (only forward on the track, or into a side stage):', ...rows].join('\n')
+}
+
+// /stage hide's answer; fileHide, what the project's workflow file starts
+// the session with, if it says.
+export function hideText(isHidden: boolean, fileHide?: boolean): string {
+  const state = isHidden ? 'stage-toons is hidden. /stage hide shows it again.' : 'stage-toons is shown.'
+
+  return fileHide === undefined ? state : `${state} This project's workflow file starts it ${fileHide ? 'hidden' : 'shown'}.`
 }

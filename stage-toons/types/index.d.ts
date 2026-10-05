@@ -42,8 +42,14 @@ export type StageDef = { id: string; label: string; message: string; when: strin
 // stages, entered from any point and left again.
 export type Workflow = { track: readonly StageDef[]; side: readonly StageDef[] }
 
-// The session's workflow and where it came from.
-export type SessionWorkflow = { workflow: Workflow; source: 'file' | 'default' }
+// What a project's workflow file sets for the session's start: whether
+// rules move the stage (auto) and whether the bar is hidden (hide). Each
+// left out where the file says nothing, and the person's own setting holds.
+export type WorkflowSettings = { auto?: boolean; hide?: boolean }
+
+// The session's workflow, where it came from, and the file's settings.
+// Settings is absent where an older version kept it, or the file sets none.
+export type SessionWorkflow = { workflow: Workflow; source: 'file' | 'default'; settings?: WorkflowSettings }
 
 // The scene the work's stage shows, picked when the stage changed (stage is
 // null while untracked), the scene each stage showed last in this session
