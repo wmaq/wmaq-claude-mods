@@ -37,6 +37,36 @@ test('the idle Clawd: the same state at the same time gives the same frame', () 
   expect(cellsAt('area', START + 5000)).toBe(a)
 })
 
+test('the stage scene while Claude works: the same state at the same time gives the same frame, and it is neither the idle one nor the waiting one', () => {
+  const working = (mod: Mod) => {
+    mod.isBandWorking = true
+  }
+  const both = (mod: Mod) => {
+    working(mod)
+    mod.roster = spawned(EMPTY_ROSTER, 'a1', 'claude-fable-5-1', START)
+  }
+  const a = cellsAt('area', START + 5000, working)
+  expect(cellsAt('area', START + 5000, working)).toBe(a)
+  expect(a).not.toBe(cellsAt('area', START + 5000))
+  // An agent at work shows no helper while Claude works.
+  expect(cellsAt('area', START + 5000, both)).toBe(a)
+})
+
+test('a demo plays over the stage scene while Claude works', () => {
+  const demo = (mod: Mod) => {
+    mod.demo = { kind: 'waiting', at: START }
+  }
+  const demoWorking = (mod: Mod) => {
+    demo(mod)
+    mod.isBandWorking = true
+  }
+  const working = (mod: Mod) => {
+    mod.isBandWorking = true
+  }
+  expect(cellsAt('area', START + 5000, demoWorking)).toBe(cellsAt('area', START + 5000, demo))
+  expect(cellsAt('area', START + 5000, demoWorking)).not.toBe(cellsAt('area', START + 5000, working))
+})
+
 test('the waiting toon: the same state at the same time gives the same frame, and it is not the idle one', () => {
   const waiting = (mod: Mod) => {
     mod.roster = spawned(EMPTY_ROSTER, 'a1', 'claude-fable-5-1', START)

@@ -83,16 +83,14 @@ test('a band not drawn yet has room for the demo', () => {
 test('a band already drawn has room for the demo when the bar and the area fit in it', () => {
   const band: BandSite = {
     surface: 'terminal',
-    isWorking: true,
     hasSurvey: true,
     isAgentView: false,
     isHidden: false,
     columns: 80,
     maxRows: 3 + TOON_ROWS,
-    hasDemo: false,
     barLines: 2,
   }
-  // Working, or under a survey, when last drawn: the demo still plays.
+  // Under a survey when last drawn: the demo still plays.
   expect(hasRoom(band, 3)).toBe(true)
   expect(hasRoom(band, 4)).toBe(false)
   expect(hasRoom({ ...band, columns: 29 }, 3)).toBe(false)

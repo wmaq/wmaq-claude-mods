@@ -667,7 +667,7 @@ export const register: Register = on => {
   })
 
   on('prompt.submit', async ($, e, next) => {
-    // A turn starts: the toon under the spinner takes over from the demo.
+    // A turn starts: the stage's scene takes the area over from the demo.
     if (mod.demo) endDemo(mod, () => $.ui.invalidate('ui.render'))
     // Another session on this project may have moved the stage. On the move
     // queue, so a move still running is not overwritten.
@@ -923,13 +923,11 @@ export const register: Register = on => {
     const lines = progress === null ? [] : bandLayout(mod.workflow, progress, await read($, auditingAtom), columns, demoText)
     const site: BandSite = {
       surface: e.surface,
-      isWorking: e.props.isWorking,
       hasSurvey: e.props.hasSurvey,
       isAgentView: e.props.view.agentId !== undefined,
       isHidden: await read($, hiddenAtom),
       columns,
       maxRows: e.props.maxRows,
-      hasDemo: mod.demo !== null,
       barLines: lines.length,
     }
     mod.lastBand = site

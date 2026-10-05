@@ -91,6 +91,12 @@ test('a show-off sheet is named without the colon, which Windows refuses in a fi
   }
 })
 
+test('band takes --scene, the scene under a working bar', () => {
+  const out = join(dir, 'working.png')
+  const result = main(['band', '--stage', 'develop', '--working', '--scene', 'dice', '--columns', '80', '--count', '1', '--out', out])
+  assert.equal(result.height, (2 + 7 + 1 + 2) * 16)
+})
+
 test('band takes --idle, the routine under the bar', () => {
   const out = join(dir, 'done.png')
   const result = main(['band', '--stage', 'done', '--idle', 'celebrate', '--columns', '80', '--count', '1', '--out', out])

@@ -123,7 +123,7 @@ export function demoFor(cmd: Extract<Command, { kind: 'demo' | 'demo-idle' | 'de
 // Whether the band last drawn has room for the area under a bar of
 // barLines lines (the bar with the demo's line).
 export const hasRoom = (lastBand: BandSite | null, barLines: number): boolean =>
-  !lastBand || bandMode({ ...lastBand, hasSurvey: false, isAgentView: false, isHidden: false, hasDemo: true, barLines }) === 'area'
+  !lastBand || bandMode({ ...lastBand, hasSurvey: false, isAgentView: false, isHidden: false, barLines }) === 'area'
 
 // Starts the demo, or says why not. label names what plays; barLines is
 // how many lines the bar takes with the demo's line.

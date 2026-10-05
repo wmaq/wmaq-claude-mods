@@ -51,9 +51,23 @@ test("the band at Plan shows the bar's done colour at its first step, with the a
   assert.equal(frame!.rows, 2 + 7)
 })
 
-test('a working band is the bar alone; agents then change nothing', () => {
-  const [frame] = bandFrames({ stage: 'plan', columns: 100, working: true, agents: ['fable'] }, [0])
-  assert.equal(frame!.rows, 2)
+test("a working band draws the stage's scene under the bar; agents and the idle routine then change nothing", () => {
+  const [working] = bandFrames({ stage: 'plan', columns: 100, working: true }, [500])
+  assert.equal(working!.rows, 2 + 7)
+  const [busy] = bandFrames({ stage: 'plan', columns: 100, working: true, agents: ['fable'], idle: 'celebrate' }, [500])
+  assert.deepEqual(busy!.px, working!.px)
+  const [idle] = bandFrames({ stage: 'plan', columns: 100 }, [500])
+  assert.notDeepEqual(idle!.px, working!.px)
+})
+
+test('a working band plays the scene asked for, the same as the scene command draws it', () => {
+  const [band] = bandFrames({ stage: 'plan', columns: 100, working: true, scene: 'dice' }, [1500])
+  const [scene] = sceneFrames('dice', {}, [1500])
+  // The area is 48 wide, its rows under the bar's two.
+  for (let y = 0; y < scene!.height; y++) {
+    for (let x = 0; x < scene!.width; x++) assert.equal(band!.px[(y + 2 * CELL_H) * band!.width + x], scene!.px[y * scene!.width + x])
+  }
+  assert.throws(() => bandFrames({ stage: 'plan', working: true, scene: 'nope' }, [0]), /unknown scene "nope"/)
 })
 
 test("the celebration and any stage's show-off draw as idle routines", () => {

@@ -45,11 +45,10 @@ test('the bar keeps the full width while Claude waits', async ($, on) => {
   expect((await ui.find({ key: 'stage-toons' }))?.text).toContain(`5/10 Plan · ${'f'.repeat(40)}`)
 })
 
-test('no idle Clawd while Claude works, in a narrow band, on the desktop, or hidden', async ($, on) => {
+test('no area in a narrow band, a short one, on the desktop, or hidden', async ($, on) => {
   engine(on)
   await $.session.start(START)
   for (const [surface, props] of [
-    ['terminal', bandProps(100, { isWorking: true })],
     ['terminal', bandProps(29)],
     // Untracked, the bar is one line: the area needs 8 rows.
     ['terminal', bandProps(100, { maxRows: 7 })],
@@ -65,7 +64,7 @@ test('no idle Clawd while Claude works, in a narrow band, on the desktop, or hid
   expect(await hidden.find({ key: 'area' })).toBeUndefined()
 })
 
-test('the idle Clawd stops repainting when Claude starts working', async ($, on) => {
+test('when Claude starts working the area goes on repainting, on the same Raster', async ($, on) => {
   const { world, clock } = engine(on)
   await $.session.start(START)
   const ui = await mountBand($)
@@ -73,10 +72,11 @@ test('the idle Clawd stops repainting when Claude starts working', async ($, on)
   // It was repainting before Claude started.
   expect(blitsOf(world, 'area').length).toBeGreaterThan(0)
   await ui.redraw(bandProps(100, { isWorking: true }))
+  expect((await ui.find({ key: 'area' }))?.props).toMatchObject({ columns: 48, rows: 7 })
   await clock.advance(200)
-  const stopped = blitsOf(world, 'area').length
+  const before = blitsOf(world, 'area').length
   await clock.advance(2000)
-  expect(blitsOf(world, 'area').length).toBe(stopped)
+  expect(blitsOf(world, 'area').length).toBeGreaterThan(before)
 })
 
 test('the idle Clawd dozes after a minute and is awake again after the next turn', async ($, on) => {

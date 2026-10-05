@@ -22,7 +22,7 @@ const USAGE = `usage: npx -y tsx tools/frames/cli.ts <what> [options]
   idle <routine> [--doze]
   waiting --agents fable,sonnet,... [--columns N]
   band --stage <id> [--feature F] [--message M] [--columns N] [--max-rows N]
-       [--agents a,b] [--auditing] [--working] [--workflow file.json] [--idle routine]
+       [--agents a,b] [--auditing] [--working] [--scene id] [--workflow file.json] [--idle routine]
 common: --from MS (0) --every MS (250) --count N (16) --columns-per-row N (4)
         --scale N (1) --out file.png`
 
@@ -35,7 +35,7 @@ const OPTIONS: Record<string, readonly string[]> = {
   scene: ['reaction', 'auditing', 'width'],
   idle: ['doze'],
   waiting: ['agents', 'columns'],
-  band: ['stage', 'feature', 'message', 'columns', 'max-rows', 'agents', 'auditing', 'working', 'workflow', 'idle'],
+  band: ['stage', 'feature', 'message', 'columns', 'max-rows', 'agents', 'auditing', 'working', 'scene', 'workflow', 'idle'],
 }
 
 type Args = { what: string; id: string | undefined; opts: Map<string, string> }
@@ -134,6 +134,7 @@ function render(args: Args, times: readonly number[]): { frames: Canvas[]; name:
           agents: listOpt(opts, 'agents'),
           auditing: opts.has('auditing'),
           working: opts.has('working'),
+          scene: opts.get('scene'),
           workflow: workflowOpt(opts),
           idle: opts.get('idle'),
         },

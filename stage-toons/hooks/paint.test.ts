@@ -132,6 +132,19 @@ test('a band that gave up asks for one redraw and forgets its Raster; a toon doe
   }
 })
 
+test('while Claude works the area repaints about twelve times a second, and never falls deep asleep', async () => {
+  const mod = createMod()
+  // The last turn ended long ago: a long turn must not count as dozing.
+  mod.idleSince = START - DOZE_MS - DEEP_SLEEP_MS - 60_000
+  mod.isBandWorking = true
+  const site = mounted(mod, 'area', true)
+  const { ports, blits } = fake(mod, { cells: (_, now) => String(now), stopAt: START + 1000 })
+  animate(ports, mod, site)
+  await finished(site)
+  expect(blits.length).toBe(13)
+  expect(site.isAsleep).toBe(false)
+})
+
 test('the area polls the agents before its first frame, then every AGENT_POLL_MS while it knows of agents', async () => {
   const mod = createMod()
   awake(mod)

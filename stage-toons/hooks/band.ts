@@ -43,24 +43,22 @@ export type BandMode = 'none' | 'text' | 'area'
 // barLines: how many lines the bar takes, as bandLayout laid it out.
 export type BandSite = {
   surface: string
-  isWorking: boolean
   hasSurvey: boolean
   isAgentView: boolean
   isHidden: boolean
   columns: number
   maxRows: number
-  hasDemo: boolean
   barLines: number
 }
 
 // What the band draws: nothing of stage-toons' (yielding), the text bar,
-// or the bar over the area, which plays the demo, the waiting toon or the
-// idle Clawd. The area is terminal only, shows while Claude waits or a demo
-// plays, and only where the band has the rows to hold it whole under the
-// bar's lines.
+// or the bar over the area, which plays a demo, the stage's scene while
+// Claude works, the waiting toon or the idle Clawd. The area is terminal
+// only, and shows only where the band has the rows to hold it whole under
+// the bar's lines.
 export function bandMode(s: BandSite): BandMode {
   if (s.hasSurvey || s.isAgentView || s.isHidden) return 'none'
-  if (s.surface !== 'terminal' || (s.isWorking && !s.hasDemo)) return 'text'
+  if (s.surface !== 'terminal') return 'text'
 
   return s.columns >= TOON_MIN && s.maxRows >= s.barLines + TOON_ROWS ? 'area' : 'text'
 }

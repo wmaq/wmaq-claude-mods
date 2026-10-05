@@ -76,29 +76,17 @@ test('the demo line can stand in for the message', () => {
   expect(bandLayout(DEFAULT_WORKFLOW, plan, false, 40, 'Demo 3/12: Spec').map(text)).toEqual(['5/10 Plan — Demo 3/12: Spec'])
 })
 
-const site = { surface: 'terminal', isWorking: false, hasSurvey: false, isAgentView: false, isHidden: false, columns: 100, maxRows: 10, hasDemo: false, barLines: 2 }
+const site = { surface: 'terminal', hasSurvey: false, isAgentView: false, isHidden: false, columns: 100, maxRows: 10, barLines: 2 }
 
-test('while Claude waits, the band shows the area below the bar from 30 columns', () => {
+test('the band shows the area below the bar from 30 columns, working or not, on the terminal only', () => {
   expect(bandMode(site)).toBe('area')
   expect(bandMode({ ...site, columns: 30 })).toBe('area')
   expect(bandMode({ ...site, columns: 29 })).toBe('text')
-  expect(bandMode({ ...site, isWorking: true })).toBe('text')
   expect(bandMode({ ...site, surface: 'desktop' })).toBe('text')
 })
 
-test('a demo shows the area whether or not Claude works, but not off the terminal', () => {
-  const demo = { ...site, hasDemo: true }
-  expect(bandMode(demo)).toBe('area')
-  expect(bandMode({ ...demo, isWorking: true })).toBe('area')
-  expect(bandMode({ ...demo, columns: 29 })).toBe('text')
-  expect(bandMode({ ...demo, surface: 'desktop' })).toBe('text')
-})
-
 test('the band yields to a survey, an agent transcript, and /stage hide', () => {
-  for (const off of [{ hasSurvey: true }, { isAgentView: true }, { isHidden: true }]) {
-    expect(bandMode({ ...site, ...off })).toBe('none')
-    expect(bandMode({ ...site, ...off, hasDemo: true })).toBe('none')
-  }
+  for (const off of [{ hasSurvey: true }, { isAgentView: true }, { isHidden: true }]) expect(bandMode({ ...site, ...off })).toBe('none')
 })
 
 test('the band cuts its lines between characters, never through an emoji', () => {

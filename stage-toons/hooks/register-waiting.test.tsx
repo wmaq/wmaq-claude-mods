@@ -74,7 +74,9 @@ test('an agent spawned while Claude works walks in when the turn ends', async ($
   const ui = await mountBand($, 'terminal', bandProps(100, { isWorking: true }))
   await spawnAgent($)
   await clock.advance(1_000)
-  expect(await ui.find({ key: 'area' })).toBeUndefined()
+  // The area plays the stage's scene: no helper yet.
+  expect(await ui.find({ key: 'area' })).toBeDefined()
+  expect(shows(lastArea(world), 'sonnet')).toBe(false)
   // The main turn ends, then the band draws Claude idle, as the engine does.
   await endTurn($)
   await ui.redraw(bandProps(100))

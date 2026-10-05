@@ -10,7 +10,7 @@ import { areaCells, siteCells } from '../../stage-toons/hooks/frames'
 import { CELEBRATE, DOZE_MS, IDLE_IDS, routineOf, SHOW_OFF_PREFIX } from '../../stage-toons/hooks/idle'
 import { createMod, createSite, type Mod } from '../../stage-toons/hooks/mod'
 import { hex } from '../../stage-toons/hooks/pixels'
-import { STAGE_W } from '../../stage-toons/hooks/scene'
+import { FALLBACK_SCENE, STAGE_W } from '../../stage-toons/hooks/scene'
 import { SCENES } from '../../stage-toons/hooks/scenes'
 import { applyMove, freshProgress } from '../../stage-toons/hooks/stages'
 import { TOON_ROWS } from '../../stage-toons/hooks/toon'
@@ -102,6 +102,8 @@ export type BandOptions = {
   agents?: readonly string[]
   auditing?: boolean
   working?: boolean
+  // The scene under a working bar (the stage's first when not given).
+  scene?: string
   workflow?: Workflow
   // The idle routine under the bar (classic when not given).
   idle?: string
@@ -114,11 +116,14 @@ const styleOf = (span: Span): TextStyle => {
 }
 
 // The whole band as its hook draws it: the bar's lines, and under them, as
-// bandMode decides, the area with the idle Clawd or the waiting toon.
+// bandMode decides, the area: the stage's scene while Claude works (agents
+// and the idle routine then change nothing), else the waiting toon or the
+// idle Clawd.
 export function bandFrames(opts: BandOptions, times: readonly number[]): Canvas[] {
   const w = opts.workflow ?? DEFAULT_WORKFLOW
   known('stage', opts.stage, stageIds(w))
   if (opts.idle !== undefined) knownRoutine(opts.idle)
+  if (opts.scene !== undefined) known('scene', opts.scene, SCENE_IDS)
   const columns = opts.columns ?? 100
   const progress = applyMove(w, freshProgress(0), {
     stage: opts.stage,
@@ -130,13 +135,11 @@ export function bandFrames(opts: BandOptions, times: readonly number[]): Canvas[
   const lines = bandLayout(w, progress, opts.auditing ?? false, columns, undefined)
   const site: BandSite = {
     surface: 'terminal',
-    isWorking: opts.working ?? false,
     hasSurvey: false,
     isAgentView: false,
     isHidden: false,
     columns,
     maxRows: opts.maxRows ?? lines.length + TOON_ROWS,
-    hasDemo: false,
     barLines: lines.length,
   }
   const hasArea = bandMode(site) === 'area'
@@ -144,7 +147,13 @@ export function bandFrames(opts: BandOptions, times: readonly number[]): Canvas[
   const agents = opts.agents ?? []
   let area: string[] = []
   if (hasArea) {
-    if (agents.length > 0) area = areaFrames(waitingMod(agents), areaWidth, times)
+    if (opts.working) {
+      const mod = createMod()
+      mod.isBandWorking = true
+      mod.director = createDirector(opts.scene ?? stageOf(w, opts.stage)?.scenes[0] ?? FALLBACK_SCENE, false)
+      if (opts.auditing) mod.director = withAuditing(mod.director, true, 0)
+      area = times.map(t => areaCells(mod, areaWidth, t, quiet) ?? '')
+    } else if (agents.length > 0) area = areaFrames(waitingMod(agents), areaWidth, times)
     else {
       const mod = createMod()
       mod.idleSince = 0

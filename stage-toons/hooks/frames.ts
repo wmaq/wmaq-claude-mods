@@ -30,11 +30,13 @@ export function castOf(mod: Mod, log: Log): Cast {
 }
 
 // The area's next frame, cut to its width, or null once the demo it plays
-// is over: a demo, else the waiting toon while a waiting period lasts,
-// else the idle routine.
+// is over: a demo, else the stage's scene while Claude works, else the
+// waiting toon while a waiting period lasts, else the idle routine. The
+// seat log moves on first, whichever plays.
 export function areaCells(mod: Mod, columns: number, now: number, log: Log): string | null {
   const onBreak = (id: string, error: unknown) => log(`stage-toons: idle routine ${id} failed and was replaced by classic: ${String(error)}`)
   const idleAt = (ms: number) => cropLeft(placeIdle(idleFrame(mod.idle, ms, mod.brokenIdle, onBreak)), columns)
+  reseat(mod, now)
   const demo = mod.demo
   if (demo?.kind === 'scenes') {
     const frame = demoAt(demo, now)
@@ -54,7 +56,13 @@ export function areaCells(mod: Mod, columns: number, now: number, log: Log): str
     return encodeCells('log' in at ? cropLeft(waitingFrame(at.log, now), columns) : idleAt(at.idleMs))
   }
 
-  reseat(mod, now)
+  // The stage's scene, with its wipe, Fable's walk and the reactions, as a
+  // scene demo is drawn: cropped by the scene's camera.
+  if (mod.isBandWorking) {
+    mod.director = tick(mod.director, now)
+
+    return encodeCells(composeFrame(shot(mod.director, now), now, columns, castOf(mod, log)))
+  }
   if (mod.seats.since !== null && !mod.isWaitingBroken) {
     try {
       return encodeCells(cropLeft(waitingFrame(mod.seats, now), columns))

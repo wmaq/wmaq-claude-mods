@@ -41,9 +41,10 @@ export type Site = {
   isAsleep: boolean
 }
 
-// How often a site repaints: the idle Clawd is calm, and calmer dozing.
+// How often a site repaints: a scene, a demo and the waiting toon about
+// twelve times a second; the idle Clawd is calm, and calmer dozing.
 export function frameMs(mod: Mod, kind: SiteKind, now: number): number {
-  if (kind !== 'area' || mod.demo !== null || (mod.seats.since !== null && !mod.isWaitingBroken)) return 83
+  if (kind !== 'area' || mod.isBandWorking || mod.demo !== null || (mod.seats.since !== null && !mod.isWaitingBroken)) return 83
 
   return now - mod.idleSince >= DOZE_MS ? 333 : 166
 }
@@ -56,10 +57,11 @@ export const createSite = (kind: SiteKind): Site => ({ requestId: undefined, kin
 // least this often: a blit is how the loop learns its Raster is gone.
 export const RESEND_MS = 2000
 
-// Whether the idle Clawd is deep asleep: nothing else plays in the area,
-// and he has dozed for DEEP_SLEEP_MS.
+// Whether the idle Clawd is deep asleep: Claude does not work, nothing
+// else plays in the area, and he has dozed for DEEP_SLEEP_MS. (idleSince
+// is the last turn's end: a long turn must not count as dozing.)
 export const isDeepAsleep = (mod: Mod, now: number): boolean =>
-  mod.demo === null && (mod.seats.since === null || mod.isWaitingBroken) && now - mod.idleSince >= DOZE_MS + DEEP_SLEEP_MS
+  !mod.isBandWorking && mod.demo === null && (mod.seats.since === null || mod.isWaitingBroken) && now - mod.idleSince >= DOZE_MS + DEEP_SLEEP_MS
 
 // The module's own state: made fresh by every load, so it starts over on a
 // reload. What must outlive a reload is in $.state.
