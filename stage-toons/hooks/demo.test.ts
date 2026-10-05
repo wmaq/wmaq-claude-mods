@@ -37,16 +37,25 @@ test("a stage's demo plays its scenes; its line names them by the first stage th
   expect(demoLine(after(300_000)!, library, DEFAULT_WORKFLOW)).toBe('Demo 31/38: fireworks (Done) · /stage demo stop ends it')
 })
 
-test('the idle demo plays each routine, then the doze', () => {
+test('the idle demo plays each routine, the celebration, the show-off with each prop in turn, then the doze', () => {
   const idle: Demo = { kind: 'idle', at: 0, seconds: 3 }
-  expect(IDLE_DEMO_LENGTH).toBe(IDLE_IDS.length + 1)
+  expect(IDLE_DEMO_LENGTH).toBe(IDLE_IDS.length + 3)
   expect(idleDemoAt(idle, 0)).toEqual({ index: 0, routine: 'classic', ms: 0 })
   expect(idleDemoAt(idle, 3_500)).toEqual({ index: 1, routine: 'nyan', ms: 500 })
   expect(idleDemoAt(idle, 6_000)).toEqual({ index: 2, routine: 'coffee', ms: 0 })
-  expect(idleDemoAt(idle, 15_000)).toEqual({ index: 5, routine: null, ms: 0 })
-  expect(idleDemoAt(idle, 18_000)).toBeNull()
-  expect(idleDemoLine(idleDemoAt(idle, 3_500)!)).toBe('Idle demo 2/6: nyan · /stage demo stop ends it')
-  expect(idleDemoLine(idleDemoAt(idle, 15_000)!)).toBe('Idle demo 6/6: doze · /stage demo stop ends it')
+  expect(idleDemoAt(idle, 15_000)).toEqual({ index: 5, routine: 'celebrate', ms: 0 })
+  // Each prop for 2 s, on its own clock.
+  expect(idleDemoAt(idle, 18_000)).toEqual({ index: 6, routine: 'show-off:roadmap', ms: 0 })
+  expect(idleDemoAt(idle, 20_500)).toEqual({ index: 6, routine: 'show-off:brainstorm', ms: 500 })
+  expect(idleDemoAt(idle, 21_000)).toEqual({ index: 7, routine: null, ms: 0 })
+  expect(idleDemoAt(idle, 24_000)).toBeNull()
+  expect(idleDemoLine(idleDemoAt(idle, 3_500)!)).toBe('Idle demo 2/8: nyan · /stage demo stop ends it')
+  expect(idleDemoLine(idleDemoAt(idle, 15_000)!)).toBe('Idle demo 6/8: celebrate · /stage demo stop ends it')
+  expect(idleDemoLine(idleDemoAt(idle, 20_500)!)).toBe('Idle demo 7/8: show-off (brainstorm) · /stage demo stop ends it')
+  expect(idleDemoLine(idleDemoAt(idle, 21_000)!)).toBe('Idle demo 8/8: doze · /stage demo stop ends it')
+  // 22 s a step shows all eleven props: the last is the page any other stage gets.
+  const slow: Demo = { kind: 'idle', at: 0, seconds: 22 }
+  expect(idleDemoLine(idleDemoAt(slow, 6 * 22_000 + 21_000)!)).toBe('Idle demo 7/8: show-off (any other stage) · /stage demo stop ends it')
   expect(demoAt(idle, 0)).toBeNull()
 })
 
@@ -62,7 +71,7 @@ test('demoFor builds the demo a /stage demo command asks for, and names it', () 
   })
   expect(demoFor({ kind: 'demo-idle', seconds: 3 }, DEFAULT_WORKFLOW, 7)).toEqual({
     demo: { kind: 'idle', at: 7, seconds: 3 },
-    label: `${IDLE_IDS.length} idle routines and the doze`,
+    label: `${IDLE_IDS.length} idle routines, the celebration, the show-off and the doze`,
   })
   expect(demoFor({ kind: 'demo-waiting' }, DEFAULT_WORKFLOW, 7)).toEqual({ demo: { kind: 'waiting', at: 7 }, label: 'the waiting toon' })
 })

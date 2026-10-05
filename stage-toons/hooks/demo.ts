@@ -8,7 +8,7 @@ import type { IdleId, Workflow } from '../types'
 import { bandMode, type BandSite } from './band'
 import type { Command } from './command'
 import { type Shot, WIPE_MS } from './director'
-import { IDLE_IDS } from './idle'
+import { CELEBRATE, IDLE_IDS, SHOW_OFF_DEMO, SHOW_OFF_PREFIX } from './idle'
 import type { Mod } from './mod'
 import { FABLE_SCENE, type SceneId } from './scene'
 import { DEMO_ORDER } from './scenes'
@@ -29,8 +29,10 @@ export type DemoFrame = { index: number; shot: Shot; sceneMs: number }
 // The idle demo's step: a routine, or the doze (null) after them all.
 export type IdleDemoFrame = { index: number; routine: IdleId | null; ms: number }
 
-// The idle demo plays every routine, then the doze.
-export const IDLE_DEMO_LENGTH = IDLE_IDS.length + 1
+// The idle demo plays every routine, the celebration, the show-off (each
+// prop for SHOW_OFF_DEMO_MS in turn), then the doze.
+export const IDLE_DEMO_LENGTH = IDLE_IDS.length + 3
+export const SHOW_OFF_DEMO_MS = 2000
 export const demoLength = (demo: Demo): number => (demo.kind === 'scenes' ? demo.scenes.length : demo.kind === 'idle' ? IDLE_DEMO_LENGTH : 1)
 
 // Which item plays at a moment and for how long it has, or null once the
@@ -58,7 +60,17 @@ export function idleDemoAt(demo: Demo, now: number): IdleDemoFrame | null {
   if (demo.kind !== 'idle') return null
   const step = demoStep(demo, now)
 
-  return step ? { index: step.index, routine: IDLE_IDS[step.index] ?? null, ms: step.ms } : null
+  if (!step) return null
+  const n = IDLE_IDS.length
+  if (step.index < n) return { index: step.index, routine: IDLE_IDS[step.index]!, ms: step.ms }
+  if (step.index === n) return { index: step.index, routine: CELEBRATE, ms: step.ms }
+  if (step.index === n + 1) {
+    const prop = Math.floor(step.ms / SHOW_OFF_DEMO_MS)
+
+    return { index: step.index, routine: SHOW_OFF_DEMO[prop % SHOW_OFF_DEMO.length]!, ms: step.ms - prop * SHOW_OFF_DEMO_MS }
+  }
+
+  return { index: step.index, routine: null, ms: step.ms }
 }
 
 // A scene as the demo names it: its own name, and the first stage (track,
@@ -73,7 +85,16 @@ function labelOf(id: SceneId, w: Workflow): string {
 export const demoLine = (f: DemoFrame, demo: Demo, w: Workflow): string =>
   `Demo ${f.index + 1}/${demoLength(demo)}: ${labelOf(f.shot.base, w)} · /stage demo stop ends it`
 
-export const idleDemoLine = (f: IdleDemoFrame): string => `Idle demo ${f.index + 1}/${IDLE_DEMO_LENGTH}: ${f.routine ?? 'doze'} · /stage demo stop ends it`
+// A routine as the idle demo's line names it: a show-off by its prop's stage.
+function routineName(routine: IdleId | null): string {
+  if (routine === null) return 'doze'
+  if (!routine.startsWith(SHOW_OFF_PREFIX)) return routine
+  const stage = routine.slice(SHOW_OFF_PREFIX.length)
+
+  return `show-off (${stage === '*' ? 'any other stage' : stage})`
+}
+
+export const idleDemoLine = (f: IdleDemoFrame): string => `Idle demo ${f.index + 1}/${IDLE_DEMO_LENGTH}: ${routineName(f.routine)} · /stage demo stop ends it`
 
 export const WAITING_DEMO_LINE = 'Waiting demo · /stage demo stop ends it'
 
@@ -91,7 +112,7 @@ export function demoFor(cmd: Extract<Command, { kind: 'demo' | 'demo-idle' | 'de
     cmd.kind === 'demo-waiting'
       ? 'the waiting toon'
       : cmd.kind === 'demo-idle'
-        ? `${IDLE_IDS.length} idle routines and the doze`
+        ? `${IDLE_IDS.length} idle routines, the celebration, the show-off and the doze`
         : stage
           ? `${n} scene${n === 1 ? '' : 's'} of ${stage.label}`
           : `${n} scenes`

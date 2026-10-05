@@ -6,16 +6,21 @@
 import type { IdleId } from '../../types'
 import { pickOne } from '../pick'
 import { createBuffer, type PixelBuffer } from '../pixels'
+import { CELEBRATE, celebrate } from './celebrate'
 import { classic } from './classic'
 import { coffee } from './coffee'
 import { DEEP_SLEEP_MS, DOZE_MS, drawDoze, STILL_T } from './doze'
 import { nyan } from './nyan'
 import { reading } from './reading'
+import { PROPS } from './props'
 import type { IdleRoutine } from './routine'
+import { SHOW_OFF_PREFIX, showOff, showOffId } from './show-off'
 import { yoYo } from './yo-yo'
 
 export { CLAWD_X, DEEP_SLEEP_MS, DOZE_MS, Z_COLOR } from './doze'
 export type { IdleRoutine } from './routine'
+export { CELEBRATE } from './celebrate'
+export { SHOW_OFF_PREFIX, showOffId } from './show-off'
 
 export const IDLE_COLS = 26
 export const IDLE_ROWS = 4
@@ -34,6 +39,21 @@ export const IDLE_IDS: readonly IdleId[] = Object.keys(ROUTINES)
 
 export const pickIdle = (previous: IdleId | undefined, random: number): IdleId => pickOne(IDLE_IDS, previous, random)
 
+// The routine an id names: the library's, the celebration, or the show-off
+// of a stage's prop; undefined for an unknown id. The last two are never
+// picked at random: a move sets them (register.tsx).
+export function routineOf(id: IdleId): IdleRoutine | undefined {
+  if (Object.hasOwn(ROUTINES, id)) return ROUTINES[id]
+  if (id === CELEBRATE) return celebrate
+  if (id.startsWith(SHOW_OFF_PREFIX)) return showOff(id.slice(SHOW_OFF_PREFIX.length))
+
+  return undefined
+}
+
+// The show-offs /stage demo idle cycles through: each prop of the default
+// track's stages, then the generic one (a stage id no prop has).
+export const SHOW_OFF_DEMO: readonly IdleId[] = [...Object.keys(PROPS), '*'].map(showOffId)
+
 const drawn = (r: IdleRoutine, idleMs: number): PixelBuffer => {
   const b = createBuffer(IDLE_COLS, IDLE_ROWS * 2)
   r.draw(b, (idleMs / 1000) % r.loop)
@@ -50,9 +70,10 @@ export function idleFrame(routine: IdleId, idleMs: number, broken: Set<IdleId> =
 
     return b
   }
-  const id = broken.has(routine) || ROUTINES[routine] === undefined ? FALLBACK_ROUTINE : routine
+  const found = broken.has(routine) ? undefined : routineOf(routine)
+  const id = found === undefined ? FALLBACK_ROUTINE : routine
   try {
-    return drawn(ROUTINES[id]!, idleMs)
+    return drawn(found ?? ROUTINES[FALLBACK_ROUTINE]!, idleMs)
   } catch (error) {
     broken.add(id)
     onBreak?.(id, error)

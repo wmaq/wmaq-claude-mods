@@ -16,17 +16,19 @@ test("/stage demo develop plays Develop's scenes", async ($, on) => {
   expect(await bandText($)).toContain('Demo 3/3: workbench (Develop)')
 })
 
-test('/stage demo idle plays the routines in the area, then the doze, then ends', async ($, on) => {
+test('/stage demo idle plays the routines in the area, the celebration, the show-off, then the doze, then ends', async ($, on) => {
   const { clock } = engine(on)
   await $.session.start(START)
   const ui = await mountBand($)
-  expect(text(await runStage($, 'demo idle 3'))).toBe('Playing 5 idle routines and the doze, 3 s each (under a minute). /stage demo stop ends it.')
+  expect(text(await runStage($, 'demo idle 3'))).toBe(
+    'Playing 5 idle routines, the celebration, the show-off and the doze, 3 s each (under a minute). /stage demo stop ends it.',
+  )
   await ui.redraw(bandProps(100))
   expect(await ui.find({ key: 'area' })).toBeDefined()
-  expect(await bandText($)).toContain('Idle demo 1/6: classic')
-  for (const [i, name] of ['nyan', 'coffee', 'reading', 'yo-yo', 'doze'].entries()) {
+  expect(await bandText($)).toContain('Idle demo 1/8: classic')
+  for (const [i, name] of ['nyan', 'coffee', 'reading', 'yo-yo', 'celebrate', 'show-off (roadmap)', 'doze'].entries()) {
     await clock.advance(3_000)
-    expect(await bandText($)).toContain(`Idle demo ${i + 2}/6: ${name}`)
+    expect(await bandText($)).toContain(`Idle demo ${i + 2}/8: ${name}`)
   }
   await clock.advance(3_000)
   expect(await bandText($)).not.toContain('Idle demo')
@@ -42,7 +44,7 @@ test('/stage demo idle over a playing scene demo keeps playing before the band i
   await runStage($, 'demo idle 5')
   // The scene demo's loop wakes before any redraw switches the band's kind.
   await clock.advance(200)
-  expect(await bandText($)).toContain('Idle demo 1/6: classic')
+  expect(await bandText($)).toContain('Idle demo 1/8: classic')
   expect(text(await runStage($, 'demo stop'))).toBe('Demo stopped.')
 })
 

@@ -1,7 +1,9 @@
 import { expect, test } from 'claude-code/testing'
 
 import { CLAWD_ORANGE, EYE_DARK } from './clawd'
-import { CLAWD_X, DOZE_MS, IDLE_COLS, IDLE_IDS, IDLE_ROWS, idleFrame, pickIdle, ROUTINES, Z_COLOR } from './idle'
+import { CLAWD_X, DOZE_MS, IDLE_COLS, IDLE_IDS, IDLE_ROWS, idleFrame, pickIdle, routineOf, ROUTINES, Z_COLOR } from './idle'
+import { GENERIC_PROP, PROPS, propOf } from './idle/props'
+import { DEFAULT_WORKFLOW } from './workflow'
 import { createBuffer, EMPTY, type PixelBuffer } from './pixels'
 import { C } from './scenes/kit'
 
@@ -173,4 +175,71 @@ test('an unknown routine draws classic; one that throws is replaced by classic a
   } finally {
     delete ROUTINES.boom
   }
+})
+
+const SPECIAL = ['celebrate', ...Object.keys(PROPS).map(id => `show-off:${id}`), 'show-off:custom-id']
+const CONFETTI = [C.gold, C.blue, C.green, C.red]
+
+test('the celebration and the show-offs are drawn by id, never picked at random', () => {
+  expect(routineOf('celebrate')?.id).toBe('celebrate')
+  expect(routineOf('show-off:spec')?.id).toBe('show-off:spec')
+  expect(routineOf('classic')).toBe(ROUTINES.classic)
+  expect(routineOf('gone')).toBeUndefined()
+  expect(routineOf('toString')).toBeUndefined()
+  for (const previous of [undefined, ...IDLE_IDS, 'celebrate', 'show-off:spec']) {
+    for (let r = 0; r < 1; r += 0.05) expect(IDLE_IDS).toContain(pickIdle(previous, r))
+  }
+})
+
+test('each stage of the default track has its prop, each fitting beside Clawd; any other stage shows a page with a tick', () => {
+  expect(Object.keys(PROPS)).toEqual(DEFAULT_WORKFLOW.track.map(s => s.id))
+  for (const sprite of [...Object.values(PROPS), GENERIC_PROP]) {
+    const rows = sprite.frames[0]!
+    expect(rows.length).toBeLessThanOrEqual(8)
+    for (const row of rows) expect(row.length).toBeLessThanOrEqual(9)
+  }
+  expect(propOf('custom-id')).toBe(GENERIC_PROP)
+  expect(propOf('toString')).toBe(GENERIC_PROP)
+})
+
+test('the celebration and every show-off keep Clawd whole with his eyes showing, inside the box, and doze after a minute', () => {
+  for (const id of SPECIAL) {
+    const routine = routineOf(id)!
+    for (let t = 0; t < routine.loop; t += 0.05) {
+      expect(where(at(t, id), CLAWD_ORANGE).length).toBeGreaterThan(40)
+      expect(where(at(t, id), EYE_DARK).length).toBeGreaterThanOrEqual(4)
+      const b = createBuffer(IDLE_COLS + 4, IDLE_ROWS * 2 + 4)
+      routine.draw(b, t)
+      expect([...b.px].filter((c, i) => c !== EMPTY && (i % b.w >= IDLE_COLS || Math.floor(i / b.w) >= IDLE_ROWS * 2))).toHaveLength(0)
+    }
+    expect([...at(61, id).px]).toEqual([...at(61).px])
+  }
+})
+
+test('show-off: Clawd holds the prop at his left, lifts it at 1.5 s, turns it over from 3 s, and loops every 6 s', () => {
+  const hammer = (t: number) => where(at(t, 'show-off:develop'), C.gray)
+  expect(hammer(0.5).length).toBeGreaterThan(0)
+  expect(Math.max(...hammer(0.5).map(p => p.x))).toBeLessThan(CLAWD_X)
+  // Held by its top at the claw: lifted two rows, and closer.
+  expect(Math.min(...hammer(0.5).map(p => p.y))).toBe(2)
+  expect(Math.min(...hammer(2).map(p => p.y))).toBe(0)
+  // The map flips every 0.4 s while turning.
+  const map = (t: number) => JSON.stringify(where(at(t, 'show-off:roadmap'), C.red))
+  expect(map(3.2)).not.toBe(map(3.6))
+  expect(map(0.5)).toBe(map(1))
+  expect(routineOf('show-off:roadmap')!.loop).toBe(6)
+  expect(where(at(0.5, 'show-off:custom-id'), C.green).length).toBeGreaterThan(0)
+})
+
+test('celebrate: Clawd hops with his arms up while twelve pieces of confetti fall beside him, never on him', () => {
+  expect(routineOf('celebrate')!.loop).toBe(4)
+  for (let t = 0; t < 4; t += 0.05) {
+    const confetti = CONFETTI.flatMap(color => where(at(t, 'celebrate'), color))
+    expect(confetti).toHaveLength(12)
+    expect(confetti.every(p => p.x < CLAWD_X)).toBe(true)
+  }
+  // Up on a hop, then down.
+  expect(JSON.stringify(where(at(0.1, 'celebrate'), CLAWD_ORANGE))).not.toBe(JSON.stringify(where(at(0.6, 'celebrate'), CLAWD_ORANGE)))
+  const changed = (a: PixelBuffer, b: PixelBuffer) => [...a.px].filter((c, i) => c !== b.px[i]).length
+  expect(changed(at(3.98, 'celebrate'), at(0.02, 'celebrate'))).toBeLessThan(15)
 })
