@@ -79,3 +79,20 @@ test('waiting takes --columns, the area\'s width', () => {
   const result = main(['waiting', '--agents', 'fable,opus', '--columns', '30', '--count', '2', '--columns-per-row', '2', '--out', out])
   assert.equal(result.width, (2 * (30 + 1) + 1) * 8)
 })
+
+test('a show-off sheet is named without the colon, which Windows refuses in a file name', () => {
+  const was = process.cwd()
+  process.chdir(dir)
+  try {
+    assert.equal(main(['idle', 'show-off:spec', '--count', '1']).path, 'frames-idle-show-off-spec.png')
+    assert.equal(main(['idle', 'show-off:*', '--count', '1']).path, 'frames-idle-show-off--.png')
+  } finally {
+    process.chdir(was)
+  }
+})
+
+test('band takes --idle, the routine under the bar', () => {
+  const out = join(dir, 'done.png')
+  const result = main(['band', '--stage', 'done', '--idle', 'celebrate', '--columns', '80', '--count', '1', '--out', out])
+  assert.equal(result.height, (2 + 7 + 1 + 2) * 16)
+})

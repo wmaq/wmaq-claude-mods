@@ -25,7 +25,8 @@ test('the same request gives the same pixels', () => {
 
 test('an unknown id is an error that lists the known ones', () => {
   assert.throws(() => sceneFrames('no-such-scene', {}, [0]), /unknown scene "no-such-scene"; known: .*bricklaying/)
-  assert.throws(() => idleFrames('nope', false, [0]), /unknown idle routine "nope"; known: .*classic/)
+  assert.throws(() => idleFrames('nope', false, [0]), /unknown idle routine "nope"; known: .*classic.*, celebrate, show-off:<stage>/)
+  assert.throws(() => bandFrames({ stage: 'plan', idle: 'nope' }, [0]), /unknown idle routine "nope"/)
   assert.throws(() => bandFrames({ stage: 'nope' }, [0]), /unknown stage "nope"; known: roadmap, brainstorm/)
   assert.throws(() => waitingFrames([], [0]), /waiting needs --agents/)
 })
@@ -53,4 +54,19 @@ test("the band at Plan shows the bar's done colour at its first step, with the a
 test('a working band is the bar alone; agents then change nothing', () => {
   const [frame] = bandFrames({ stage: 'plan', columns: 100, working: true, agents: ['fable'] }, [0])
   assert.equal(frame!.rows, 2)
+})
+
+test("the celebration and any stage's show-off draw as idle routines", () => {
+  for (const routine of ['celebrate', 'show-off:spec', 'show-off:custom-id']) {
+    const [frame] = idleFrames(routine, false, [500])
+    assert.ok(has(frame!, hex('#D97757')))
+  }
+  assert.notDeepEqual(idleFrames('show-off:spec', false, [500])[0]!.px, idleFrames('classic', false, [500])[0]!.px)
+})
+
+test('the band in Done draws with the idle routine asked for under it', () => {
+  const [classic] = bandFrames({ stage: 'done', columns: 100 }, [500])
+  const [celebrating] = bandFrames({ stage: 'done', columns: 100, idle: 'celebrate' }, [500])
+  assert.equal(celebrating!.rows, 2 + 7)
+  assert.notDeepEqual(celebrating!.px, classic!.px)
 })

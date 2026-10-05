@@ -22,7 +22,7 @@ const USAGE = `usage: npx -y tsx tools/frames/cli.ts <what> [options]
   idle <routine> [--doze]
   waiting --agents fable,sonnet,... [--columns N]
   band --stage <id> [--feature F] [--message M] [--columns N] [--max-rows N]
-       [--agents a,b] [--auditing] [--working] [--workflow file.json]
+       [--agents a,b] [--auditing] [--working] [--workflow file.json] [--idle routine]
 common: --from MS (0) --every MS (250) --count N (16) --columns-per-row N (4)
         --scale N (1) --out file.png`
 
@@ -35,7 +35,7 @@ const OPTIONS: Record<string, readonly string[]> = {
   scene: ['reaction', 'auditing', 'width'],
   idle: ['doze'],
   waiting: ['agents', 'columns'],
-  band: ['stage', 'feature', 'message', 'columns', 'max-rows', 'agents', 'auditing', 'working', 'workflow'],
+  band: ['stage', 'feature', 'message', 'columns', 'max-rows', 'agents', 'auditing', 'working', 'workflow', 'idle'],
 }
 
 type Args = { what: string; id: string | undefined; opts: Map<string, string> }
@@ -115,7 +115,7 @@ function render(args: Args, times: readonly number[]): { frames: Canvas[]; name:
       return { frames, name: `frames-scene-${id}.png` }
     }
     case 'idle':
-      return { frames: idleFrames(need(), opts.has('doze'), times), name: `frames-idle-${id}${opts.has('doze') ? '-doze' : ''}.png` }
+      return { frames: idleFrames(need(), opts.has('doze'), times), name: `frames-idle-${id?.replace(/[:*]/g, '-')}${opts.has('doze') ? '-doze' : ''}.png` }
     case 'waiting': {
       const agents = listOpt(opts, 'agents')
 
@@ -135,6 +135,7 @@ function render(args: Args, times: readonly number[]): { frames: Canvas[]; name:
           auditing: opts.has('auditing'),
           working: opts.has('working'),
           workflow: workflowOpt(opts),
+          idle: opts.get('idle'),
         },
         times,
       )

@@ -7,7 +7,7 @@ import { spawned } from '../../stage-toons/hooks/agents'
 import { areaColumns, BAR_TONES, bandLayout, bandMode, type BandSite, type Span } from '../../stage-toons/hooks/band'
 import { createDirector, react, withAuditing } from '../../stage-toons/hooks/director'
 import { areaCells, siteCells } from '../../stage-toons/hooks/frames'
-import { DOZE_MS, IDLE_IDS } from '../../stage-toons/hooks/idle'
+import { CELEBRATE, DOZE_MS, IDLE_IDS, routineOf, SHOW_OFF_PREFIX } from '../../stage-toons/hooks/idle'
 import { createMod, createSite, type Mod } from '../../stage-toons/hooks/mod'
 import { hex } from '../../stage-toons/hooks/pixels'
 import { STAGE_W } from '../../stage-toons/hooks/scene'
@@ -24,6 +24,11 @@ export const SCENE_IDS: readonly string[] = Object.keys(SCENES)
 
 function known(what: string, id: string, ids: readonly string[]) {
   if (!ids.includes(id)) throw new Error(`unknown ${what} "${id}"; known: ${ids.join(', ')}`)
+}
+
+// An idle routine: the library's, the celebration, or show-off:<stage>.
+function knownRoutine(routine: string) {
+  if (routineOf(routine) === undefined) known('idle routine', routine, [...IDLE_IDS, CELEBRATE, `${SHOW_OFF_PREFIX}<stage>`])
 }
 
 function cellsCanvas(cells: string, columns: number, rows: number): Canvas {
@@ -52,7 +57,7 @@ export function sceneFrames(id: string, opts: SceneOptions, times: readonly numb
 // The idle Clawd in the band's area, the idle period starting at time 0;
 // with doze, from the doze on (still once DEEP_SLEEP_MS has passed).
 export function idleFrames(routine: string, doze: boolean, times: readonly number[], columns = STAGE_W): Canvas[] {
-  known('idle routine', routine, IDLE_IDS)
+  knownRoutine(routine)
   const mod = createMod()
   mod.idle = routine
   mod.idleSince = 0
@@ -98,6 +103,8 @@ export type BandOptions = {
   auditing?: boolean
   working?: boolean
   workflow?: Workflow
+  // The idle routine under the bar (classic when not given).
+  idle?: string
 }
 
 const styleOf = (span: Span): TextStyle => {
@@ -111,6 +118,7 @@ const styleOf = (span: Span): TextStyle => {
 export function bandFrames(opts: BandOptions, times: readonly number[]): Canvas[] {
   const w = opts.workflow ?? DEFAULT_WORKFLOW
   known('stage', opts.stage, stageIds(w))
+  if (opts.idle !== undefined) knownRoutine(opts.idle)
   const columns = opts.columns ?? 100
   const progress = applyMove(w, freshProgress(0), {
     stage: opts.stage,
@@ -140,6 +148,7 @@ export function bandFrames(opts: BandOptions, times: readonly number[]): Canvas[
     else {
       const mod = createMod()
       mod.idleSince = 0
+      if (opts.idle !== undefined) mod.idle = opts.idle
       area = times.map(t => areaCells(mod, areaWidth, t, quiet) ?? '')
     }
   }
