@@ -85,36 +85,19 @@ export type Anchors = { top: Point; left: Point; right: Point; feet: Point }
 // pixel never covers an eye that glanced aside.
 export function clawdPixels(partial: Partial<ClawdLook> = {}): Pixel[] {
   const look: ClawdLook = { ...LOOK, ...partial }
-  const body: Pixel[] = []
-  const eyes: Pixel[] = []
+  const pixels: Pixel[] = []
+  // A claw held out reaches a pixel past the box on either side.
+  const add = (x: number, y: number, c: number) => {
+    if (x >= -1 && x <= CLAWD_W && y >= 0 && y < CLAWD_H) pixels.push({ x, y, c })
+  }
   // Sitting, the body rests on the ground where the feet would be.
   const drop = look.pose === 'sit' ? CLAWD_H - BODY_H : 0
   BODY.forEach((row, y) => {
-    for (let x = 0; x < row.length; x++) if (row[x] !== '.') body.push({ x, y: y + drop, c: look.color })
+    for (let x = 0; x < row.length; x++) if (row[x] !== '.') add(x, y + drop, look.color)
   })
-  for (const [px, py] of CLAWS[look.arms.left].pixels) body.push({ x: px, y: py + drop, c: look.color })
-  for (const [px, py] of CLAWS[look.arms.right].pixels) body.push({ x: CLAWD_W - 1 - px, y: py + drop, c: look.color })
-  const ex = Math.max(-1, Math.min(1, Math.round(look.look.x))) || look.facing
-  const ey = Math.max(-1, Math.min(1, Math.round(look.look.y)))
-  for (const x0 of EYES) {
-    const x = x0 + ex
-    const y = EYE_ROW + ey + drop
-    if (look.eyes === 'closed' || look.isBlinking) {
-      // A line where the eye's lower pixel was.
-      eyes.push({ x, y: y + 1, c: look.eyeColor }, { x: x + (x0 === EYES[0] ? -1 : 1), y: y + 1, c: look.eyeColor })
-    } else if (look.eyes === 'wide') {
-      for (let dx = -1; dx <= 0; dx++) for (let dy = 0; dy <= 1; dy++) eyes.push({ x: x + dx, y: y + dy, c: look.eyeColor })
-    } else {
-      eyes.push({ x, y, c: look.eyeColor }, { x, y: y + 1, c: look.eyeColor })
-    }
-  }
-  if (look.hasMonocle) {
-    // A rim beside and above the right eye.
-    const x = EYES[1] + ex
-    const y = EYE_ROW + ey + drop
-    eyes.push({ x: x + 1, y, c: MONOCLE }, { x: x + 1, y: y + 1, c: MONOCLE }, { x, y: y - 1, c: MONOCLE })
-  }
-  const feet: Pixel[] = []
+  for (const [px, py] of CLAWS[look.arms.left].pixels) add(px, py + drop, look.color)
+  for (const [px, py] of CLAWS[look.arms.right].pixels) add(CLAWD_W - 1 - px, py + drop, look.color)
+  // The feet before the eyes, so the eyes stay last.
   if (look.pose !== 'sit') {
     const ground = CLAWD_H - 1
     const dir = look.facing || 1
@@ -134,13 +117,35 @@ export function clawdPixels(partial: Partial<ClawdLook> = {}): Pixel[] {
         isLifted = true
       }
       const x = x0 + swing * dir
-      for (let y = BODY_H; y <= (isLifted ? ground - 1 : ground); y++) feet.push({ x, y, c: look.color })
+      for (let y = BODY_H; y <= (isLifted ? ground - 1 : ground); y++) add(x, y, look.color)
     })
   }
-  // A claw held out reaches a pixel past the box on either side.
-  const inside = (p: Pixel) => p.x >= -1 && p.x <= CLAWD_W && p.y >= 0 && p.y < CLAWD_H
+  const ex = Math.max(-1, Math.min(1, Math.round(look.look.x))) || look.facing
+  const ey = Math.max(-1, Math.min(1, Math.round(look.look.y)))
+  for (const x0 of EYES) {
+    const x = x0 + ex
+    const y = EYE_ROW + ey + drop
+    if (look.eyes === 'closed' || look.isBlinking) {
+      // A line where the eye's lower pixel was.
+      add(x, y + 1, look.eyeColor)
+      add(x + (x0 === EYES[0] ? -1 : 1), y + 1, look.eyeColor)
+    } else if (look.eyes === 'wide') {
+      for (let dx = -1; dx <= 0; dx++) for (let dy = 0; dy <= 1; dy++) add(x + dx, y + dy, look.eyeColor)
+    } else {
+      add(x, y, look.eyeColor)
+      add(x, y + 1, look.eyeColor)
+    }
+  }
+  if (look.hasMonocle) {
+    // A rim beside and above the right eye.
+    const x = EYES[1] + ex
+    const y = EYE_ROW + ey + drop
+    add(x + 1, y, MONOCLE)
+    add(x + 1, y + 1, MONOCLE)
+    add(x, y - 1, MONOCLE)
+  }
 
-  return [...body, ...feet, ...eyes].filter(inside)
+  return pixels
 }
 
 export function clawdAnchors(partial: Partial<ClawdLook> = {}): Anchors {

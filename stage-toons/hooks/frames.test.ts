@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { EMPTY_ROSTER, spawned } from './agents'
-import { siteCells } from './frames'
+import { castOf, siteCells } from './frames'
 import { createMod, createSite, type Mod, type Site } from './mod'
 
 const START = 1_000_000
@@ -44,4 +44,15 @@ test('the waiting toon: the same state at the same time gives the same frame, an
   const a = cellsAt('area', START + 5000, waiting)
   expect(cellsAt('area', START + 5000, waiting)).toBe(a)
   expect(a).not.toBe(cellsAt('area', START + 5000))
+})
+
+test('the mod keeps one cast, with the log it was first given', () => {
+  const mod = createMod()
+  const lines: string[] = []
+  const cast = castOf(mod, text => lines.push(text))
+  expect(castOf(mod, quiet)).toBe(cast)
+  expect(cast.broken).toBe(mod.broken)
+  cast.onBreak('stamp', new Error('boom'))
+  expect(lines).toEqual(['stage-toons: scene stamp failed and was replaced by the standing scene: Error: boom'])
+  expect(castOf(createMod(), quiet)).not.toBe(cast)
 })

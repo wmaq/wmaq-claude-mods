@@ -11,7 +11,7 @@ import type { EntryKey } from './history'
 import { DEEP_SLEEP_MS, DOZE_MS } from './idle'
 import { storeKey } from './progress'
 import { type SceneId, STAGE_W } from './scene'
-import { TOON_ROWS } from './toon'
+import { type Cast, TOON_ROWS } from './toon'
 import { EMPTY_LOG, seat, type SeatLog } from './waiting/seats'
 import { DEFAULT_WORKFLOW } from './workflow'
 
@@ -94,6 +94,8 @@ export type Mod = {
   // The demo scene the band's text line names.
   demoLineIndex: number
   broken: Set<SceneId>
+  // What the toon draws with (frames.ts's castOf), built once.
+  cast: Cast | null
   // The agents known and their helpers at the desk row; whether the
   // waiting toon threw (the idle routine stands in for the session).
   roster: Roster
@@ -139,6 +141,7 @@ export const createMod = (): Mod => ({
   demo: null,
   demoLineIndex: 0,
   broken: new Set(),
+  cast: null,
   roster: EMPTY_ROSTER,
   seats: EMPTY_LOG,
   isWaitingBroken: false,

@@ -15,13 +15,18 @@ import { waitingDemoAt } from './waiting/demo'
 
 export type Log = (text: string) => void
 
+// The mod's one Cast, built on the first frame. It keeps the first log it
+// was given: the hooks hand every frame the same one (register.tsx's
+// debugLog($)), and the frame tool makes a fresh mod per run.
 export function castOf(mod: Mod, log: Log): Cast {
-  return {
+  mod.cast ??= {
     scenes: SCENES,
     reactions: REACTIONS,
     broken: mod.broken,
     onBreak: (id, error) => log(`stage-toons: scene ${id} failed and was replaced by the standing scene: ${String(error)}`),
   }
+
+  return mod.cast
 }
 
 // The area's next frame, cut to its width, or null once the demo it plays

@@ -173,6 +173,9 @@ test("reconcile: a last track stage that is now a side stage is forgotten, so ba
 
 test('text is measured in terminal cells: wide characters two, marks and joiners none', () => {
   expect(cellWidth('ab')).toBe(2)
+  expect(cellWidth('')).toBe(0)
+  expect(cellWidth(' 5/10 Plan · stage-toons')).toBe(24)
+  expect(cellWidth('Plan ~ 日')).toBe(9)
   expect(cellWidth('🚀')).toBe(2)
   expect(cellWidth('日本')).toBe(4)
   expect(cellWidth(`e${String.fromCodePoint(0x301)}`)).toBe(1)

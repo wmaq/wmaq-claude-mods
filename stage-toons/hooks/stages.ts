@@ -52,7 +52,9 @@ export function cellsOf(char: string): number {
   return within(WIDE, code) ? 2 : 1
 }
 
-export const cellWidth = (text: string): number => Array.from(text).reduce((n, ch) => n + cellsOf(ch), 0)
+// Printable ASCII (every common bar) is one cell a character.
+export const cellWidth = (text: string): number =>
+  /^[\x20-\x7e]*$/.test(text) ? text.length : Array.from(text).reduce((n, ch) => n + cellsOf(ch), 0)
 
 // Text cut to fit width cells, an ellipsis (one cell) where it was cut;
 // never through a character.
