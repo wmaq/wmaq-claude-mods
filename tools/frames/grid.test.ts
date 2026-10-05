@@ -35,6 +35,16 @@ test('dim text is drawn half way to the background', () => {
   assert.equal(dimmed(0xffffff, 0x000000), 0x808080)
 })
 
+test('a bold glyph stays inside its cell', () => {
+  let touched = 0
+  for (let cp = 0x20; cp < 0x7f; cp++) {
+    const c = createCanvas(2, 1)
+    drawText(c, 0, 0, String.fromCharCode(cp), { bold: true })
+    for (let y = 0; y < CELL_H; y++) for (let x = CELL_W; x < 2 * CELL_W; x++) if (at(c, x, y) !== BACKGROUND) touched++
+  }
+  assert.equal(touched, 0)
+})
+
 test('a wide character takes two cells, drawn as a box; a zero-width mark takes none', () => {
   const c = createCanvas(4, 1)
   assert.equal(drawText(c, 0, 0, '漢'), 2)

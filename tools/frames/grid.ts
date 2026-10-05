@@ -52,8 +52,8 @@ export function drawText(c: Canvas, col: number, row: number, text: string, styl
         for (let gx = 0; gx < CELL_W; gx++) {
           if (!(rows[gy]! & (0x80 >> gx))) continue
           fillRect(c, x + gx, y + gy, 1, 1, color)
-          // Bold: the glyph again, a pixel to the right.
-          if (style.bold) fillRect(c, x + gx + 1, y + gy, 1, 1, color)
+          // Bold: the glyph again, a pixel to the right, within the cell.
+          if (style.bold && gx + 1 < CELL_W) fillRect(c, x + gx + 1, y + gy, 1, 1, color)
         }
       }
     } else {
