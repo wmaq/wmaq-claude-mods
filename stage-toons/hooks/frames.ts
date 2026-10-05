@@ -45,7 +45,7 @@ export function areaCells(mod: Mod, columns: number, now: number, log: Log): str
   if (demo?.kind === 'scenes') {
     const frame = demoAt(demo, now)
 
-    return frame ? encodeCells(composeFrame(frame.shot, frame.sceneMs, columns, castOf(mod, log))) : null
+    return frame ? encodeCells(composeFrame(frame.shot, columns, castOf(mod, log))) : null
   }
   if (demo?.kind === 'idle') {
     const f = idleDemoAt(demo, now)
@@ -68,7 +68,7 @@ export function areaCells(mod: Mod, columns: number, now: number, log: Log): str
   if (mod.isBandWorking) {
     mod.director = tick(mod.director, now)
 
-    return encodeCells(composeFrame(shot(mod.director, now), now, columns, castOf(mod, log)))
+    return encodeCells(composeFrame(shot(mod.director, now), columns, castOf(mod, log)))
   }
   if (mod.seats.since !== null && !mod.isWaitingBroken) {
     try {

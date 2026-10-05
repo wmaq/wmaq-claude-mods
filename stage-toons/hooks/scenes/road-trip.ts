@@ -14,6 +14,7 @@ const walkX = (t: number) => (t < OUT ? lerp(2, 26, t / OUT) : lerp(26, 2, (t - 
 export const roadTrip: Scene = {
   id: 'road-trip',
   loop: 8,
+  fadesAtLoop: true,
   focusX: 24,
   backdrop: b => {
     for (let x = 18; x < 48; x += 2) setPixel(b, x, roadY(x), C.road)

@@ -12,6 +12,7 @@ const giftX = (t: number) => (t < 1.5 ? clawdX(t) + 16 : lerp(26, 34, t - 1.5))
 export const gift: Scene = {
   id: 'gift',
   loop: 6,
+  fadesAtLoop: true,
   focusX: 24,
   actors: [
     {

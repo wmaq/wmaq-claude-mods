@@ -38,7 +38,9 @@ export type Actor =
 // background, the backdrop, the actors by depth (equal depths in the order
 // written), then the front. The background is given the scene's time
 // unwrapped (seconds since it came on), so it can drift with no jump at the
-// loop point; the rest are given the loop's time.
+// loop point; the rest are given the loop's time. A scene that restarts a
+// build-up at its loop point fades at it (fadesAtLoop): its last moment,
+// held, dissolves into the new loop's start.
 export type Scene = {
   id: SceneId
   loop: number
@@ -48,7 +50,13 @@ export type Scene = {
   backdrop?: Paint
   actors: Actor[]
   front?: Paint
+  fadesAtLoop?: true
 }
+
+// How long a dissolve takes, from one picture into the next; and how far
+// before its loop point a fading scene's last moment is.
+export const FADE_MS = 500
+export const LOOP_LAST_S = 0.05
 
 // A reaction plays once over a scene, drawn on its own layer relative to
 // the hero's head, and may set the hero's mood.
@@ -79,10 +87,12 @@ const byDepth = (actors: readonly Actor[], t: number): Actor[] =>
     .sort((a, b) => a.z - b.z || a.i - b.i)
     .map(e => e.actor)
 
-export function renderFull(scene: Scene, time: number, mood: Mood = null): PixelBuffer {
+// backgroundTime: the background's time, when it is not the scene's (a held
+// last moment over a background that drifts on).
+export function renderFull(scene: Scene, time: number, mood: Mood = null, backgroundTime = time): PixelBuffer {
   const t = loopTime(scene, time)
   const b = createBuffer(STAGE_W, STAGE_H)
-  scene.background?.(b, time)
+  scene.background?.(b, backgroundTime)
   scene.backdrop?.(b, t)
   for (const actor of byDepth(scene.actors, t)) {
     if (actor.kind === 'prop') {
@@ -138,14 +148,41 @@ export function overlay(base: PixelBuffer, top: PixelBuffer): PixelBuffer {
   return { w: base.w, h: base.h, px }
 }
 
-// The new frame from the left up to progress (0 to 1), the old one after it.
-export function wipe(from: PixelBuffer, to: PixelBuffer, progress: number): PixelBuffer {
-  const edge = Math.round(Math.max(0, Math.min(1, progress)) * to.w)
+// Where a terminal cell (a column, two pixel rows) changes over in a
+// dissolve: a hash of the cell and the seed, spread evenly over 0 to 1.
+export function cellThreshold(x: number, row: number, seed: number): number {
+  let h = Math.imul(x + 1, 0x27d4eb2d) ^ Math.imul(row + 1, 0x165667b1) ^ Math.imul(Math.floor(seed) | 0, 0x9e3779b1)
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b)
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35)
+  h ^= h >>> 16
+
+  return (h >>> 0) / 0x100000000
+}
+
+// The old frame breaking up into the new one, cell by cell in a scattered
+// order: a cell shows the new frame's two pixels once its threshold is below
+// progress (0 to 1), so a cell that has changed stays changed. Both frames
+// have the same size.
+export function dissolve(from: PixelBuffer, to: PixelBuffer, progress: number, seed: number): PixelBuffer {
   const px = from.px.slice()
-  for (let y = 0; y < to.h; y++) for (let x = 0; x < edge; x++) px[y * to.w + x] = to.px[y * to.w + x]!
+  for (let y = 0; y < to.h; y++) {
+    for (let x = 0; x < to.w; x++) if (cellThreshold(x, Math.floor(y / 2), seed) < progress) px[y * to.w + x] = to.px[y * to.w + x]!
+  }
 
   return { w: from.w, h: from.h, px }
 }
 
+// The whole stage at a moment, with a fading scene's dissolve at its loop
+// point: in its second loop and after, for FADE_MS, its last moment, held,
+// breaks up into the new loop (the background drifting on in both).
+export function renderSeamed(scene: Scene, time: number, mood: Mood = null): PixelBuffer {
+  const now = renderFull(scene, time, mood)
+  const into = loopTime(scene, time)
+  if (!scene.fadesAtLoop || time < scene.loop || into >= FADE_MS / 1000) return now
+  const held = renderFull(scene, time - into - LOOP_LAST_S, mood, time)
+
+  return dissolve(held, now, into / (FADE_MS / 1000), Math.floor(time / scene.loop))
+}
+
 export const renderScene = (scene: Scene, time: number, width: number, mood: Mood = null): PixelBuffer =>
-  crop(renderFull(scene, time, mood), focusAt(scene, time), width)
+  crop(renderSeamed(scene, time, mood), focusAt(scene, time), width)

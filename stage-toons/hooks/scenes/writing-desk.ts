@@ -7,6 +7,7 @@ import { blinking, C, every, still } from './kit'
 export const writingDesk: Scene = {
   id: 'writing-desk',
   loop: 6,
+  fadesAtLoop: true,
   focusX: 24,
   actors: [
     {

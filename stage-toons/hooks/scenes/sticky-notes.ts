@@ -20,6 +20,7 @@ const STARRED = NOTES.length * PER_NOTE + 0.3
 export const stickyNotes: Scene = {
   id: 'sticky-notes',
   loop: LOOP,
+  fadesAtLoop: true,
   focusX: 30,
   backdrop: b => {
     fillRect(b, 24, 1, 21, 12, C.woodDark)

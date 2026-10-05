@@ -12,6 +12,7 @@ const facing = (t: number) => (t < 4 ? 1 : -1)
 export const clipboard: Scene = {
   id: 'clipboard',
   loop: LOOP,
+  fadesAtLoop: true,
   focusX: 24,
   actors: [
     {

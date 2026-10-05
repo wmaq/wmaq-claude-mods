@@ -11,6 +11,7 @@ const BOOKS = [C.blue, C.red, C.green, C.gold]
 export const sweeping: Scene = {
   id: 'sweeping',
   loop: 8,
+  fadesAtLoop: true,
   focusX: 24,
   backdrop: b => fillRect(b, 36, 7, 11, 1, C.woodDark),
   actors: [

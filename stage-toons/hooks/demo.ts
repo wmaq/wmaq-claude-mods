@@ -1,13 +1,13 @@
 // /stage demo: the library's scenes, one stage's scenes, or the idle
 // routines, each for so many seconds, or the waiting toon's script, so the
-// cartoons can be seen while Claude is idle. What shows at a moment, wiping
-// in over the one before, is worked out from the demo and the time alone;
-// startDemo is the one function that sets mod.demo.
+// cartoons can be seen while Claude is idle. What shows at a moment is
+// worked out from the demo and the time alone (the area dissolves from one
+// step into the next); startDemo is the one function that sets mod.demo.
 
 import type { IdleId, Workflow } from '../types'
 import { bandMode, type BandSite } from './band'
 import type { Command } from './command'
-import { type Shot, WIPE_MS } from './director'
+import type { Shot } from './director'
 import { CELEBRATE, IDLE_IDS, SHOW_OFF_DEMO, SHOW_OFF_PREFIX } from './idle'
 import type { Mod } from './mod'
 import { FABLE_SCENE, type SceneId } from './scene'
@@ -49,11 +49,7 @@ export function demoAt(demo: Demo, now: number): DemoFrame | null {
   if (demo.kind !== 'scenes') return null
   const step = demoStep(demo, now)
   if (!step) return null
-  const base = demo.scenes[step.index]!
-  const from = demo.scenes[step.index - 1]
-  const wipe = from !== undefined && step.ms < WIPE_MS ? { from, progress: step.ms / WIPE_MS } : null
-
-  return { index: step.index, shot: { base, wipe, reaction: null }, sceneMs: step.ms }
+  return { index: step.index, shot: { base: demo.scenes[step.index]!, time: step.ms / 1000, reaction: null }, sceneMs: step.ms }
 }
 
 export function idleDemoAt(demo: Demo, now: number): IdleDemoFrame | null {

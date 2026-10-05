@@ -2,7 +2,7 @@ import { expect, test } from 'claude-code/testing'
 
 import { CLAWD_ORANGE } from './clawd'
 import { createBuffer, EMPTY, fillRect, getPixel, setPixel } from './pixels'
-import { CLAWD_TOP, crop, drawSprite, heroAt, overlay, renderFull, renderScene, type Scene, type Sprite, STAGE_H, STAGE_W, wipe } from './scene'
+import { CLAWD_TOP, cellThreshold, crop, dissolve, drawSprite, FADE_MS, heroAt, LOOP_LAST_S, overlay, renderFull, renderScene, renderSeamed, type Scene, type Sprite, STAGE_H, STAGE_W } from './scene'
 
 const dot: Sprite = { palette: { x: 0x111111, y: 0x222222 }, frames: [['x.'], ['.y']] }
 
@@ -67,15 +67,89 @@ test('cropping keeps the focus in view and centres the scene in a wider raster',
   expect([...crop(full, 24, 48).px]).toEqual([...full.px])
 })
 
-test('overlay and wipe combine frames', () => {
+test('overlay combines frames', () => {
   const a = createBuffer(4, 1)
   fillRect(a, 0, 0, 4, 1, 1)
   const b = createBuffer(4, 1)
   setPixel(b, 3, 0, 2)
   expect([...overlay(a, b).px]).toEqual([1, 1, 1, 2])
-  expect([...wipe(a, b, 0.5).px]).toEqual([EMPTY, EMPTY, 1, 1])
-  expect([...wipe(a, b, 1).px]).toEqual([...b.px])
   expect(renderScene(scene, 0, 24).px).toHaveLength(24 * STAGE_H)
+})
+
+const solidOf = (color: number) => {
+  const b = createBuffer(STAGE_W, STAGE_H)
+  fillRect(b, 0, 0, STAGE_W, STAGE_H, color)
+
+  return b
+}
+// How many of the 48 x 7 cells show the new frame.
+const changed = (b: ReturnType<typeof createBuffer>) => {
+  let n = 0
+  for (let row = 0; row < STAGE_H / 2; row++) for (let x = 0; x < STAGE_W; x++) if (getPixel(b, x, row * 2) === 2) n++
+
+  return n
+}
+
+test('a dissolve starts as the old frame and ends as the new one, a scattered half of the cells halfway', () => {
+  const from = solidOf(1)
+  const to = solidOf(2)
+  expect([...dissolve(from, to, 0, 7).px]).toEqual([...from.px])
+  expect([...dissolve(from, to, 1, 7).px]).toEqual([...to.px])
+  for (const seed of [7, 1_000_123, 1_759_700_000_000]) {
+    const n = changed(dissolve(from, to, 0.5, seed))
+    expect(n).toBeGreaterThan(336 * 0.35)
+    expect(n).toBeLessThan(336 * 0.65)
+  }
+  expect(FADE_MS).toBe(500)
+})
+
+test('in a dissolve, a cell that has changed stays changed, and its two pixels change together', () => {
+  const from = solidOf(1)
+  const to = solidOf(2)
+  let before = dissolve(from, to, 0, 3)
+  for (let p = 0.1; p <= 1.0001; p += 0.1) {
+    const now = dissolve(from, to, p, 3)
+    for (let i = 0; i < now.px.length; i++) if (before.px[i] === 2) expect(now.px[i]).toBe(2)
+    for (let row = 0; row < STAGE_H / 2; row++) for (let x = 0; x < STAGE_W; x++) expect(getPixel(now, x, row * 2)).toBe(getPixel(now, x, row * 2 + 1))
+    before = now
+  }
+})
+
+test('two seeds give two orders', () => {
+  const order = (seed: number) => Array.from({ length: 48 }, (_, x) => cellThreshold(x, 3, seed))
+  expect(order(1)).not.toEqual(order(2))
+  for (const v of order(1)) expect(v >= 0 && v < 1).toBe(true)
+})
+
+test("a fading scene's seam: its last moment, held, breaks up into the new loop, the background drifting on in both", () => {
+  const seen: number[] = []
+  const fading: Scene = {
+    id: 'fading',
+    loop: 2,
+    focusX: 24,
+    fadesAtLoop: true,
+    actors: [],
+    background: (b, time) => {
+      seen.push(time)
+    },
+    backdrop: (b, t) => fillRect(b, 0, 0, STAGE_W, STAGE_H, t < 1 ? 2 : 1),
+  }
+  // In its first loop, no seam.
+  expect([...renderSeamed(fading, 0.1).px]).toEqual([...renderFull(fading, 0.1).px])
+  seen.length = 0
+  const mid = renderSeamed(fading, 2.25)
+  // Both halves drew the background at the frame's own time.
+  expect(seen).toEqual([2.25, 2.25])
+  const n = changed(mid)
+  expect(n).toBeGreaterThan(336 * 0.35)
+  expect(n).toBeLessThan(336 * 0.65)
+  // The held half is the loop's last moment.
+  expect(LOOP_LAST_S).toBe(0.05)
+  expect([...new Set(renderFull(fading, 2 - LOOP_LAST_S).px)]).toEqual([1])
+  expect([...renderSeamed(fading, 2.5).px]).toEqual([...renderFull(fading, 2.5).px])
+  // A scene without the flag loops as before.
+  const plain = { ...fading, fadesAtLoop: undefined }
+  expect([...renderSeamed(plain, 2.25).px]).toEqual([...renderFull(plain, 2.25).px])
 })
 
 // A block over the top of Clawd's body (orange at x 22, CLAWD_TOP), at a

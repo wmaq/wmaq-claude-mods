@@ -20,6 +20,7 @@ for (let y = 5; y <= 7; y++) PLAN.push([34, y])
 export const blueprint: Scene = {
   id: 'blueprint',
   loop: LOOP,
+  fadesAtLoop: true,
   focusX: 28,
   backdrop: b => {
     fillRect(b, 26, 2, 17, 11, C.blue)

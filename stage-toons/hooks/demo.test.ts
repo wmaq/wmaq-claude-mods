@@ -2,7 +2,6 @@ import { expect, test } from 'claude-code/testing'
 
 import type { BandSite } from './band'
 import { type Demo, demoAt, demoFor, demoLine, hasRoom, IDLE_DEMO_LENGTH, idleDemoAt, idleDemoLine } from './demo'
-import { WIPE_MS } from './director'
 import { IDLE_IDS } from './idle'
 import { DEMO_ORDER, STAGE_SCENES } from './scenes'
 import { TOON_ROWS } from './toon'
@@ -19,11 +18,10 @@ test("the library demo plays the default workflow's scenes stage by stage, then 
   for (const id of STAGE_SCENES) expect(DEMO_ORDER).toContain(id)
 })
 
-test('each scene plays for its seconds, on its own clock from 0, wiping in over the one before', () => {
-  expect(after(0)).toMatchObject({ index: 0, sceneMs: 0, shot: { base: 'road-trip', wipe: null, reaction: null } })
-  expect(after(10_000)).toMatchObject({ index: 1, sceneMs: 0, shot: { base: 'stargazing' } })
-  expect(after(10_000 + WIPE_MS / 2)?.shot.wipe).toEqual({ from: 'road-trip', progress: 0.5 })
-  expect(after(WIPE_MS / 2)?.shot.wipe).toBeNull()
+test('each scene plays for its seconds, on its own clock from 0', () => {
+  expect(after(0)).toMatchObject({ index: 0, sceneMs: 0, shot: { base: 'road-trip', time: 0, reaction: null } })
+  expect(after(10_000)).toMatchObject({ index: 1, sceneMs: 0, shot: { base: 'stargazing', time: 0 } })
+  expect(after(12_500)).toMatchObject({ index: 1, sceneMs: 2500, shot: { base: 'stargazing', time: 2.5, reaction: null } })
   expect(after(379_999)).not.toBeNull()
   expect(after(380_000)).toBeNull()
 })
