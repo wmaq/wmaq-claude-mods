@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { BAR_TONES, bandLayout, bandMode, type Span, trackSpans } from './band'
+import { areaColumns, BAR_TONES, bandLayout, bandMode, type Span, TOON_MIN, toonColumns, trackSpans } from './band'
 import { applyMove, cellWidth, freshProgress } from './stages'
 import { DEFAULT_WORKFLOW } from './workflow'
 
@@ -152,4 +152,13 @@ test('the bar draws its tones as before: Clawd orange lit, the current stage bol
     message: { dimColor: true },
     note: { dimColor: true },
   })
+})
+
+test('the toon and the area are as wide as the terminal allows, 48 at most', () => {
+  expect(toonColumns(TOON_MIN)).toBe(24)
+  expect(areaColumns(TOON_MIN)).toBe(29)
+  expect(toonColumns(54)).toBe(48)
+  expect(toonColumns(200)).toBe(48)
+  expect(areaColumns(49)).toBe(48)
+  expect(areaColumns(200)).toBe(48)
 })

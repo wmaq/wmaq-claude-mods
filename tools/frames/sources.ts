@@ -4,7 +4,7 @@
 
 import type { Workflow } from '../../stage-toons/types'
 import { spawned } from '../../stage-toons/hooks/agents'
-import { BAR_TONES, bandLayout, bandMode, type BandSite, type Span } from '../../stage-toons/hooks/band'
+import { areaColumns, BAR_TONES, bandLayout, bandMode, type BandSite, type Span } from '../../stage-toons/hooks/band'
 import { createDirector, react, withAuditing } from '../../stage-toons/hooks/director'
 import { areaCells, siteCells } from '../../stage-toons/hooks/frames'
 import { DOZE_MS, IDLE_IDS } from '../../stage-toons/hooks/idle'
@@ -132,15 +132,15 @@ export function bandFrames(opts: BandOptions, times: readonly number[]): Canvas[
     barLines: lines.length,
   }
   const hasArea = bandMode(site) === 'area'
-  const areaColumns = Math.min(STAGE_W, columns - 1)
+  const areaWidth = areaColumns(columns)
   const agents = opts.agents ?? []
   let area: string[] = []
   if (hasArea) {
-    if (agents.length > 0) area = areaFrames(waitingMod(agents), areaColumns, times)
+    if (agents.length > 0) area = areaFrames(waitingMod(agents), areaWidth, times)
     else {
       const mod = createMod()
       mod.idleSince = 0
-      area = times.map(t => areaCells(mod, areaColumns, t, quiet) ?? '')
+      area = times.map(t => areaCells(mod, areaWidth, t, quiet) ?? '')
     }
   }
 
@@ -150,7 +150,7 @@ export function bandFrames(opts: BandOptions, times: readonly number[]): Canvas[
       let col = 0
       for (const span of spans) col += drawText(c, col, row, span.text, styleOf(span))
     })
-    if (hasArea) drawCells(c, 0, lines.length, area[i]!, areaColumns, TOON_ROWS)
+    if (hasArea) drawCells(c, 0, lines.length, area[i]!, areaWidth, TOON_ROWS)
 
     return c
   })

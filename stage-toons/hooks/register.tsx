@@ -13,7 +13,7 @@ import type { Progress, ScenePick, SessionWorkflow, StageId, Workflow } from '..
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { ended, reconcileRoster, rememberKind, spawned } from './agents'
 import { autoMatch, hasRules, isWindowsPath, relativePath, type Signal, viaOf } from './auto'
-import { BAR_TONES, bandLayout, bandMode, type BandSite, TOON_MIN } from './band'
+import { areaColumns, BAR_TONES, bandLayout, bandMode, type BandSite, TOON_MIN, toonColumns } from './band'
 import { autoText, moveFor, parseCommand, showText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { demoAt, demoFor, demoLine, demoStep, idleDemoAt, idleDemoLine, startDemo, WAITING_DEMO_LINE } from './demo'
 import { createDirector, react, withAuditing, withScene } from './director'
@@ -25,7 +25,7 @@ import { pickOne } from './pick'
 import { creditAt, currentEntry, logText, timeText } from './history'
 import { type KV, loadProgress, PRUNE_EVERY_MS, saveProgress, staleKeys, storeKey, validate } from './progress'
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolSchema, workflowText } from './prompt'
-import { type SceneId, STAGE_W } from './scene'
+import type { SceneId } from './scene'
 import { STAGE_SCENES } from './scenes'
 import { applyMove, describe, freshProgress, isAdvance, reconcile, stageLabel } from './stages'
 import { TOON_ROWS } from './toon'
@@ -790,7 +790,7 @@ export const register: Register = on => {
     const wasShown = band.requestId !== undefined
     band.requestId = e.requestId
     band.kind = 'area'
-    band.columns = Math.min(STAGE_W, columns - 1)
+    band.columns = areaColumns(columns)
     band.rows = TOON_ROWS
     band.isSeen = false
     // Shown again: an agent may have ended, or started, while the area was
@@ -829,7 +829,7 @@ export const register: Register = on => {
       mod.toons.set(id!, toon)
     }
     toon.requestId = id
-    toon.columns = Math.min(STAGE_W, viewport - 6)
+    toon.columns = toonColumns(viewport)
     toon.isSeen = false
     const shownAt = await $.clock.now()
     const cells = siteCells(mod, toon, shownAt, portsOf($, mod).log) ?? ''
