@@ -6,6 +6,25 @@ release (departures from the spec, review findings, live checks) are in its
 spec and plan under `docs/superpowers/`, the hand-offs in `docs/handoffs/`
 and the git history.
 
+## 0.9.0 (2026-10-05)
+
+Roadmap phase 4a, Clawd in one place, built by a cloud session from the
+approved spec and plan (`docs/superpowers/specs/2026-10-05-stage-toons-scenes-below-bar-design.md`,
+`docs/superpowers/plans/2026-10-05-stage-toons-scenes-below-bar.md`) and
+tested locally. Hand-off: `docs/handoffs/2026-10-05-stage-toons-scenes-below-bar.md`.
+- **The stage's scene plays in the area below the bar** while Claude
+  works, with its wipe, Fable's walk-in and the reactions; the area stays
+  mounted through a turn, so the idle Clawd and the scene cut on the same
+  Raster. A demo started mid-turn plays over the scene.
+- **The spinner is Claude Code's own again:** the toon under it and the
+  toons on background agents' rows are gone.
+- The frame tool draws the working area (`scene <id>`, `band --working`).
+- **Fixed in the local test:** a hot reload could leave the old load's
+  paint loop running (a reload cancels only the sleeps pending as it
+  lands), and since the area now stays mounted such loops lived on,
+  fighting over the picture. Each load writes a `loadId` to `$.state`,
+  and a loop stops once it names another load.
+
 ## 0.8.0 (2026-10-05)
 
 Roadmap phase 3, "done" after a merge (#17), built by a cloud session from

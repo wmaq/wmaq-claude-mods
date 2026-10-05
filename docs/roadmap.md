@@ -8,11 +8,12 @@ the workflow's step 10).
 
 ### Where things stand
 
-0.8.0 is on `main`: automatic moves and history with cost per stage, the
-waiting toon, 38 scenes dealt like a deck, 5 idle routines with a prop
-show-off and a celebration, Done after a merge, per-project settings, and
-the frame tool (`tools/frames/`) for checking the drawing from a cloud
-session. Phases 1 to 3 of the plan below are done. History:
+0.9.0 is on `main`: automatic moves and history with cost per stage, the
+waiting toon, 38 scenes dealt like a deck and played in the area below
+the bar, 5 idle routines with a prop show-off and a celebration, Done
+after a merge, per-project settings, and the frame tool (`tools/frames/`)
+for checking the drawing from a cloud session. Phases 1 to 3 of the plan
+below and 4a are done. History:
 `stage-toons/CHANGELOG.md`. Sources for what comes next: the research
 report (`docs/research/2026-10-04-stage-toons-improvement-ideas.md`, ideas
 #1-#30) and the code review (`docs/reviews/2026-10-04-code-review.md`).
@@ -35,9 +36,8 @@ Leftovers the plan schedules are listed in their phase instead.
   its "same object for unknown" shortcut is never taken; a failing state
   read skips that roster refresh until the next poll; an id equal to an
   `Object.prototype` name would misread (agent ids are hex).
-- **Review (0.6.2):** P6 (two loops during a demo while Claude works) is
-  accepted; P7 (a slower poll for idle teammates) was declined, since the
-  poll is what brings an idle teammate's helper back.
+- **Review (0.6.2):** P7 (a slower poll for idle teammates) was declined,
+  since the poll is what brings an idle teammate's helper back.
 - **Polish pass (phase 1):** in a toon under 48 columns, a reaction that
   ends while crash-test's camera is on the wall cuts the crop back to the
   wall in one frame (the hold could stay until the camera is home); stamp
@@ -60,6 +60,15 @@ Leftovers the plan schedules are listed in their phase instead.
   `done` rule (or `/stage done`). From Done, typing a skill for a track
   stage earlier than the one Done came from starts a new round (clearing
   the feature); it could count as a reopen.
+- **Clawd in one place (4a):** a band collapsed while Claude works
+  restarts the paint loop about every 2 s, each restart asking for the
+  agent list and spending 24 refused blits (a cost only). A fullscreen
+  band of exactly the bar plus 7 rows might lose the area at each turn's
+  start, if the spinner's line comes out of the band's space (read from
+  the code; Windows Terminal never got that short, so never seen; one row
+  of hysteresis would fix it). `toon.ts`, `TOON_ROWS` and `TOON_MIN` keep
+  the toon's name. A hot reload starts the desk's seat log over, so seated
+  helpers walk in again.
 
 ### The plan after the frame tool (agreed 2026-10-04)
 
@@ -84,26 +93,14 @@ Decided in the discussion:
 
 The phases run in order; each feature takes the full workflow, spec and
 plan included. (Phases 1 and 2, the polish pass and the hook wins, shipped
-in 0.7.0; phase 3, "done" after a merge, in 0.8.0.)
+in 0.7.0; phase 3, "done" after a merge, in 0.8.0; 4a, Clawd in one
+place, in 0.9.0.)
 
 **Phase 4: richer art.** Split into five sub-phases (the person, 2026-10-05),
 run in this order. Each is its own release, tested and merged before the
-next starts, in a thread and branch of its own.
-
-**4a, Clawd in one place.** The groundwork:
-- **Stage scenes below the bar, like everything else** (the person's
-  request, 2026-10-04). Today a stage's scenes play under the spinner,
-  above the bar, while the demos, the idle Clawd and the waiting toon play
-  in the area below it. Move the stage scenes into that area too, so Clawd
-  always lives in one place; both canvases are already 48 x 14 pixels.
-  The person's ruling: a stage scene shows in the area the way a demo
-  shows there now, and the bar behaves exactly as it does today; only
-  where the scene plays changes. Also decided: the spinner keeps only
-  Claude Code's own line (no toon under it); background agents' spinner
-  rows lose their toons too (0.6.2's C1), since the waiting toon's desk
-  row already shows the agents; Fable's arrival and the reactions move
-  with the scene and look the same. It comes first because the rest of
-  this phase draws into the canvas it settles.
+next starts, in a thread and branch of its own. 4a, the stage scenes in
+the area below the bar, shipped in 0.9.0: 4b to 4e draw into the canvas
+it settled.
 
 **4b, smoother scenes.** How a frame is put together:
 - **Z layers** for scenes: a depth per actor and prop instead of the fixed
