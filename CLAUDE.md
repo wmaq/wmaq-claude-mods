@@ -202,6 +202,9 @@ Learned building stage-toons on 2.1.287 to 2.1.289:
 - The kit cannot reload a module. For state an earlier load left, answer
   that one key and pass the rest:
   `on('state.get', ($, e, next) => (e.key === 'warned' ? { value: { value: true, version: 1 } } : next(e)))`.
+  Pin a key that way only when the mod never writes it: `update` on a
+  pinned key retries without end. For a key it writes (`usdCredited`),
+  answer the earlier load's value only until the mod's first write.
 - `fs.*` test hooks receive resolved absolute paths, not the relative path
   the mod passed; match files by the part the test names.
 - `ui.redraw()` redraws whether or not the mod asked to be: count
