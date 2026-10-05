@@ -223,6 +223,7 @@ test('a start while the loop sleeps wakes it: the next frame comes at once, on t
   wakeUp()
   await finished(site)
   expect(blits.length).toBe(2)
+  expect(site.wake).toBeNull()
 })
 
 test('a loop whose load a newer one replaced stops at its next frame, quietly: no redraw, the Raster left to the new load', async () => {

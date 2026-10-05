@@ -91,8 +91,11 @@ test('a turn: the idle Clawd, a dissolve into the scene at the start, the scene,
   assert.ok(same(idle!, idleFrames('classic', false, [500])[0]!))
   // Halfway through each dissolve, the frame is neither picture.
   const sceneAt = (ms: number) => sceneFrames('dice', {}, [ms])[0]!
+  const idleAt = (ms: number) => idleFrames('classic', false, [ms])[0]!
   assert.ok(!same(startFade!, sceneAt(250)))
-  assert.ok(!same(endFade!, scene!))
+  assert.ok(!same(startFade!, idleAt(1250)))
+  assert.ok(!same(endFade!, sceneAt(4250)))
+  assert.ok(!same(endFade!, idleAt(250)))
   // The scene came on at the turn's start, from its beginning.
   assert.ok(same(scene!, sceneAt(2000)))
   // After the end, the idle Clawd again, his idle period from the turn's end.

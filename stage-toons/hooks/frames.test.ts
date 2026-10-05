@@ -6,7 +6,7 @@ import { areaCells, castOf } from './frames'
 import { DOZE_MS } from './idle'
 import { createMod, frameMs, isDeepAsleep, type Mod } from './mod'
 import { encodeCells, type PixelBuffer } from './pixels'
-import { FADE_MS } from './scene'
+import { dissolve, FADE_MS } from './scene'
 import { C } from './scenes/kit'
 import { HELPER_COLORS } from './waiting'
 
@@ -135,6 +135,9 @@ test("the first frame after a load is a cut; idle to the scene dissolves over FA
     expect(cells).not.toBe(shownCells(mod, at + ms))
     expect(cells).not.toBe(fromCells(mod, at + ms))
   }
+  // A resize mid-dissolve draws both pictures at the new width.
+  const narrow = areaCells(mod, 40, at + 450, quiet)
+  expect(narrow).toBe(encodeCells(dissolve(mod.fade!.from.draw(at + 450, 40), mod.shown!.draw(at + 450, 40), 450 / FADE_MS, at)))
   expect(frame(mod, at + FADE_MS)).toBe(shownCells(mod, at + FADE_MS))
   expect(mod.fade).toBeNull()
 })

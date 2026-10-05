@@ -890,9 +890,12 @@ export const register: Register = on => {
     // agent's turn that ends after this goes to the next main turn's.
     const tokens = addCost(mod.turnTokens, tokensOf(e.usage))
     mod.turnTokens = NO_COST
+    // The idle clock starts at the turn's end, not after the queue's wait:
+    // a later start would restart the idle routine, a second dissolve.
+    mod.idleSince = await $.clock.now()
     await settle($, "crediting the turn's working time", queued(mod, () => creditTurn($, mod, e.durationMs, tokens)))
     const now = await $.clock.now()
-    mod.idleSince = now
+    // After the queue: a move it held may have picked the next routine.
     mod.idle = mod.nextIdle
     try {
       const list = await $.agent.list()
