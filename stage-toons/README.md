@@ -1,9 +1,10 @@
 # stage-toons
 
 A stepped progress bar of your development workflow, drawn above the Claude
-Code prompt, with little pixel-art cartoons of Clawd under the spinner while
-Claude works. When a Fable subagent comes in to audit or to consult, a
-second, violet Clawd with a monocle walks on stage to review the work.
+Code prompt, with little pixel-art cartoons of Clawd in an area below the
+bar while Claude works. When a Fable subagent comes in to audit or to
+consult, a second, violet Clawd with a monocle walks on stage to review the
+work.
 
 ```
  ●━●━●━●━◉─○─○─○─○─○  5/10 Plan · stage-toons
@@ -144,12 +145,13 @@ stage current when it can again.
 
 ## While Claude waits for you
 
-When Claude isn't working, the band shows an area below the bar, 48
-columns by 7 rows, as the demo does. A small Clawd stands at its left. He
-has five routines: the classic one (he blinks, glances at the prompt and
-the bar, taps a foot), Nyan Clawd, coffee (he sips from a steaming mug),
-reading (he turns the pages of a book) and yo-yo. One is picked each time a
-turn starts. Whichever it is, after a minute he sits down and dozes off.
+The area below the bar, 48 columns by 7 rows, is where Clawd lives: it
+plays the stage's scene while Claude works, and the demos. When Claude
+isn't working, a small Clawd stands at its left. He has five routines: the
+classic one (he blinks, glances at the prompt and the bar, taps a foot),
+Nyan Clawd, coffee (he sips from a steaming mug), reading (he turns the
+pages of a book) and yo-yo. One is picked each time a turn starts.
+Whichever it is, after a minute he sits down and dozes off.
 
 He marks a step finished, once: after the work moves forward on the track,
 the next idle period has him show off the step's prop (a map for the
@@ -173,8 +175,10 @@ and when the last has gone Clawd walks back and his idle routine plays. He
 doesn't doze while agents work. `/stage demo waiting` plays it with
 pretend agents.
 
-The area shows in a terminal at least 30 columns wide with room for the
-bar and 7 rows (8 or 9 rows of band); otherwise the bar is text alone.
+The area shows in a terminal at least 35 columns wide (30 for the band,
+beside Claude Code's own mark) with room for the bar and 7 rows (8 or 9
+rows of band), whether or not Claude works; otherwise the bar is text
+alone. A band you collapse shows no area.
 
 `/stage demo` plays all 37 scenes of the library in turn below the bar,
 each named with the stage that plays it, so you can see them without
