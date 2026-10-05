@@ -4,16 +4,16 @@
 // side stage.
 
 import type { AutoRule, Progress, StageId, Workflow } from '../types'
-import { rank, standing } from './track'
+import { allStages, isDone, rank, standing } from './track'
 
 export type { AutoRule }
 
-// What the main conversation did: a skill loaded, a file written (its
-// path relative to the project, / separators), a subagent spawned (the
-// model it runs on, the one the call asked for, the parent's), a command
-// run.
+// What the main conversation did: a skill loaded (isTyped: the person
+// typed it), a file written (its path relative to the project, /
+// separators), a subagent spawned (the model it runs on, the one the call
+// asked for, the parent's), a command run.
 export type Signal =
-  | { kind: 'skill'; name: string }
+  | { kind: 'skill'; name: string; isTyped?: boolean }
   | { kind: 'write'; path: string }
   | { kind: 'agent'; model: string; asked: string | undefined; parentModel: string }
   | { kind: 'bash'; command: string }
@@ -247,11 +247,13 @@ export function typedSkill(typed: Heard | null, expanded: Heard | null): string 
 
 // The stage what was done moves the work to, or null: the first stage, in
 // workflow order, with a rule that matches and may move the work there. A
-// rule moves the work into a side stage, or forward on the track; never to
-// the stage it is in, never back.
+// rule moves the work into a side stage, into Done, or forward on the
+// track; never to the stage it is in, never back. From Done only a skill
+// the person typed moves it (a new round): post-merge chores stay in Done.
 export function autoMatch(w: Workflow, p: Progress, signal: Signal, isWindows: boolean): { stage: StageId; rule: AutoRule } | null {
+  if (isDone(p.stage) && !(signal.kind === 'skill' && signal.isTyped === true)) return null
   const at = standing(w, p)
-  for (const stage of [...w.track, ...w.side]) {
+  for (const stage of allStages(w)) {
     if (stage.id === p.stage) continue
     if (rank(w, stage.id) >= 0 && rank(w, stage.id) <= at) continue
     const rule = (stage.auto ?? []).find(r => (r.from === undefined || (p.stage !== null && r.from.includes(p.stage))) && ruleMatches(r, signal, isWindows))
@@ -287,7 +289,7 @@ export function viaOf(signal: Signal, rule?: AutoRule): string {
 
 // Whether any stage of the workflow has rules, or rules of one kind.
 export const hasRules = (w: Workflow, kind?: Signal['kind']): boolean =>
-  [...w.track, ...w.side].some(s => (s.auto ?? []).some(rule => kind === undefined || kind in rule))
+  allStages(w).some(s => (s.auto ?? []).some(rule => kind === undefined || kind in rule))
 
 // A rule as /stage workflow and /stage auto list it.
 export const ruleText = (rule: AutoRule): string => `${kindOf(rule)} ${valueOf(rule)}${rule.from ? ` from ${rule.from.join(', ')}` : ''}`

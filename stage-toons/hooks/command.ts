@@ -5,7 +5,7 @@ import { ruleText } from './auto'
 import { DEMO_MAX, DEMO_MIN, DEMO_SECONDS } from './demo'
 import { ago, LOG_DEFAULT } from './history'
 import { applyMove, backStage, describe, HISTORY_MAX, nextStage, parseStage, stageLabel } from './stages'
-import { RESERVED_IDS, stageIds, zeroStage } from './workflow'
+import { allStages, DONE_ID, doneOf, RESERVED_IDS, stageIds, zeroStage } from './workflow'
 
 export type Command =
   | { kind: 'show' }
@@ -32,13 +32,14 @@ export const WORKFLOW_FILE = '.claude/stage-toons.json'
 
 export function usage(w: Workflow): string {
   const zero = zeroStage(w)
-  const stages = [...w.track.map((s, i) => `${i + 1} ${s.id}`), ...w.side.map(s => (s === zero ? `0 ${s.id}` : s.id))]
+  const stages = [...w.track.map((s, i) => `${i + 1} ${s.id}`), DONE_ID, ...w.side.map(s => (s === zero ? `0 ${s.id}` : s.id))]
 
   return [
     'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo waiting | demo stop | workflow [init | reload] | auto [on | off] | log [n] | time | help]',
     '  /stage                  show the current stage and the recent moves',
     `  /stage 5, /stage plan   move to a stage${zero ? ` (0 or ? for ${zero.label})` : ''}`,
     '  /stage next, /stage back',
+    '  /stage done             the feature is finished (merged); the next move starts a new one',
     '  /stage feature <name>   name the feature (/stage feature - clears it)',
     '  /stage message <text>   set the status message',
     '  /stage hide             hide or show the bar and the cartoons',
@@ -96,7 +97,9 @@ export function parseCommand(w: Workflow, args: string): Command {
 // a command of its own whose argument was wrong (/stage demo plan 99).
 export function unknownText(w: Workflow, args: string): string {
   const words = args.trim().split(/\s+/)
-  const isCommand = (RESERVED_IDS as readonly string[]).includes(words[0]!.toLowerCase())
+  // done is reserved, but it is a stage: /stage done now may mean it.
+  const first = words[0]!.toLowerCase()
+  const isCommand = first !== DONE_ID && (RESERVED_IDS as readonly string[]).includes(first)
   const meant = isCommand ? undefined : words.map(word => parseStage(w, word)).find(id => id !== undefined)
 
   return `Not a /stage command: ${words.join(' ')}.${meant ? ` Did you mean /stage ${meant}?` : ''} /stage help lists them all.`
@@ -184,6 +187,8 @@ export function workflowSummary(w: Workflow, source: 'file' | 'default', setting
     ...(starts ? [starts] : []),
     'Track:',
     ...w.track.map((s, i) => `  ${i + 1} ${s.id}: ${s.label} (${s.scenes.join(', ')})${rulesOf(s)}`),
+    'Past the track:',
+    `  ${DONE_ID}: ${doneOf(w).label} (${doneOf(w).scenes.join(', ')})${rulesOf(doneOf(w))}`,
   ]
   if (w.side.length > 0) lines.push('Side:', ...w.side.map(s => `  ${s === zero ? '0 ' : ''}${s.id}: ${s.label} (${s.scenes.join(', ')})${rulesOf(s)}`))
 
@@ -195,13 +200,13 @@ const rulesOf = (s: StageDef): string => (s.auto && s.auto.length > 0 ? ` · aut
 // /stage auto: whether the stage moves by itself, and on what; fileAuto,
 // what the project's workflow file starts the session with, if it says.
 export function autoText(w: Workflow, isOn: boolean, fileAuto?: boolean): string {
-  const stages = [...w.track, ...w.side].filter(s => s.auto && s.auto.length > 0)
+  const stages = allStages(w).filter(s => s.auto && s.auto.length > 0)
   const state = isOn ? 'Automatic moves are on: /stage auto off turns them off.' : 'Automatic moves are off: /stage auto on turns them on.'
   const head = fileAuto === undefined ? [state] : [state, `This project's workflow file starts it ${fileAuto ? 'on' : 'off'}.`]
   if (stages.length === 0) return [...head, `This workflow has no rules: give a stage an "auto" list in ${WORKFLOW_FILE}.`].join('\n')
   const rows = stages.map(s => `  ${s.id}: ${s.auto!.map(ruleText).join('; ')}`)
 
-  return [...head, 'Rules, by the stage they move the work to (only forward on the track, or into a side stage):', ...rows].join('\n')
+  return [...head, 'Rules, by the stage they move the work to (only forward on the track, into Done, or into a side stage; from Done only a skill you type):', ...rows].join('\n')
 }
 
 // /stage hide's answer; fileHide, what the project's workflow file starts

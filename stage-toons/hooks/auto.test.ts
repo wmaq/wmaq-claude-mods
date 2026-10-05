@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Progress, StageId } from '../types'
-import { autoMatch, autoTarget, TYPED_SKILL_MS, typedSkill, globRegExp, isRiskyPattern, relativePath, ruleMatches, rulesAt, ruleText, type Signal, unknownFrom, viaOf } from './auto'
+import { autoMatch, autoTarget, TYPED_SKILL_MS, typedSkill, globRegExp, hasRules, isRiskyPattern, relativePath, ruleMatches, rulesAt, ruleText, type Signal, unknownFrom, viaOf } from './auto'
 import { freshProgress } from './stages'
 import { DEFAULT_WORKFLOW as W } from './workflow'
 
@@ -186,4 +186,55 @@ test('a typed command and a skill expanded within TYPED_SKILL_MS of each other n
   expect(typedSkill(heard('storming', 0), heard('superpowers:brainstorming', 5))).toBeNull()
   expect(typedSkill(null, heard('brainstorming', 5))).toBeNull()
   expect(typedSkill(heard('brainstorming', 5), null)).toBeNull()
+})
+
+const bash = (command: string): Signal => ({ kind: 'bash', command })
+
+test("the default's rules move to Done on a push to main or a merged pull request, from Your testing or Cleanup", () => {
+  const NL = String.fromCharCode(10)
+  const merges = [
+    'git push origin main',
+    'git push -u origin HEAD:main',
+    'git push origin claude/x:main',
+    'git push origin "main"',
+    'git push origin main 2>&1 | tail -3',
+    'git checkout main && git merge --ff-only claude/x && git push origin main',
+    `git status${NL}git push origin main`,
+    '  git push origin main',
+    `git fetch &&${NL}  git push origin main`,
+    'gh pr merge 12 --squash',
+    'cd repo; gh pr merge',
+  ]
+  for (const command of merges) {
+    expect(autoMatch(W, at('cleanup'), bash(command), false)?.stage).toBe('done')
+    expect(autoMatch(W, at('user-test'), bash(command), false)?.stage).toBe('done')
+    expect(autoMatch(W, at('develop'), bash(command), false)).toBeNull()
+  }
+  const misses = [
+    'git push origin main-fix',
+    'git push origin main.backup',
+    'git merge main',
+    'git push origin claude/x',
+    'git commit -m "then git push origin main"',
+    'echo git push origin main',
+    'gh pr merge 12 --auto --squash',
+    'gh pr view 12',
+  ]
+  for (const command of misses) expect(autoMatch(W, at('cleanup'), bash(command), false)).toBeNull()
+  for (const rule of W.done!.auto!) expect(isRiskyPattern('bash' in rule ? rule.bash : '')).toBe(false)
+  // Done's rules count: the engine listens for commands.
+  expect(hasRules(W, 'bash')).toBe(true)
+  expect(hasRules({ track: W.track, side: W.side }, 'bash')).toBe(false)
+})
+
+test('from Done only a skill the person typed moves the work: chores after a merge stay in Done', () => {
+  const done = at('done', 'cleanup')
+  expect(autoMatch(W, done, { kind: 'skill', name: 'superpowers:brainstorming', isTyped: true }, false)?.stage).toBe('brainstorm')
+  expect(autoMatch(W, done, skill('superpowers:brainstorming'), false)).toBeNull()
+  expect(autoMatch(W, done, skill('superpowers:finishing-a-development-branch'), false)).toBeNull()
+  expect(autoMatch(W, done, write('docs/superpowers/specs/x.md'), false)).toBeNull()
+  expect(autoMatch(W, done, fable(), false)).toBeNull()
+  expect(autoMatch(W, done, bash('git push origin main'), false)).toBeNull()
+  // Elsewhere a typed skill moves as any other.
+  expect(autoMatch(W, at('roadmap'), { kind: 'skill', name: 'superpowers:brainstorming', isTyped: true }, false)?.stage).toBe('brainstorm')
 })

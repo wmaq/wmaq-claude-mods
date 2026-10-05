@@ -76,7 +76,8 @@ test('/stage alone shows the state and the latest moves first', () => {
 
 test('the usage lists the workflow stages and says where 0 goes', () => {
   expect(usage(DEFAULT_WORKFLOW)).toContain('(0 or ? for Other)')
-  expect(usage(DEFAULT_WORKFLOW)).toContain('Stages: 1 roadmap, 2 brainstorm, 3 spec, 4 spec-audit, 5 plan, 6 plan-audit, 7 develop, 8 claude-test, 9 user-test, 10 cleanup, debugging, 0 other')
+  expect(usage(DEFAULT_WORKFLOW)).toContain('Stages: 1 roadmap, 2 brainstorm, 3 spec, 4 spec-audit, 5 plan, 6 plan-audit, 7 develop, 8 claude-test, 9 user-test, 10 cleanup, done, debugging, 0 other')
+  expect(usage(DEFAULT_WORKFLOW)).toContain('  /stage done             the feature is finished (merged); the next move starts a new one')
   const small = { track: DEFAULT_WORKFLOW.track.slice(0, 2), side: [] }
   expect(usage(small)).toContain('Stages: 1 roadmap, 2 brainstorm')
   expect(usage(small)).not.toContain('0 or ?')
@@ -96,7 +97,11 @@ test('the workflow summary says where it came from and lists the stages with the
   expect(lines).toContain(`  7 develop: Develop (${W.track[6]!.scenes.join(', ')}) · auto: skill superpowers:executing-plans; skill superpowers:subagent-driven-development`)
   expect(lines).toContain(`  0 other: Other (${W.side[1]!.scenes.join(', ')})`)
   const two = { track: [{ ...W.track[0]!, scenes: ['road-trip', 'gift'] }], side: [] }
-  expect(workflowSummary(two, 'file').split('\n')).toEqual(['Workflow: from .claude/stage-toons.json', 'Track:', '  1 roadmap: Roadmap (road-trip, gift)'])
+  expect(workflowSummary(two, 'file').split('\n')).toEqual(['Workflow: from .claude/stage-toons.json', 'Track:', '  1 roadmap: Roadmap (road-trip, gift)', 'Past the track:', '  done: Done (fireworks)'])
+  const done = lines.find(line => line.startsWith('  done: '))
+  expect(done?.startsWith('  done: Done (fireworks) · auto: bash ')).toBe(true)
+  expect(done?.endsWith(' from user-test, cleanup')).toBe(true)
+  expect(lines.indexOf('Past the track:')).toBe(lines.indexOf('Side:') - 2)
 })
 
 test('/stage auto, log and time parse', () => {
@@ -126,4 +131,20 @@ test('/stage shows why an automatic move happened; the summary lists rules', () 
   const p = applyMove(W, freshProgress(0), { stage: 'spec', by: 'auto', via: 'wrote docs/superpowers/specs/a.md', at: 0 })
   expect(showText(W, p, 0)).toContain('3/10 Spec by auto (wrote docs/superpowers/specs/a.md), just now')
   expect(workflowSummary(W, 'default')).toContain('  2 brainstorm: Brainstorm (light-bulbs, sticky-notes, thought-clouds) · auto: skill superpowers:brainstorming')
+})
+
+test('/stage done moves to Done; a word after it is not a command of its own', () => {
+  expect(parseCommand(W, 'done')).toEqual({ kind: 'move', stage: 'done' })
+  expect(parseCommand(W, ' DONE ')).toEqual({ kind: 'move', stage: 'done' })
+  expect(unknownText(W, 'done now')).toBe('Not a /stage command: done now. Did you mean /stage done? /stage help lists them all.')
+  expect(unknownText(W, 'demo plan 99')).toBe('Not a /stage command: demo plan 99. /stage help lists them all.')
+})
+
+test('/stage auto lists the rules into Done after the track', () => {
+  const text = autoText(W, true)
+  expect(text).toContain('Rules, by the stage they move the work to (only forward on the track, into Done, or into a side stage; from Done only a skill you type):')
+  const lines = text.split(String.fromCharCode(10))
+  const done = lines.findIndex(line => line.startsWith('  done: bash '))
+  expect(lines[done - 1]).toBe('  cleanup: skill superpowers:finishing-a-development-branch')
+  expect(lines[done + 1]).toBe('  debugging: skill superpowers:systematic-debugging')
 })

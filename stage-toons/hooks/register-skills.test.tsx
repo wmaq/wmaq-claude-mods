@@ -99,3 +99,17 @@ test('a /stage typed between the command and its skill is not heard as a command
   await expand($, 'brainstorming')
   expect(text(await runStage($, ''))).toContain('2/10 Brainstorm by auto (skill superpowers:brainstorming)')
 })
+
+test('after Done, a skill the person types starts a new round by itself; one Claude loads does not', async ($, on) => {
+  engineWithSkills(on)
+  await $.session.start(START)
+  await runStage($, 'feature login')
+  await runStage($, 'done')
+  await callTool($, 'Skill', { skill: 'superpowers:brainstorming' })
+  expect(text(await runStage($, ''))).toContain('Done · login')
+  await typeCommand($, 'superpowers:brainstorming')
+  await expand($, 'brainstorming')
+  const shown = text(await runStage($, ''))
+  expect(shown).toContain('2/10 Brainstorm by auto (skill superpowers:brainstorming)')
+  expect(shown).toContain('no feature')
+})

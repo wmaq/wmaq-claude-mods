@@ -290,7 +290,7 @@ async function hearSkill($: EngineInterface, mod: Mod, side: 'command' | 'skill'
   mod.typedCommand = null
   mod.expandedSkill = null
   if (!mod.isAuto || !hasRules(mod.workflow, 'skill')) return
-  const signal: Signal = { kind: 'skill', name: skill }
+  const signal: Signal = { kind: 'skill', name: skill, isTyped: true }
   await settle($, 'an automatic move', queued(mod, () => autoMove($, mod, signal)))
 }
 
