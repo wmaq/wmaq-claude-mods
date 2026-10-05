@@ -165,3 +165,24 @@ test('/stage time adds the summed cost to the lines whose entries have one', () 
     COST_NOTE,
   ])
 })
+
+test('Done lasts no time: /stage log and /stage time say done there, with Claude’s time, and the feature’s time stops at the merge', () => {
+  const p = progress([
+    { stage: 'cleanup', at: 0, by: 'claude', feature: 'login', workMs: 10 * MIN },
+    { stage: 'done', at: 30 * MIN, by: 'auto', feature: 'login', via: 'bash rule gh pr merge', workMs: 2 * MIN },
+  ])
+  expect(logText(W, p, 3 * H, 15).split(NL)).toEqual([
+    'Stage history, last 2 moves:',
+    'login',
+    '  10/10 Cleanup   30m (Claude 10m)   3h ago     by claude',
+    '  ✓ Done          done (Claude 2m)   2h ago     by auto: bash rule gh pr merge',
+  ])
+  expect(timeText(W, p, 3 * H).split(NL)).toEqual([
+    'Time per feature:',
+    '  login           30m (Claude 12m)',
+    'Time per stage:',
+    '  10/10 Cleanup   30m (Claude 10m)',
+    '  ✓ Done          done (Claude 2m)',
+    'From the last 2 moves, since 3h ago.',
+  ])
+})

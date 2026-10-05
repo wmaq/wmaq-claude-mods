@@ -7,7 +7,7 @@ import type { ModelUsage } from 'claude-code'
 
 import type { HistoryEntry, Progress, StageId, Workflow } from '../types'
 import { cellWidth, stageLabel } from './stages'
-import { stageIds } from './workflow'
+import { isDone, stageIds } from './workflow'
 
 export const LOG_DEFAULT = 15
 
@@ -87,21 +87,23 @@ export const ago = (ms: number): string =>
   ms < 60_000 ? 'just now' : ms < 3_600_000 ? `${Math.floor(ms / 60_000)}m ago` : ms < 86_400_000 ? `${Math.floor(ms / 3_600_000)}h ago` : `${Math.floor(ms / 86_400_000)}d ago`
 
 // An entry with the time it lasted: to the next entry, or to now for the
-// last; running is the working time of a turn under way, which counts for
-// the current entry.
-type Span = { entry: HistoryEntry; wallMs: number; workMs: number; isLast: boolean }
+// last (none for Done: sitting there is no work on the feature); running is
+// the working time of a turn under way, which counts for the current entry.
+type Span = { entry: HistoryEntry; wallMs: number; workMs: number; isLast: boolean; isDone: boolean }
 
 function spansOf(p: Progress, now: number, runningMs: number): Span[] {
   const current = currentIndex(p)
 
   return p.history.map((entry, i) => {
     const end = p.history[i + 1]?.at ?? now
+    const isDoneEntry = isDone(entry.stage)
 
     return {
       entry,
-      wallMs: Math.max(0, end - entry.at),
+      wallMs: isDoneEntry ? 0 : Math.max(0, end - entry.at),
       workMs: (entry.workMs ?? 0) + (i === current ? Math.max(0, runningMs) : 0),
       isLast: i === p.history.length - 1,
+      isDone: isDoneEntry,
     }
   })
 }
@@ -129,10 +131,12 @@ export function costText(c: Cost): string {
   return parts.join(' · ')
 }
 
-function times(wallMs: number, workMs: number, soFar = false, cost?: Cost): string {
+// isDone: Done's line, which says "done" where the duration would be.
+function times(wallMs: number, workMs: number, soFar = false, cost?: Cost, isDone = false): string {
   const spent = cost === undefined ? '' : costText(cost)
+  const lasted = isDone ? 'done' : `${duration(wallMs)}${soFar ? ' so far' : ''}`
 
-  return `${duration(wallMs)}${soFar ? ' so far' : ''} (Claude ${duration(workMs)}${spent === '' ? '' : ` · ${spent}`})`
+  return `${lasted} (Claude ${duration(workMs)}${spent === '' ? '' : ` · ${spent}`})`
 }
 // Columns line up in terminal cells, as the band's text does.
 const widest = (texts: string[]): number => texts.reduce((n, t) => Math.max(n, cellWidth(t)), 0)
@@ -150,7 +154,7 @@ export function logText(w: Workflow, p: Progress, now: number, n: number, runnin
   if (shown.length === 0) return EMPTY
   const labels = shown.map(s => stageLabel(w, s.entry.stage))
   const width = widest(labels)
-  const timeWidth = widest(shown.map(s => times(s.wallMs, s.workMs, s.isLast, s.entry.cost)))
+  const timeWidth = widest(shown.map(s => times(s.wallMs, s.workMs, s.isLast, s.entry.cost, s.isDone)))
   const lines = [`Stage history, last ${shown.length} move${shown.length === 1 ? '' : 's'}:`]
   let group: string | null | undefined
   shown.forEach((s, i) => {
@@ -158,7 +162,7 @@ export function logText(w: Workflow, p: Progress, now: number, n: number, runnin
     if (i === 0 || feature !== group) lines.push(featureName(feature))
     group = feature
     const by = `by ${s.entry.by}${s.entry.via ? `: ${s.entry.via}` : ''}`
-    lines.push(`  ${pad(labels[i]!, width)}   ${pad(times(s.wallMs, s.workMs, s.isLast, s.entry.cost), timeWidth)}   ${pad(ago(now - s.entry.at), 8)}   ${by}`)
+    lines.push(`  ${pad(labels[i]!, width)}   ${pad(times(s.wallMs, s.workMs, s.isLast, s.entry.cost, s.isDone), timeWidth)}   ${pad(ago(now - s.entry.at), 8)}   ${by}`)
   })
 
   return withCostNote(lines, shown).join('\n')
@@ -193,13 +197,13 @@ export function timeText(w: Workflow, p: Progress, now: number, runningMs = 0): 
   const featureLabels = features.map(featureName)
   const stageLabels = stages.map(id => stageLabel(w, id))
   const width = widest([...featureLabels, ...stageLabels])
-  const row = (label: string, t: Total) => `  ${pad(label, width)}   ${times(t.wallMs, t.workMs, false, t.cost)}`
+  const row = (label: string, t: Total, isDoneRow = false) => `  ${pad(label, width)}   ${times(t.wallMs, t.workMs, false, t.cost, isDoneRow)}`
 
   return withCostNote([
     'Time per feature:',
     ...features.map((k, i) => row(featureLabels[i]!, byFeature.get(k)!)),
     'Time per stage:',
-    ...stages.map((id, i) => row(stageLabels[i]!, byStage.get(id)!)),
+    ...stages.map((id, i) => row(stageLabels[i]!, byStage.get(id)!, isDone(id))),
     `From the last ${spans.length} move${spans.length === 1 ? '' : 's'}, since ${ago(now - spans[0]!.entry.at)}.`,
   ], spans).join('\n')
 }
