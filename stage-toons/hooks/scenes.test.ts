@@ -5,7 +5,7 @@ import { createBuffer, type PixelBuffer } from './pixels'
 import { CLAWD_TOP, focusAt, heroAt, renderFull, renderScene, type Scene, STAGE_H, STAGE_W } from './scene'
 import { REACTIONS, SCENES, STAGE_SCENES } from './scenes'
 import { DEFAULT_WORKFLOW } from './workflow'
-import { C, line } from './scenes/kit'
+import { C, drawStarfield, line, STAR_LAYERS } from './scenes/kit'
 
 const LIBRARY = [
   'road-trip', 'light-bulbs', 'writing-desk', 'proofread-page', 'stepping-stones', 'proofread-checklist', 'bricklaying', 'test-tubes', 'gift',
@@ -404,4 +404,40 @@ test('fireworks: three rockets burst one after another, in gold, blue and green,
   expect(sky(7.0)).toEqual([0, 0, 8])
   expect(sky(7.9)).toEqual([0, 0, 0])
   expect(SCENES.fireworks!.loop).toBe(8)
+})
+
+test('the starfield: each depth in its colour, drifting left at its own speed, wrapping at 48 columns', () => {
+  const lit = (time: number, layer: 'far' | 'middle' | 'near') => {
+    const b = createBuffer(STAGE_W, STAGE_H)
+    drawStarfield(b, time, [layer])
+
+    return [...b.px].flatMap((c, i) => (c === STAR_LAYERS[layer].color ? [{ x: i % b.w, y: Math.floor(i / b.w) }] : []))
+  }
+  expect(STAR_LAYERS.far.speed).toBe(2)
+  expect(STAR_LAYERS.middle.speed).toBe(4)
+  expect(STAR_LAYERS.near.speed).toBe(6)
+  expect([STAR_LAYERS.far.color, STAR_LAYERS.middle.color, STAR_LAYERS.near.color]).toEqual([C.darkGray, C.paperShade, C.white])
+  for (const layer of ['far', 'middle'] as const) {
+    const { speed, stars } = STAR_LAYERS[layer]
+    expect(lit(0, layer)).toHaveLength(stars.length)
+    // One second on, each star is speed columns further left, wrapping.
+    const moved = stars.map(s => ({ x: (((s.x - speed) % 48) + 48) % 48, y: s.y }))
+    const key = (ps: { x: number; y: number }[]) => JSON.stringify([...ps].sort((p, q) => p.y - q.y || p.x - q.x))
+    expect(key(lit(1, layer))).toBe(key(moved))
+  }
+  // Near stars twinkle: about half show at a time, the others the next quarter second.
+  const near = STAR_LAYERS.near.stars.length
+  expect(lit(0, 'near').length + lit(0.25, 'near').length).toBe(near)
+})
+
+test('stargazing and fireworks have a drifting night sky behind them, and only they among the scenes', () => {
+  const withSky = Object.values(SCENES).filter(s => s.background !== undefined).map(s => s.id)
+  expect(withSky.sort()).toEqual(['fireworks', 'stargazing'])
+  for (const id of withSky) {
+    const scene = SCENES[id]!
+    const grey = (time: number) => [...renderFull(scene, time).px].filter(c => c === C.darkGray).length
+    expect(grey(0.1)).toBeGreaterThan(5)
+    // The sky moves on through the loop point.
+    expect([...renderFull(scene, scene.loop + 0.1).px]).not.toEqual([...renderFull(scene, 0.1).px])
+  }
 })

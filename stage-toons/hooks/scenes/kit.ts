@@ -70,3 +70,66 @@ export const BOX: Sprite = {
   palette: { b: C.wood, d: C.woodDark },
   frames: [['ddddddddd', 'dbbbbbbbd', 'dbbbbbbbd', 'dbbbbbbbd', 'dbbbbbbbd', 'dbbbbbbbd', 'ddddddddd']],
 }
+
+// A starfield in up to three depths, drifting right to left at different
+// speeds (parallax), each a fixed scatter wrapping round the area's 48
+// columns: far stars dim and slow, near stars white, fast and twinkling.
+// time is unwrapped (a background's), so the stars never jump back.
+export type StarLayer = 'far' | 'middle' | 'near'
+const AREA_W = 48
+export const STAR_LAYERS: Record<StarLayer, { color: number; speed: number; stars: readonly Point[] }> = {
+  far: {
+    color: C.darkGray,
+    speed: 2,
+    stars: [
+      { x: 3, y: 1 },
+      { x: 11, y: 4 },
+      { x: 19, y: 0 },
+      { x: 26, y: 3 },
+      { x: 33, y: 6 },
+      { x: 41, y: 2 },
+      { x: 46, y: 5 },
+      { x: 7, y: 9 },
+      { x: 15, y: 12 },
+      { x: 29, y: 10 },
+      { x: 38, y: 13 },
+      { x: 44, y: 8 },
+    ],
+  },
+  middle: {
+    color: C.paperShade,
+    speed: 4,
+    stars: [
+      { x: 6, y: 6 },
+      { x: 14, y: 2 },
+      { x: 23, y: 8 },
+      { x: 31, y: 1 },
+      { x: 36, y: 11 },
+      { x: 43, y: 4 },
+      { x: 2, y: 12 },
+    ],
+  },
+  near: {
+    color: C.white,
+    speed: 6,
+    stars: [
+      { x: 9, y: 3 },
+      { x: 21, y: 11 },
+      { x: 34, y: 7 },
+      { x: 45, y: 0 },
+      { x: 27, y: 13 },
+    ],
+  },
+}
+
+export function drawStarfield(b: PixelBuffer, time: number, layers: readonly StarLayer[]): void {
+  for (const layer of layers) {
+    const { color, speed, stars } = STAR_LAYERS[layer]
+    stars.forEach((s, i) => {
+      // Near stars twinkle: half of them show at a time, trading every 0.25 s.
+      if (layer === 'near' && (every(time, 0.25) + i) % 2 === 1) return
+      const x = Math.floor((((s.x - time * speed) % AREA_W) + AREA_W) % AREA_W)
+      setPixel(b, x, s.y, color)
+    })
+  }
+}

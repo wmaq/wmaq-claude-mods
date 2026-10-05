@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { CLAWD_ORANGE, EYE_DARK } from './clawd'
-import { CLAWD_X, DOZE_MS, IDLE_COLS, IDLE_IDS, IDLE_ROWS, idleFrame, pickIdle, routineOf, ROUTINES, Z_COLOR } from './idle'
+import { CLAWD_X, DOZE_MS, IDLE_COLS, IDLE_IDS, IDLE_ROWS, idleBackground, idleFrame, pickIdle, routineOf, ROUTINES, Z_COLOR } from './idle'
 import { GENERIC_PROP, PROPS, propOf } from './idle/props'
 import { DEFAULT_WORKFLOW } from './workflow'
 import { createBuffer, EMPTY, type PixelBuffer } from './pixels'
@@ -49,7 +49,7 @@ test('classic: Clawd taps a foot now and then, and loops every 8 seconds', () =>
   expect([...at(8.5).px]).toEqual([...at(0.5).px])
 })
 
-test('nyan: a six-stripe rainbow behind Clawd, its wave stepping, and stars rushing past', () => {
+test('nyan: a six-stripe rainbow behind Clawd, its wave stepping', () => {
   const b = at(0.1, 'nyan')
   for (const stripe of [C.red, C.orange, C.gold, C.green, C.blue, C.violet]) {
     const px = where(b, stripe)
@@ -64,10 +64,44 @@ test('nyan: a six-stripe rainbow behind Clawd, its wave stepping, and stars rush
     expect(stripes).toContain(b.px[y * b.w + first - 1])
   }
   expect([...at(0.1, 'nyan').px]).not.toEqual([...at(0.35, 'nyan').px])
-  // Stars show now and then on the free rows, and move left.
-  const stars = (t: number) => where(at(t, 'nyan'), C.white)
-  expect([0.1, 0.35, 0.6, 0.85].some(t => stars(t).length > 0)).toBe(true)
-  for (let t = 0; t < 4; t += 0.05) expect(stars(t).every(p => p.y === 0 || p.y === 7)).toBe(true)
+  // The stars are the background's now: none in the box.
+  for (let t = 0; t < 4; t += 0.05) expect(where(at(t, 'nyan'), C.white)).toHaveLength(0)
+})
+
+test("nyan's background: a starfield over the whole area, in three depths, no jump at the loop point", () => {
+  const bg = (seconds: number) => idleBackground('nyan', seconds * 1000)!
+  const b = bg(1)
+  expect([b.w, b.h]).toEqual([48, 14])
+  for (const color of [C.darkGray, C.paperShade]) expect(where(b, color).length).toBeGreaterThan(5)
+  expect([1, 1.25].some(t => where(bg(t), C.white).length > 0)).toBe(true)
+  // Stars beyond the idle box's 26 columns and above its rows.
+  expect(where(b, C.darkGray).some(p => p.x >= 26 || p.y < 6)).toBe(true)
+  // Unwrapped: 4 s (the loop) on, the far stars have moved 8 columns left.
+  const far = (t: number) => JSON.stringify(where(bg(t), C.darkGray).map(p => ({ x: p.x, y: p.y })).sort((p, q) => p.y - q.y || p.x - q.x))
+  expect(far(5)).not.toBe(far(1))
+  const shifted = where(bg(1), C.darkGray).map(p => ({ x: (p.x - 8 + 48) % 48, y: p.y })).sort((p, q) => p.y - q.y || p.x - q.x)
+  expect(far(5)).toBe(JSON.stringify(shifted))
+})
+
+test('only a routine with a background has one, and never in the doze; one that throws breaks its routine', () => {
+  expect(idleBackground('classic', 1000)).toBe(null)
+  expect(idleBackground('nyan', DOZE_MS)).toBe(null)
+  expect(idleBackground('unknown', 1000)).toBe(null)
+  const broken = new Set<string>()
+  const breaks: string[] = []
+  const nyan = ROUTINES.nyan!
+  const background = nyan.background
+  nyan.background = () => {
+    throw new Error('boom')
+  }
+  try {
+    expect(idleBackground('nyan', 1000, broken, id => breaks.push(id))).toBe(null)
+  } finally {
+    nyan.background = background
+  }
+  expect(breaks).toEqual(['nyan'])
+  expect(broken.has('nyan')).toBe(true)
+  expect(idleBackground('nyan', 1000, broken)).toBe(null)
 })
 
 test('the routines: classic and Nyan from step 1, coffee, reading and yo-yo from step 2', () => {

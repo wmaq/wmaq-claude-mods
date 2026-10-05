@@ -28,9 +28,9 @@ test('while Claude waits, the band shows the idle Clawd in the area below the ba
   expect(blitsOf(world, 'area').length).toBeLessThanOrEqual(8)
   const sent = blitsOf(world, 'area').map(b => b.cells)
   expect(sent.every((cells, i) => i === 0 || cells !== sent[i - 1])).toBe(true)
-  // His box sits at the bottom-left: nothing on the area's top three rows.
-  const words = decode(blitsOf(world, 'area').at(-1)!.cells)
-  for (let i = 0; i < 48 * 3; i++) expect(words[i * 3]).toBe(0x20)
+  // His box sits at the bottom-left: no Clawd on the area's top three rows
+  // (Nyan's stars, if Nyan was picked, may be there).
+  expect(colorInRows(blitsOf(world, 'area').at(-1), [0, 1, 2], 0xd97757)).toBe(false)
   expect(colorInRows(blitsOf(world, 'area').at(-1), [4, 5, 6], 0xd97757)).toBe(true)
 })
 

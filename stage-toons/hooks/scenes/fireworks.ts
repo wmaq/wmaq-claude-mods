@@ -1,11 +1,12 @@
 // Fireworks: Done's scene. Clawd stands at the left looking up while three
 // rockets rise on the right and burst, one after another, the sparks
 // spreading, falling and fading; he jumps at each burst. Each rocket is
-// over before the next starts, and the last before the loop ends.
+// over before the next starts, and the last before the loop ends. Dim far
+// stars drift slowly behind.
 
 import { type PixelBuffer, setPixel } from '../pixels'
 import { CLAWD_TOP, type Scene } from '../scene'
-import { blinking, C, every, still } from './kit'
+import { blinking, C, drawStarfield, every, still } from './kit'
 
 const LOOP = 8
 const RISE = 0.8
@@ -62,6 +63,7 @@ export const fireworks: Scene = {
   id: 'fireworks',
   loop: LOOP,
   focusX: 20,
+  background: (b, time) => drawStarfield(b, time, ['far']),
   actors: [
     {
       kind: 'clawd',

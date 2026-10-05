@@ -5,7 +5,7 @@
 import { cropLeft, placeIdle } from './area'
 import { demoAt, demoStep, idleDemoAt } from './demo'
 import { shot, tick } from './director'
-import { DOZE_MS, FALLBACK_ROUTINE, idleFrame } from './idle'
+import { DOZE_MS, FALLBACK_ROUTINE, idleBackground, idleFrame } from './idle'
 import { type Mod, reseat } from './mod'
 import { encodeCells } from './pixels'
 import { REACTIONS, SCENES } from './scenes'
@@ -35,7 +35,11 @@ export function castOf(mod: Mod, log: Log): Cast {
 // seat log moves on first, whichever plays.
 export function areaCells(mod: Mod, columns: number, now: number, log: Log): string | null {
   const onBreak = (id: string, error: unknown) => log(`stage-toons: idle routine ${id} failed and was replaced by classic: ${String(error)}`)
-  const idleAt = (ms: number) => cropLeft(placeIdle(idleFrame(mod.idle, ms, mod.brokenIdle, onBreak)), columns)
+  const idleAt = (ms: number) => {
+    const box = idleFrame(mod.idle, ms, mod.brokenIdle, onBreak)
+
+    return cropLeft(placeIdle(box, idleBackground(mod.idle, ms, mod.brokenIdle, onBreak)), columns)
+  }
   reseat(mod, now)
   const demo = mod.demo
   if (demo?.kind === 'scenes') {
@@ -47,7 +51,10 @@ export function areaCells(mod: Mod, columns: number, now: number, log: Log): str
     const f = idleDemoAt(demo, now)
     if (!f) return null
 
-    return encodeCells(cropLeft(placeIdle(f.routine === null ? idleFrame(FALLBACK_ROUTINE, DOZE_MS + f.ms) : idleFrame(f.routine, f.ms, mod.brokenIdle, onBreak)), columns))
+    if (f.routine === null) return encodeCells(cropLeft(placeIdle(idleFrame(FALLBACK_ROUTINE, DOZE_MS + f.ms)), columns))
+    const box = idleFrame(f.routine, f.ms, mod.brokenIdle, onBreak)
+
+    return encodeCells(cropLeft(placeIdle(box, idleBackground(f.routine, f.ms, mod.brokenIdle, onBreak)), columns))
   }
   if (demo?.kind === 'waiting') {
     if (!demoStep(demo, now)) return null

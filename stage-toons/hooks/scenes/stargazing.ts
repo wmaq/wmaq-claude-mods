@@ -1,9 +1,10 @@
 // Stargazing: Clawd looks through a telescope while the stars come out one
-// by one, and a shooting star crosses the sky.
+// by one, and a shooting star crosses the sky; dim far stars drift
+// slowly behind it all.
 
 import { setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
-import { blinking, C, every, still } from './kit'
+import { blinking, C, drawStarfield, every, still } from './kit'
 
 const TELESCOPE: Sprite = { palette: { g: C.gray, d: C.darkGray }, frames: [['...dd', '..gg.', '.gg..', 'g....']] }
 const STARS = [
@@ -21,6 +22,7 @@ export const stargazing: Scene = {
   id: 'stargazing',
   loop: LOOP,
   focusX: 24,
+  background: (b, time) => drawStarfield(b, time, ['far']),
   actors: [
     {
       kind: 'clawd',

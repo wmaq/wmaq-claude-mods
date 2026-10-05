@@ -22,3 +22,18 @@ test('the area is cut from the left, so the idle Clawd stays whole from 27 colum
   expect(cut.w).toBe(27)
   for (let y = 0; y < 14; y++) for (let x = 0; x < 27; x++) expect(getPixel(cut, x, y)).toBe(getPixel(area, x, y))
 })
+
+test("a routine's background fills the area, under the box's drawn pixels only", () => {
+  const box = createBuffer(26, 8)
+  setPixel(box, 3, 0, 1)
+  const background = createBuffer(48, 14)
+  setPixel(background, 3, 6, 9)
+  setPixel(background, 4, 6, 9)
+  setPixel(background, 40, 0, 9)
+  const area = placeIdle(box, background)
+  expect(getPixel(area, 3, 6)).toBe(1)
+  expect(getPixel(area, 4, 6)).toBe(9)
+  expect(getPixel(area, 40, 0)).toBe(9)
+  // The background given is left as it was.
+  expect(getPixel(background, 3, 6)).toBe(9)
+})

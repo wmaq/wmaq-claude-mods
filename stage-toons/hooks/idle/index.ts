@@ -6,6 +6,7 @@
 import type { IdleId } from '../../types'
 import { pickOne } from '../pick'
 import { createBuffer, type PixelBuffer } from '../pixels'
+import { STAGE_H, STAGE_W } from '../scene'
 import { CELEBRATE, celebrate } from './celebrate'
 import { classic } from './classic'
 import { coffee } from './coffee'
@@ -80,4 +81,24 @@ export function idleFrame(routine: IdleId, idleMs: number, broken: Set<IdleId> =
 
     return drawn(ROUTINES[FALLBACK_ROUTINE]!, idleMs)
   }
+}
+
+// The routine's background on the whole area (48 x 14) idleMs into an idle
+// period, or null: the doze, a routine with none, an unknown or broken one.
+// A background that throws breaks its routine like its drawing would.
+export function idleBackground(routine: IdleId, idleMs: number, broken: Set<IdleId> = new Set(), onBreak?: (id: IdleId, error: unknown) => void): PixelBuffer | null {
+  if (idleMs >= DOZE_MS || broken.has(routine)) return null
+  const background = routineOf(routine)?.background
+  if (background === undefined) return null
+  const b = createBuffer(STAGE_W, STAGE_H)
+  try {
+    background(b, idleMs / 1000)
+  } catch (error) {
+    broken.add(routine)
+    onBreak?.(routine, error)
+
+    return null
+  }
+
+  return b
 }
