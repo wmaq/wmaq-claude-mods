@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 
 import { cellsOf } from '../../stage-toons/hooks/stages'
+import { DEFAULT_WORKFLOW } from '../../stage-toons/hooks/workflow'
 import { glyph, GLYPH_H } from './font'
 
 test('the font has every ASCII character, 16 rows each', () => {
@@ -33,4 +34,15 @@ test('the two characters unscii lacks are drawn', () => {
 
 test('a character the font lacks has no glyph', () => {
   assert.equal(glyph(0x4e2d), null)
+})
+
+test('the font has every character of the default workflow\'s labels and messages', () => {
+  const missing = new Set<string>()
+  for (const stage of [...DEFAULT_WORKFLOW.track, ...DEFAULT_WORKFLOW.side]) {
+    for (const ch of `${stage.label}${stage.message}`) {
+      const cp = ch.codePointAt(0)!
+      if (cellsOf(ch) === 1 && glyph(cp) === null) missing.add(`${ch} U+${cp.toString(16).toUpperCase()}`)
+    }
+  }
+  assert.deepEqual([...missing], [])
 })
