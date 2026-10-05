@@ -6,6 +6,28 @@ release (departures from the spec, review findings, live checks) are in its
 spec and plan under `docs/superpowers/`, the hand-offs in `docs/handoffs/`
 and the git history.
 
+## 0.10.0 (2026-10-06)
+
+Roadmap phase 4b, smoother scenes, built by a cloud session from the
+approved spec and plan (`docs/superpowers/specs/2026-10-05-stage-toons-smoother-scenes-design.md`,
+`docs/superpowers/plans/2026-10-05-stage-toons-smoother-scenes.md`) and
+tested locally, all ten of the hand-off's checks passing. Hand-off:
+`docs/handoffs/2026-10-05-stage-toons-smoother-scenes.md`.
+- **Z layers:** each actor has a depth, and props can pass behind Clawd
+  or in front of him (bug-net's bug, light-bulbs' ideas).
+- **A background layer** on its own clock, with a three-layer parallax
+  starfield: Nyan flies through it; stargazing and fireworks have its
+  far, dim layer.
+- **The dissolve:** every change of what the area shows (a turn's start
+  and end, a stage move, Fable coming and going, the helpers, the doze,
+  a demo's steps) breaks up cell by cell into the new picture over half
+  a second. It replaces the wipe between scenes.
+- **Scene clocks:** a scene starts from its beginning each time it comes
+  on, and the eight scenes that build something up dissolve back to
+  their start at the loop point.
+- The frame tool draws each sheet on one mod, so it shows the dissolves,
+  and has a `turn` command.
+
 ## 0.9.0 (2026-10-05)
 
 Roadmap phase 4a, Clawd in one place, built by a cloud session from the

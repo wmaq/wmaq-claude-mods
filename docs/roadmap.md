@@ -8,12 +8,13 @@ the workflow's step 10).
 
 ### Where things stand
 
-0.9.0 is on `main`: automatic moves and history with cost per stage, the
+0.10.0 is on `main`: automatic moves and history with cost per stage, the
 waiting toon, 38 scenes dealt like a deck and played in the area below
-the bar, 5 idle routines with a prop show-off and a celebration, Done
-after a merge, per-project settings, and the frame tool (`tools/frames/`)
-for checking the drawing from a cloud session. Phases 1 to 3 of the plan
-below and 4a are done. History:
+the bar with Z layers and a dissolve at every change of picture, 5 idle
+routines with a prop show-off and a celebration, Done after a merge,
+per-project settings, and the frame tool (`tools/frames/`) for checking
+the drawing from a cloud session. Phases 1 to 3 of the plan below, 4a
+and 4b are done. History:
 `stage-toons/CHANGELOG.md`. Sources for what comes next: the research
 report (`docs/research/2026-10-04-stage-toons-improvement-ideas.md`, ideas
 #1-#30) and the code review (`docs/reviews/2026-10-04-code-review.md`).
@@ -69,6 +70,11 @@ Leftovers the plan schedules are listed in their phase instead.
   of hysteresis would fix it). `toon.ts`, `TOON_ROWS` and `TOON_MIN` keep
   the toon's name. A hot reload starts the desk's seat log over, so seated
   helpers walk in again.
+- **Smoother scenes (4b):** a waiting demo whose toon throws (`/stage
+  demo waiting`) is not caught; only the real waiting toon falls back to
+  the idle routine. A paint loop that gives up on refused blits clears
+  the band's `requestId` without waiting, so a render landing in that
+  instant has its new `requestId` cleared until the redraw it asked for.
 
 ### The plan after the frame tool (agreed 2026-10-04)
 
@@ -94,24 +100,14 @@ Decided in the discussion:
 The phases run in order; each feature takes the full workflow, spec and
 plan included. (Phases 1 and 2, the polish pass and the hook wins, shipped
 in 0.7.0; phase 3, "done" after a merge, in 0.8.0; 4a, Clawd in one
-place, in 0.9.0.)
+place, in 0.9.0; 4b, smoother scenes, in 0.10.0.)
 
 **Phase 4: richer art.** Split into five sub-phases (the person, 2026-10-05),
 run in this order. Each is its own release, tested and merged before the
 next starts, in a thread and branch of its own. 4a, the stage scenes in
-the area below the bar, shipped in 0.9.0: 4b to 4e draw into the canvas
-it settled.
-
-**4b, smoother scenes.** How a frame is put together:
-- **Z layers** for scenes: a depth per actor and prop instead of the fixed
-  paint order (backdrop, actors, front), so Nyan's rainbow starts right
-  behind Clawd's body and props pass in front of or behind him.
-- **A dissolve** between scenes, each on its own clock (#27); it replaces
-  the wipe's jump back (a v0.2 leftover).
-  Found with the frame tool in the polish pass: about a dozen older
-  scenes restart a build-up at their loop point (sweeping's shelf,
-  road-trip's flags, sticky-notes' board, clipboard, blueprint, dominoes,
-  gift, writing-desk); a dissolve at the loop point would soften them all.
+the area below the bar, shipped in 0.9.0, and 4b, smoother scenes (Z
+layers, the dissolve, scene clocks), in 0.10.0: 4c to 4e draw into the
+canvas they settled.
 
 **4c, Clawd follows the work.**
 - **Clawd's pose follows the spinner's mode** (#15): thinking, responding,

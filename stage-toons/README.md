@@ -186,7 +186,7 @@ demo's next step), it dissolves into it over half a second, cell by cell.
 A scene starts from its beginning each time it comes on, and a scene that
 builds something up dissolves back to its start when it loops.
 
-`/stage demo` plays all 37 scenes of the library in turn below the bar,
+`/stage demo` plays all 38 scenes of the library in turn below the bar,
 each named with the stage that plays it, so you can see them without
 waiting for the work to reach each stage. `/stage demo plan` plays only the
 scenes of one stage, `/stage demo idle` the idle routines and
