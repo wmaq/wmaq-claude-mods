@@ -15,6 +15,7 @@ import type { Phase } from './phase'
 import { FABLE_SCENE, FALLBACK_SCENE, type SceneId } from './scene'
 import { DEMO_ORDER } from './scenes'
 import { TOON_ROWS } from './toon'
+import { FALLBACK_WAITING, WAITING_SCENE_IDS, type WaitingSceneId } from './waiting/deal'
 import { WAITING_DEMO_MS } from './waiting/demo'
 import { type Activity, createActivity, type LineMoment, lineOf, said, settleActivity, type SpinnerMode, toolStarted, withMode } from './work'
 import { allStages, stageOf } from './workflow'
@@ -27,7 +28,7 @@ export const WORK_DEMO_SECONDS = 3
 export type Demo =
   | { kind: 'scenes'; at: number; seconds: number; scenes: readonly SceneId[] }
   | { kind: 'idle'; at: number; seconds: number }
-  | { kind: 'waiting'; at: number }
+  | { kind: 'waiting'; at: number; scene: WaitingSceneId }
   | { kind: 'work'; at: number; seconds: number; scene: SceneId }
 // The scene showing, as a shot, and how long it has shown.
 export type DemoFrame = { index: number; shot: Shot; sceneMs: number }
@@ -142,23 +143,30 @@ function routineName(routine: IdleId | null): string {
 
 export const idleDemoLine = (f: IdleDemoFrame): string => `Idle demo ${f.index + 1}/${IDLE_DEMO_LENGTH}: ${routineName(f.routine)} · /stage demo stop ends it`
 
-export const WAITING_DEMO_LINE = 'Waiting demo · /stage demo stop ends it'
+export const waitingDemoLine = (scene: WaitingSceneId): string => `Waiting demo: ${scene} · /stage demo stop ends it`
 
 // The demo a /stage demo command asks for, and what its answer calls it.
-// scene: the stage's, which the work demo plays under its layer.
-export function demoFor(cmd: Extract<Command, { kind: 'demo' | 'demo-idle' | 'demo-waiting' | 'demo-work' }>, w: Workflow, now: number, scene: SceneId = FALLBACK_SCENE): { demo: Demo; label: string } {
+// scene: the stage's, which the work demo plays under its layer; waiting:
+// the waiting scene the waiting demo plays.
+export function demoFor(
+  cmd: Extract<Command, { kind: 'demo' | 'demo-idle' | 'demo-waiting' | 'demo-work' }>,
+  w: Workflow,
+  now: number,
+  scene: SceneId = FALLBACK_SCENE,
+  waiting: WaitingSceneId = FALLBACK_WAITING,
+): { demo: Demo; label: string } {
   if (cmd.kind === 'demo-work') return { demo: { kind: 'work', at: now, seconds: cmd.seconds, scene }, label: `what Clawd shows while Claude works, over ${scene}, in ${WORK_STEPS.length} steps` }
   const stage = cmd.kind === 'demo' && cmd.stage !== null ? stageOf(w, cmd.stage) : undefined
   const demo: Demo =
     cmd.kind === 'demo-waiting'
-      ? { kind: 'waiting', at: now }
+      ? { kind: 'waiting', at: now, scene: waiting }
       : cmd.kind === 'demo-idle'
         ? { kind: 'idle', at: now, seconds: cmd.seconds }
         : { kind: 'scenes', at: now, seconds: cmd.seconds, scenes: stage?.scenes ?? DEMO_ORDER }
   const n = demoLength(demo)
   const label =
     cmd.kind === 'demo-waiting'
-      ? 'the waiting toon'
+      ? `the waiting toon: ${waiting}`
       : cmd.kind === 'demo-idle'
         ? `${IDLE_IDS.length} idle routines, the celebration, the show-off and the doze`
         : stage
@@ -182,7 +190,7 @@ export function startDemo(mod: Mod, demo: Demo, label: string, now: number, isHi
   const isRestart = mod.demo !== null && demoStep(mod.demo, now) !== null
   mod.demo = demo
   const playing = `${isRestart ? 'Restarting the demo: p' : 'P'}laying`
-  if (demo.kind === 'waiting') return `${playing} ${label} (about ${Math.round(WAITING_DEMO_MS / 1000)} s). /stage demo stop ends it.`
+  if (demo.kind === 'waiting') return `${playing} ${label} (about ${Math.round(WAITING_DEMO_MS / 1000)} s). /stage demo waiting <${WAITING_SCENE_IDS.join(' | ')}> plays one. /stage demo stop ends it.`
   const total = demoLength(demo) * demo.seconds
   const length = total < 60 ? 'under a minute' : `about ${Math.round(total / 60)} min`
 

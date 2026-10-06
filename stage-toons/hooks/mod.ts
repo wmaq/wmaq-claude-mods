@@ -237,6 +237,15 @@ export function reseat(mod: Mod, now: number) {
   if (endedAt !== null) mod.idleSince = Math.max(mod.idleSince, endedAt)
 }
 
+// The next waiting scene from the deck, for a waiting demo that names
+// none; seed: the demo's start.
+export function takeWaiting(mod: Mod, seed: number): WaitingSceneId {
+  const { scene, deal } = dealWaiting(mod.waiting.deal, mod.waiting.broken, seed)
+  mod.waiting = { ...mod.waiting, deal }
+
+  return scene
+}
+
 // Ends the demo and has the band drawn again without it.
 export function endDemo(mod: Mod, invalidate: () => void) {
   mod.demo = null

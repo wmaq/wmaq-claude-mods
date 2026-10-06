@@ -133,7 +133,7 @@ function pictureOf(mod: Mod, now: number, log: Log): Picture | null {
     if (!demoStep(demo, now)) return null
     const at = waitingDemoAt(demo.at, now)
 
-    return 'log' in at ? waitingPicture(`demo:${demo.at}:waiting`, at.log, FALLBACK_WAITING) : routinePicture(mod, `demo:${demo.at}:idle`, mod.idle, now - at.idleMs, log)
+    return 'log' in at ? waitingPicture(`demo:${demo.at}:waiting`, at.log, demo.scene) : routinePicture(mod, `demo:${demo.at}:idle`, mod.idle, now - at.idleMs, log)
   }
 
   // The stage's scene, with Fable's walk and the reactions, as a scene demo

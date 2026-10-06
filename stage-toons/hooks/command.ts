@@ -5,6 +5,7 @@ import { ruleText } from './auto'
 import { DEMO_MAX, DEMO_MIN, DEMO_SECONDS, WORK_DEMO_SECONDS } from './demo'
 import { ago, LOG_DEFAULT } from './history'
 import { applyMove, backStage, describe, HISTORY_MAX, nextStage, parseStage, stageLabel } from './stages'
+import { isWaitingScene, WAITING_SCENE_IDS, type WaitingSceneId } from './waiting/deal'
 import { allStages, DONE_ID, doneOf, RESERVED_IDS, stageIds, zeroStage } from './workflow'
 
 export type Command =
@@ -18,7 +19,7 @@ export type Command =
   | { kind: 'demo'; seconds: number; stage: StageId | null }
   | { kind: 'demo-idle'; seconds: number }
   | { kind: 'demo-work'; seconds: number }
-  | { kind: 'demo-waiting' }
+  | { kind: 'demo-waiting'; scene: WaitingSceneId | null }
   | { kind: 'demo-stop' }
   | { kind: 'workflow' }
   | { kind: 'workflow-init' }
@@ -37,7 +38,7 @@ export function usage(w: Workflow): string {
   const stages = [...w.track.map((s, i) => `${i + 1} ${s.id}`), DONE_ID, ...w.side.map(s => (s === zero ? `0 ${s.id}` : s.id))]
 
   return [
-    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work] [seconds] | demo waiting | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | log [n] | time | help]',
+    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work] [seconds] | demo waiting [scene] | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | log [n] | time | help]',
     '  /stage                  show the current stage and the recent moves',
     `  /stage 5, /stage plan   move to a stage${zero ? ` (0 or ? for ${zero.label})` : ''}`,
     '  /stage next, /stage back',
@@ -46,7 +47,7 @@ export function usage(w: Workflow): string {
     '  /stage message <text>   set the status message',
     '  /stage hide             hide or show the bar and the cartoons',
     `  /stage demo [<stage> | idle] [seconds]  play every scene, one stage's scenes, or the idle routines, ${DEMO_SECONDS} s each (${DEMO_MIN} to ${DEMO_MAX}); /stage demo stop ends it`,
-    '  /stage demo waiting     play the toon shown while Claude waits on agents, about 25 s',
+    `  /stage demo waiting [scene]  play the toon shown while Claude waits on agents, about 25 s, in one of its scenes (${WAITING_SCENE_IDS.join(', ')}), or the next one dealt`,
     `  /stage demo work [seconds]  play what Clawd shows while Claude works: thinking, each kind of tool, his lines, ${WORK_DEMO_SECONDS} s each`,
     '  /stage workflow [init | reload]  show the workflow; write the default to .claude/stage-toons.json; read the file again',
     "  /stage auto [on | off]  show the workflow's rules for moving the stage by itself; turn them on or off",
@@ -117,13 +118,17 @@ function secondsOf(word: string | undefined, fallback = DEMO_SECONDS): number | 
   return seconds >= DEMO_MIN && seconds <= DEMO_MAX ? seconds : null
 }
 
-// demo [<stage id> | idle | work] [seconds], demo waiting, or demo stop. A bare
+// demo [<stage id> | idle | work] [seconds], demo waiting [scene], or demo stop. A bare
 // number is the seconds: stages are named by id only.
 function parseDemo(w: Workflow, arg: string): Command {
   const [first, second, ...rest] = arg === '' ? [] : arg.split(/\s+/)
   if (rest.length > 0) return { kind: 'usage' }
   if (first === 'stop') return second === undefined ? { kind: 'demo-stop' } : { kind: 'usage' }
-  if (first === 'waiting') return second === undefined ? { kind: 'demo-waiting' } : { kind: 'usage' }
+  if (first === 'waiting') {
+    if (second === undefined) return { kind: 'demo-waiting', scene: null }
+
+    return isWaitingScene(second) ? { kind: 'demo-waiting', scene: second } : { kind: 'usage' }
+  }
   if (first === undefined || /^\d+$/.test(first)) {
     const seconds = second === undefined ? secondsOf(first) : null
 

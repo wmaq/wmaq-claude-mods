@@ -153,13 +153,15 @@ test('an idle teammate that works again gets its helper back within a poll', asy
   await clock.advance(3_500)
   expect(shows(lastArea(world), 'haiku')).toBe(true)
 })
-test('/stage demo waiting plays the desk row, then the idle routine, then ends; it takes no seconds', async ($, on) => {
+test('/stage demo waiting laptops plays the desk row, then the idle routine, then ends; it takes no seconds', async ($, on) => {
   const { world, clock } = engine(on)
   await $.session.start(START)
   const ui = await mountBand($)
-  expect(text(await runStage($, 'demo waiting'))).toBe('Playing the waiting toon (about 25 s). /stage demo stop ends it.')
+  expect(text(await runStage($, 'demo waiting laptops'))).toBe(
+    'Playing the waiting toon: laptops (about 25 s). /stage demo waiting <laptops | building | rowing | conveyor> plays one. /stage demo stop ends it.',
+  )
   await ui.redraw()
-  expect((await ui.find({ key: 'stage-toons' }))?.text).toContain('Waiting demo · /stage demo stop ends it')
+  expect((await ui.find({ key: 'stage-toons' }))?.text).toContain('Waiting demo: laptops · /stage demo stop ends it')
   await clock.advance(9_000)
   for (const kind of ['sonnet', 'opus', 'fable', 'haiku'] as const) expect(shows(lastArea(world), kind)).toBe(true)
   await clock.advance(14_000)
@@ -168,6 +170,21 @@ test('/stage demo waiting plays the desk row, then the idle routine, then ends; 
   await ui.redraw()
   expect((await ui.find({ key: 'stage-toons' }))?.text).not.toContain('Waiting demo')
   expect(text(await runStage($, 'demo waiting 5'))).toBe('Not a /stage command: demo waiting 5. /stage help lists them all.')
+})
+
+test('/stage demo waiting with no scene plays the next one dealt: two runs, two scenes; a scene it does not know is not a command', async ($, on) => {
+  const { world } = engine(on)
+  await $.session.start(START)
+  await mountBand($)
+  const sceneOf = (answer: string) => /the waiting toon: (\w+)/.exec(answer)?.[1]
+  const first = sceneOf(text(await runStage($, 'demo waiting')))
+  await runStage($, 'demo stop')
+  const second = sceneOf(text(await runStage($, 'demo waiting')))
+  expect(['laptops', 'building', 'rowing', 'conveyor']).toContain(first)
+  expect(['laptops', 'building', 'rowing', 'conveyor']).toContain(second)
+  expect(second).not.toBe(first)
+  expect(world.agents).toEqual([])
+  expect(text(await runStage($, 'demo waiting sailing'))).toBe('Not a /stage command: demo waiting sailing. /stage help lists them all.')
 })
 
 test('agents that arrive during /stage demo waiting walk in after it', async ($, on) => {
