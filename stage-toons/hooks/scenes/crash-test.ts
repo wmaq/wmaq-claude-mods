@@ -3,7 +3,7 @@
 // In a raster narrower than the stage the camera follows the cart to the
 // wall and comes back to Clawd for the note.
 
-import { fillRect, type PixelBuffer, setPixel } from '../pixels'
+import { fillRect, type PixelBuffer, rightOf, setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, C, lerp, still } from './kit'
 
@@ -43,10 +43,24 @@ function cartX(t: number): number {
   return Math.round(lerp(BOUNCED, START, (t - BACK_FROM) / (LOOP - BACK_FROM)))
 }
 
+// The wall's bricks from column from to the column before to: a mortar
+// row every other row, and a joint every 4 columns in each course, a course
+// offset by 2 from the one below.
+function drawBricks(b: PixelBuffer, from: number, to: number) {
+  fillRect(b, from, 3, to - from, 11, C.brick)
+  for (let y = 4; y < 14; y += 2) fillRect(b, from, y, to - from, 1, C.mortar)
+  for (let y = 3; y < 14; y += 2) {
+    const joint = WALL_X + ((y - 3) % 4 === 0 ? 1 : 3)
+    for (let x = joint + 4 * Math.ceil((from - joint) / 4); x < to; x += 4) setPixel(b, x, y, C.mortar)
+  }
+}
+
+// The wall at the core's right, x 43 to 46. On a wider area it carries on
+// as a mass of bricks to the edge, column 47 included; on the bare stage
+// that column stays empty, as it always was.
 function drawWall(b: PixelBuffer) {
-  fillRect(b, WALL_X, 3, 4, 11, C.brick)
-  for (let y = 4; y < 14; y += 2) fillRect(b, WALL_X, y, 4, 1, C.mortar)
-  for (let y = 3; y < 14; y += 2) setPixel(b, WALL_X + ((y - 3) % 4 === 0 ? 1 : 3), y, C.mortar)
+  drawBricks(b, WALL_X, WALL_X + 4)
+  if (rightOf(b) > 48) drawBricks(b, WALL_X + 4, rightOf(b))
 }
 
 export const crashTest: Scene = {

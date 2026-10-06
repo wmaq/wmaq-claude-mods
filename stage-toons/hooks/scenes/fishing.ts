@@ -1,7 +1,7 @@
 // Fishing: Clawd fishes from the end of a jetty. Up comes an old boot, and
 // on the next bite a fish.
 
-import { fillRect, setPixel } from '../pixels'
+import { fillRect, rightOf, setPixel } from '../pixels'
 import { drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, C, every, lerp, still, wave } from './kit'
 
@@ -35,10 +35,15 @@ export const fishing: Scene = {
     fillRect(b, 0, 9, 21, 1, C.wood)
     fillRect(b, 3, 10, 1, 4, C.woodDark)
     fillRect(b, 17, 10, 1, 4, C.woodDark)
-    fillRect(b, 21, WATER, 27, 3, C.blue)
+    fillRect(b, 21, WATER, rightOf(b) - 21, 3, C.blue)
     // 25 steps a loop over the 25 columns of water: the ripples come back
-    // to where they started as the loop wraps.
-    for (let k = 0; k < 3; k++) setPixel(b, 22 + ((k * 9 + every(t, LOOP / 25)) % 25), WATER, C.glass)
+    // to where they started as the loop wraps. On a wider area the water
+    // runs to the edge and its ripples repeat every 25 columns; the next
+    // tile starts at column 47, which is drawn only past the bare stage.
+    const tiles = rightOf(b) > 48 ? Math.ceil((rightOf(b) - 22) / 25) : 1
+    for (let tile = 0; tile < tiles; tile++) {
+      for (let k = 0; k < 3; k++) setPixel(b, 22 + 25 * tile + ((k * 9 + every(t, LOOP / 25)) % 25), WATER, C.glass)
+    }
   },
   actors: [
     {

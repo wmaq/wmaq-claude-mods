@@ -2,15 +2,15 @@
 // who stands on a crate holding a stamp by its knob, and squats to stamp
 // it with a green tick before it slides on.
 
-import { createBuffer, fillRect, type PixelBuffer, setPixel } from '../pixels'
+import { createBuffer, fillRect, type PixelBuffer, rightOf, setPixel } from '../pixels'
 import { drawSprite, type Scene, type Sprite } from '../scene'
-import { blinking, C, every, still } from './kit'
+import { blinking, C, every, plankOn, still } from './kit'
 
 const PER_PAGE = 1.5
 const MOVE_FOR = 1
 const GAP = 24
-const PAGES = 3
-const LOOP = PER_PAGE * PAGES
+// The loop is three pages long.
+const LOOP = PER_PAGE * 3
 // Where a page stops under the stamp, and where the desk starts: pages
 // further left have gone behind the crate.
 const UNDER = 20
@@ -62,10 +62,14 @@ export const stamp: Scene = {
     fillRect(b, DESK_X, 12, 48 - DESK_X, 1, C.wood)
     fillRect(b, DESK_X + 1, 13, 1, 1, C.woodDark)
     fillRect(b, 46, 13, 1, 1, C.woodDark)
-    const moved = travel(t)
-    for (let i = 0; i < PAGES; i++) {
-      // Pages stop at UNDER - GAP (gone behind the crate), UNDER and UNDER + GAP.
-      const x = UNDER - GAP + ((((GAP * (i + 2) - moved) % (GAP * PAGES)) + GAP * PAGES) % (GAP * PAGES))
+    // On a wider area the desk runs on to the edge, a leg every 25 columns.
+    plankOn(b, 48, 12, 1, 46 + 25, 25)
+    // A page every GAP columns from the one just past the stamp (gone
+    // behind the crate) on to the edge, so pages come in from it rather
+    // than out of thin air: the one under the stamp stops at UNDER, the
+    // rest at UNDER + GAP and on.
+    const behind = ((travel(t) % GAP) + GAP) % GAP
+    for (let x = UNDER - behind; x < rightOf(b); x += GAP) {
       const isStamped = x < UNDER || (x === UNDER && t % PER_PAGE >= (DOWN_FROM + DOWN_TO) / 2)
       drawPage(b, x, isStamped)
     }

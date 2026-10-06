@@ -1,8 +1,9 @@
 // Bricklaying: Clawd hammers while a brick wall grows; the finished wall
-// slides away to the right, and he starts the next one.
+// slides away to the right, out at the area's edge however wide it is, and
+// he starts the next one.
 
 import { clawdAnchors } from '../clawd'
-import { fillRect, setPixel } from '../pixels'
+import { fillRect, rightOf, setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene } from '../scene'
 import { blinking, BRICK, C, every, still } from './kit'
 
@@ -18,8 +19,10 @@ const PER_BRICK = 0.5
 const BUILT_AT = BRICKS * PER_BRICK
 const SLIDE_FROM = BUILT_AT + 0.5
 const LOOP = 12
-// Far enough for the wall's right end (column 47) to leave the stage.
-const SLIDE_BY = 22
+// Far enough for the whole wall, from its left end at WALL_X, to leave the
+// area: 22 on a bare stage. On a wider area it goes out at the real edge in
+// the same time, a faster whoosh.
+const slideBy = (edge: number) => edge - WALL_X
 const isStriking = (t: number) => t < BUILT_AT && every(t, 0.25) % 2 === 1
 
 export const bricklaying: Scene = {
@@ -36,7 +39,7 @@ export const bricklaying: Scene = {
   ],
   front: (b, t) => {
     const laid = Math.min(BRICKS, every(t, PER_BRICK))
-    const slid = t < SLIDE_FROM ? 0 : Math.round(((t - SLIDE_FROM) / (LOOP - SLIDE_FROM)) * SLIDE_BY)
+    const slid = t < SLIDE_FROM ? 0 : Math.round(((t - SLIDE_FROM) / (LOOP - SLIDE_FROM)) * slideBy(rightOf(b)))
     for (let i = 0; i < laid; i++) {
       const { x, y } = brickAt(i)
       drawSprite(b, BRICK, 0, x + slid, y)

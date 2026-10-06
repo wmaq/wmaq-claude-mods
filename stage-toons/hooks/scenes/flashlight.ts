@@ -19,6 +19,10 @@ const START = -0.3
 
 const slopeAt = (t: number) => (t < FOUND ? lerp(START, ON_BUG, t / FOUND) : t < LOST ? ON_BUG : lerp(ON_BUG, START, (t - LOST) / (LOOP - LOST)))
 const halfWidth = (dx: number) => 0.5 + dx * 0.12
+// Past the core's last column the beam narrows to nothing over 12 more,
+// so on a wider area it ends in a point rather than at the core's edge.
+const LAST = 47
+const TAPER = 12
 const isLit = (t: number) => {
   const dx = BUG_X + 1.5 - LENS.x
 
@@ -31,10 +35,11 @@ export const flashlight: Scene = {
   focusX: 28,
   backdrop: (b, t) => {
     const slope = slopeAt(t)
-    for (let x = LENS.x + 1; x < 48; x++) {
+    for (let x = LENS.x + 1; x < LAST + TAPER; x++) {
       const dx = x - LENS.x
       const middle = LENS.y + slope * dx
-      for (let y = Math.ceil(middle - halfWidth(dx)); y <= Math.floor(middle + halfWidth(dx)); y++) setPixel(b, x, y, C.beam)
+      const half = x <= LAST ? halfWidth(dx) : halfWidth(LAST - LENS.x) * (1 - (x - LAST) / TAPER)
+      for (let y = Math.ceil(middle - half); y <= Math.floor(middle + half); y++) setPixel(b, x, y, C.beam)
     }
   },
   actors: [

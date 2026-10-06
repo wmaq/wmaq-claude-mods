@@ -2,9 +2,10 @@
 // rockets rise on the right and burst, one after another, the sparks
 // spreading, falling and fading; he jumps at each burst. Each rocket is
 // over before the next starts, and the last before the loop ends. Dim far
-// stars drift slowly behind.
+// stars drift slowly behind. On a wider area more rockets go up in the
+// wings, out of step with his three, and he cheers his own alone.
 
-import { type PixelBuffer, setPixel } from '../pixels'
+import { type PixelBuffer, rightOf, setPixel } from '../pixels'
 import { CLAWD_TOP, type Scene } from '../scene'
 import { blinking, C, drawStarfield, every, still } from './kit'
 
@@ -17,6 +18,23 @@ const ROCKETS = [
   { at: 2.8, x: 41, top: 4, color: C.blue },
   { at: 5.4, x: 24, top: 5, color: C.green },
 ] as const
+// The wings' rockets: two to each 48 columns past the core, a group's at
+// x 48 further on per group. Each goes up about a second before or after
+// one of the core's, so the two are in the air together, and all are over
+// before the loop ends (the last by 6.6 s), so the loop needs no seam.
+// Groups take the pairs in turn, so neighbours don't burst together.
+type Rocket = { at: number; x: number; top: number; color: number }
+const WING_PAIRS: readonly (readonly Rocket[])[] = [
+  [
+    { at: 1.2, x: 60, top: 6, color: C.red },
+    { at: 3.8, x: 84, top: 5, color: C.green },
+  ],
+  [
+    { at: 1.8, x: 60, top: 5, color: C.blue },
+    { at: 4.4, x: 84, top: 6, color: C.gold },
+  ],
+]
+
 // The eight directions a burst's sparks fly, unit steps.
 const RAYS = [0, 1, 2, 3, 4, 5, 6, 7].map(k => ({ x: Math.cos((k * Math.PI) / 4), y: Math.sin((k * Math.PI) / 4) }))
 
@@ -30,7 +48,7 @@ function burstAge(t: number): number | null {
   return null
 }
 
-function drawRocket(b: PixelBuffer, r: (typeof ROCKETS)[number], t: number) {
+function drawRocket(b: PixelBuffer, r: Rocket, t: number) {
   const age = t - r.at
   if (age < 0 || age >= RISE + BURST) return
   if (age < RISE) {
@@ -84,5 +102,8 @@ export const fireworks: Scene = {
   ],
   front: (b, t) => {
     for (const r of ROCKETS) drawRocket(b, r, t)
+    for (let g = 0; 48 * (g + 1) < rightOf(b); g++) {
+      for (const r of WING_PAIRS[g % WING_PAIRS.length]!) drawRocket(b, { ...r, x: r.x + 48 * g }, t)
+    }
   },
 }

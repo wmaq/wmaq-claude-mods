@@ -1,7 +1,8 @@
 // Recycling: Clawd tosses balls of crumpled paper into a bin. Two go in;
-// the third sails past, bounces and rolls away.
+// the third sails past, bounces and rolls away; on a wider area it rolls
+// up against a second bin in the wings and lies there.
 
-import { fillRect, setPixel } from '../pixels'
+import { fillRect, type PixelBuffer, rightOf, setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, C, lerp, still } from './kit'
 
@@ -22,12 +23,24 @@ const MISSED = THROWS[2]!
 const LANDED = MISSED.at + FLIGHT
 const ROLL_FROM = LANDED + 0.4
 const ROLL_FOR = 1.2
+// The second bin, past 50 columns: the missed ball stops against its side,
+// rolling at the same speed, and lies there until the loop ends.
+const SECOND_BIN_X = 50
+const ROLL_TO = 49
+const STOP_AT = SECOND_BIN_X - 2
 const BALL: Sprite = { palette: { w: C.white, s: C.paperShade }, frames: [['ws', 'sw']] }
 
 // The ball in Clawd's claw before a throw, if any: each comes HOLD_FOR
 // before its throw (the first one at the end of the loop before).
 const holding = (t: number) => THROWS.find(th => (t >= th.at - HOLD_FOR && t < th.at) || (th === THROWS[0] && t >= LOOP - HOLD_FOR + th.at))
 const isWindingUp = (t: number) => THROWS.some(th => t >= th.at - WIND_UP && t < th.at)
+
+// A bin, drawn in front, so a ball dropping in goes out of sight.
+function drawBin(b: PixelBuffer, x: number) {
+  fillRect(b, x, BIN.y, BIN.w, 14 - BIN.y, C.gray)
+  fillRect(b, x - 1, BIN.y - 1, BIN.w + 2, 1, C.darkGray)
+  for (const [dx, dy] of [[2, 2], [3, 2], [1, 3], [4, 3], [2, 4], [3, 4]] as const) setPixel(b, x + dx, BIN.y + dy, C.green)
+}
 
 export const recycling: Scene = {
   id: 'recycling',
@@ -58,14 +71,13 @@ export const recycling: Scene = {
       const y = lerp(HAND.y, th.to.y, k) - 6 * 4 * k * (1 - k)
       drawSprite(b, BALL, 0, Math.round(x), Math.round(y) - 1)
     }
-    if (t >= LANDED && t < ROLL_FROM + ROLL_FOR) {
+    const hasSecondBin = rightOf(b) > SECOND_BIN_X
+    if (t >= LANDED && (hasSecondBin || t < ROLL_FROM + ROLL_FOR)) {
       const bounce = t < ROLL_FROM && t - LANDED < 0.2 ? 1 : 0
-      const x = Math.round(lerp(MISSED.to.x, 49, (t - ROLL_FROM) / ROLL_FOR))
-      drawSprite(b, BALL, 0, x, MISSED.to.y - bounce)
+      const x = Math.round(lerp(MISSED.to.x, ROLL_TO, (t - ROLL_FROM) / ROLL_FOR))
+      drawSprite(b, BALL, 0, hasSecondBin ? Math.min(x, STOP_AT) : x, MISSED.to.y - bounce)
     }
-    // The bin, in front, so a ball dropping in goes out of sight.
-    fillRect(b, BIN.x, BIN.y, BIN.w, 14 - BIN.y, C.gray)
-    fillRect(b, BIN.x - 1, BIN.y - 1, BIN.w + 2, 1, C.darkGray)
-    for (const [dx, dy] of [[2, 2], [3, 2], [1, 3], [4, 3], [2, 4], [3, 4]] as const) setPixel(b, BIN.x + dx, BIN.y + dy, C.green)
+    drawBin(b, BIN.x)
+    if (hasSecondBin) drawBin(b, SECOND_BIN_X)
   },
 }
