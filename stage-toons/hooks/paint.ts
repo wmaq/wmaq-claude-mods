@@ -92,10 +92,13 @@ export function animate(ports: Ports, mod: Mod, site: Site) {
           break
         }
         // A wake ends the sleep early; the sleep itself runs out unheeded.
-        // In calm mode, while blits are refused or none has been taken yet,
-        // the loop keeps the quick rate: the refusal budget counts frames,
-        // and calm mode's slow rate would stretch it.
-        const ms = mod.isCalm && (refused > 0 || !site.isSeen) ? QUICK_MS : frameMs(mod, now)
+        // In calm mode, while blits are refused, or a new frame waits for
+        // its first blit to be taken, the loop keeps the quick rate: the
+        // refusal budget counts frames, and calm mode's slow rate would
+        // stretch it. A render's own frame (already shown, not yet resent)
+        // waits at the slow rate.
+        const isUnsure = refused > 0 || (!site.isSeen && site.lastCells !== cells)
+        const ms = mod.isCalm && isUnsure ? QUICK_MS : frameMs(mod, now)
         await Promise.race([ports.sleep(ms), new Promise<void>(resolve => (site.wake = resolve))])
         site.wake = null
       }

@@ -5,7 +5,8 @@ import { createDirector, react, withAuditing, withScene } from './director'
 import { areaCells } from './frames'
 import { DOZE_MS, IDLE_IDS } from './idle'
 import { CALM_FRAME_MS, createMod, frameMs, isDeepAsleep, type Mod } from './mod'
-import { WAITING_SCENE_IDS, type WaitingSceneId } from './waiting'
+import { WAITING_BEAT, WAITING_SCENE_IDS, type WaitingSceneId } from './waiting'
+import { wallAt } from './waiting/building'
 import { calmView, isPresent, WAITING_STILL_S } from './waiting/calm'
 import { marksOf } from './waiting/conveyor'
 import { seatedAt, type SeatLog } from './waiting/seats'
@@ -183,6 +184,12 @@ test('the waiting toon in calm mode: helpers seated from their arrival, the pict
     run(mod, START + 12_100, START + 12_100)
     expect(mod.shown?.name).toBe(`waiting:${START}:${scene}:calm:a2`)
   }
+})
+
+test('the waiting still lies within the first beat, the walls part built and no brick on the top course', () => {
+  expect(WAITING_STILL_S >= 0 && WAITING_STILL_S < WAITING_BEAT).toBe(true)
+  const wall = wallAt(WAITING_STILL_S)
+  expect(wall.courses > 0 && !wall.hasFlag).toBe(true)
 })
 
 test('the calm view: present helpers only, seated from the period start, Clawd aside, at the still moment', () => {

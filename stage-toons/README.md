@@ -264,8 +264,8 @@ changes when the work does, and his lines show as they come. A
 failure or a move forward shows only its line, without the hop. The
 bar and its task count are unchanged. The demos move anyway, and the
 stills come back when they end. `/stage calm off` brings the motion
-back; with it on, the area is redrawn about twice a second instead of
-twelve times.
+back. With it on, the area looks for a change twice a second instead
+of twelve times, and sends a frame only when something changed.
 
 ## Your own workflow
 

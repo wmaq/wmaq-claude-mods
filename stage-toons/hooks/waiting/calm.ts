@@ -3,16 +3,17 @@
 // Every helper present (arrived, not yet left) sits at its seat, as if it
 // had sat down at the period's start; the rest are left out; Clawd stands
 // aside with his cup. The moment is the period's start plus
-// WAITING_STILL_S, so the work is held there: the walls part built, the
-// oars at one stroke, each box marked by every present helper whose seat
-// it has passed.
+// WAITING_STILL_S, so the work is held there: the walls three courses up
+// with a brick lifted, the oars at one stroke, each box marked by every
+// present helper whose seat it has passed.
 
 import { CLAWD_ASIDE, CLAWD_HOME, type SeatEntry, seatedAt, type SeatLog } from './seats'
 
-// Seconds into the period: no spark over a laptop, every laptop's light lit
-// (seats 0 to 7), no box just marked (marks land on the half second, and
-// flash for FLASH_MS), and Clawd neither sipping nor blinking.
-export const WAITING_STILL_S = 7.93
+// Seconds into the period, within the first beat (WAITING_BEAT): no spark
+// over a laptop, every laptop's light lit (seats 0 to 7), the walls part
+// built, no box just marked (marks land on the half second, and flash for
+// FLASH_MS), and Clawd neither sipping nor blinking.
+export const WAITING_STILL_S = 5.3
 
 // Whether a helper is at the scene now: it has arrived and not yet left.
 export const isPresent = (e: SeatEntry, now: number): boolean => e.arrivedAt <= now && (e.leftAt === null || now < e.leftAt)

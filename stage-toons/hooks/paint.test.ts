@@ -2,7 +2,7 @@ import { expect, test } from 'claude-code/testing'
 
 import { EMPTY_ROSTER, spawned } from './agents'
 import { DEEP_SLEEP_MS, DOZE_MS } from './idle'
-import { AGENT_POLL_MS, createMod, type Mod, RESEND_MS, type Site } from './mod'
+import { AGENT_POLL_MS, CALM_FRAME_MS, createMod, type Mod, QUICK_MS, RESEND_MS, type Site } from './mod'
 import { animate, type Ports } from './paint'
 
 const START = 1_000_000
@@ -153,6 +153,40 @@ test('while Claude works the area repaints about twelve times a second, and neve
   await finished(site)
   expect(blits.length).toBe(13)
   expect(site.isAsleep).toBe(false)
+})
+
+test('in calm mode a refused site keeps the quick rate: one not yet seen gives up after 24 frames within about 2 s', async () => {
+  const mod = createMod()
+  awake(mod)
+  mod.isCalm = true
+  const site = mounted(mod, false)
+  const { ports, blits } = fake(mod, { deny: () => true })
+  animate(ports, mod, site)
+  await finished(site)
+  expect(blits.length).toBe(24)
+  expect(blits[23]!.at - START).toBe(23 * QUICK_MS)
+})
+
+test("in calm mode a render's own frame, shown and unchanged, waits at the slow rate until its resend", async () => {
+  const mod = createMod()
+  awake(mod)
+  mod.isCalm = true
+  const site = mounted(mod, false)
+  // The render hook drew the frame the Raster mounts with.
+  site.lastCells = 'A'
+  site.blittedAt = START
+  const { ports, blits } = fake(mod, { stopAt: START + RESEND_MS + 1000 })
+  const sleeps: number[] = []
+  const sleep = ports.sleep
+  ports.sleep = async ms => {
+    sleeps.push(ms)
+    await sleep(ms)
+  }
+  animate(ports, mod, site)
+  await finished(site)
+  expect(blits.length).toBe(1)
+  expect(blits[0]!.at - START).toBe(RESEND_MS)
+  expect(sleeps.every(ms => ms === CALM_FRAME_MS)).toBe(true)
 })
 
 test('the area polls the agents before its first frame, then every AGENT_POLL_MS while it knows of agents', async () => {
