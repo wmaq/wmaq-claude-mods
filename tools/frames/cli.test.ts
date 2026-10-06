@@ -156,3 +156,26 @@ test("band takes --width, the width setting; the band's own --columns may be wid
   assert.equal(main(['band', '--stage', 'plan', '--columns', '200', '--width', '80', '--count', '1', '--out', out]).width, (200 + 2) * 8)
   assert.throws(() => main(['band', '--stage', 'plan', '--width', '30', '--out', out]), /--width must be a whole number from 48 to 512, or full, not "30"/)
 })
+
+test('--calm draws calm mode: the same frame over time; the demos refuse it', () => {
+  const out = join(dir, 'calm.png')
+  for (const args of [['scene', 'dice'], ['idle', 'nyan'], ['waiting', '--agents', 'fable,opus'], ['band', '--stage', 'plan', '--working'], ['turn', '--stage', 'develop']]) {
+    assert.deepEqual([...readFileSync(main([...args, '--calm', '--count', '1', '--out', out]).path).subarray(0, 4)], SIGNATURE)
+  }
+  assert.throws(() => main(['waiting', '--demo', '--calm']), /the waiting demo moves by design/)
+  assert.throws(() => main(['demo-work', '--calm']), /unknown option --calm for demo-work/)
+})
+
+test('stills draws one frame per picture, captioned with its id; it needs a kind', () => {
+  const out = join(dir, 'stills.png')
+  // 39 scenes, 2 to a row (120 columns is wide): 20 rows of tiles.
+  assert.deepEqual(main(['stills', 'scenes', '--out', out]), { path: out, width: (2 * (120 + 1) + 1) * 8, height: (20 * (9 + 1 + 1) + 1) * 16 })
+  // 5 routines, the celebration, 10 show-offs and the doze; 4 waiting scenes; at 48 columns, 4 to a row.
+  assert.equal(main(['stills', 'idle', '--columns', '48', '--out', out]).height, (5 * (9 + 1 + 1) + 1) * 16)
+  assert.equal(main(['stills', 'waiting', '--columns', '48', '--rows', '7', '--out', out]).height, (1 * (7 + 1 + 1) + 1) * 16)
+  // A list of widths: every picture at each.
+  assert.equal(main(['stills', 'waiting', '--columns', '48,64', '--out', out]).height, (2 * (9 + 1 + 1) + 1) * 16)
+  assert.throws(() => main(['stills']), /stills needs a kind: scenes, idle, waiting/)
+  assert.throws(() => main(['stills', 'props']), /unknown stills kind "props"/)
+  assert.throws(() => main(['stills', 'scenes', '--calm']), /unknown option --calm for stills/)
+})

@@ -4,6 +4,7 @@
 //   npx -y tsx tools/frames/cli.ts idle classic --doze
 //   npx -y tsx tools/frames/cli.ts waiting --agents fable,sonnet --scene rowing
 //   npx -y tsx tools/frames/cli.ts band --stage plan --feature "frame tool" --agents opus
+//   npx -y tsx tools/frames/cli.ts stills scenes
 // See README.md beside this file for every option.
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
@@ -18,7 +19,7 @@ import { parseWorkflow } from '../../stage-toons/hooks/workflow'
 import { type Canvas, toRgba } from './grid'
 import { encodePng } from './png'
 import { contactSheet } from './sheet'
-import { bandFrames, idleFrames, sceneFrames, turnFrames, waitingFrames, workDemoFrames } from './sources'
+import { bandFrames, idleFrames, sceneFrames, STILL_KINDS, stillFrames, turnFrames, waitingFrames, workDemoFrames } from './sources'
 
 const USAGE = `usage: npx -y tsx tools/frames/cli.ts <what> [options]
   scene <id> [--reaction advance|failure] [--auditing]
@@ -31,22 +32,24 @@ const USAGE = `usage: npx -y tsx tools/frames/cli.ts <what> [options]
        [--tasks done/total]
   turn [--stage id] [--scene id] [--idle routine] [--start MS] [--end MS]
   demo-work [--stage id] [--scene id] [--seconds N]
+  stills scenes|idle|waiting   every picture's still in calm mode, one frame each
+calm mode: --calm on scene, idle, waiting (not --demo), band and turn
 the area (all but band): --columns N[,N...] (120; scene's --width is another name) --rows N (7 to 9; 9)
 common: --from MS (0) --every MS (250; 500 for turn) --count N (16; 4 with several --columns)
         --columns-per-row N (4; 2 for frames over 64 columns; a row per width with several --columns)
         --scale N (1) --out file.png`
 
-const FLAGS = new Set(['auditing', 'demo', 'doze', 'working'])
+const FLAGS = new Set(['auditing', 'calm', 'demo', 'doze', 'working'])
 
 // The options each command takes, beside the common ones: anything else is
 // an error, so a mistyped option is not drawn with its default.
 const COMMON = ['from', 'every', 'count', 'columns-per-row', 'scale', 'out']
 const OPTIONS: Record<string, readonly string[]> = {
-  scene: ['reaction', 'auditing', 'width', 'columns', 'rows', 'mode', 'phase', 'what', 'say'],
-  idle: ['doze', 'columns', 'rows'],
-  waiting: ['agents', 'columns', 'rows', 'scene', 'demo'],
-  band: ['stage', 'feature', 'message', 'columns', 'max-rows', 'width', 'agents', 'auditing', 'working', 'scene', 'workflow', 'idle', 'tasks'],
-  turn: ['stage', 'scene', 'idle', 'start', 'end', 'columns', 'rows'],
+  scene: ['reaction', 'auditing', 'width', 'columns', 'rows', 'mode', 'phase', 'what', 'say', 'calm'],
+  idle: ['doze', 'columns', 'rows', 'calm'],
+  waiting: ['agents', 'columns', 'rows', 'scene', 'demo', 'calm'],
+  band: ['stage', 'feature', 'message', 'columns', 'max-rows', 'width', 'agents', 'auditing', 'working', 'scene', 'workflow', 'idle', 'tasks', 'calm'],
+  turn: ['stage', 'scene', 'idle', 'start', 'end', 'columns', 'rows', 'calm'],
   'demo-work': ['stage', 'scene', 'seconds', 'workflow', 'columns', 'rows'],
 }
 // The area's size when not given: the width setting's default, and the
@@ -185,6 +188,7 @@ function render(args: Args, times: readonly number[], columns: number): { frames
           phase: opts.get('phase'),
           what: opts.get('what'),
           say: opts.get('say'),
+          calm: opts.has('calm'),
         },
         times,
         size,
@@ -193,13 +197,13 @@ function render(args: Args, times: readonly number[], columns: number): { frames
       return { frames, name: `frames-scene-${id}.png` }
     }
     case 'idle':
-      return { frames: idleFrames(need(), opts.has('doze'), times, size), name: `frames-idle-${id?.replace(/[:*]/g, '-')}${opts.has('doze') ? '-doze' : ''}.png` }
+      return { frames: idleFrames(need(), opts.has('doze'), times, size, opts.has('calm')), name: `frames-idle-${id?.replace(/[:*]/g, '-')}${opts.has('doze') ? '-doze' : ''}.png` }
     case 'waiting': {
       const agents = listOpt(opts, 'agents')
       const scene = opts.get('scene') ?? FALLBACK_WAITING
       const isDemo = opts.has('demo')
       if (isDemo && opts.has('agents')) throw new Error(`waiting takes --agents or --demo, not both\n${USAGE}`)
-      const frames = waitingFrames(isDemo ? 'demo' : agents, times, size, scene)
+      const frames = waitingFrames(isDemo ? 'demo' : agents, times, size, scene, opts.has('calm'))
 
       return { frames, name: `frames-waiting-${scene}-${isDemo ? 'demo' : agents.join('-')}.png` }
     }
@@ -221,6 +225,7 @@ function render(args: Args, times: readonly number[], columns: number): { frames
           workflow: workflowOpt(opts),
           idle: opts.get('idle'),
           tasks: tasksOpt(opts),
+          calm: opts.has('calm'),
         },
         times,
       )
@@ -235,6 +240,7 @@ function render(args: Args, times: readonly number[], columns: number): { frames
           idle: opts.get('idle'),
           start: opts.has('start') ? numberOpt(opts, 'start', 0) : undefined,
           end: opts.has('end') ? numberOpt(opts, 'end', 0) : undefined,
+          calm: opts.has('calm'),
         },
         times,
         size,
@@ -261,8 +267,31 @@ function render(args: Args, times: readonly number[], columns: number): { frames
   }
 }
 
+// stills <kind>: one frame per picture, at each width asked for (a row of
+// pictures per width with a list).
+function stills(args: Args): { path: string; width: number; height: number } {
+  const { id: kind, opts } = args
+  if (kind === undefined) throw new Error(`stills needs a kind: ${STILL_KINDS.join(', ')}\n${USAGE}`)
+  for (const name of opts.keys()) {
+    if (!['columns', 'rows', 'columns-per-row', 'scale', 'out'].includes(name)) throw new Error(`unknown option --${name} for stills\n${USAGE}`)
+  }
+  const widths = columnsOpt(opts, 'stills')
+  const isList = widths.length > 1
+  const drawn = widths.map(columns => ({ columns, ...stillFrames(kind, { columns, rows: rowsOpt(opts) }) }))
+  const frames = drawn.flatMap(d => d.frames)
+  const captions = drawn.flatMap(d => d.captions.map(c => (isList ? `${c}, ${d.columns} cols` : c)))
+  const isWide = Math.max(...frames.map(f => f.cols)) > 64
+  const sheet = contactSheet(frames, captions, numberOpt(opts, 'columns-per-row', isWide ? 2 : 4, 1))
+  const { width, height, rgba } = toRgba(sheet, numberOpt(opts, 'scale', 1, 1))
+  const path = opts.get('out') ?? `frames-stills-${kind}.png`
+  writeFileSync(path, encodePng(width, height, rgba))
+
+  return { path, width, height }
+}
+
 export function main(argv: readonly string[]): { path: string; width: number; height: number } {
   const args = parseArgs(argv)
+  if (args.what === 'stills') return stills(args)
   // The work demo's defaults: the middle of each of its 14 steps.
   const isWork = args.what === 'demo-work'
   const seconds = isWork && args.opts.has('seconds') ? numberOpt(args.opts, 'seconds', 3, 1) : 3

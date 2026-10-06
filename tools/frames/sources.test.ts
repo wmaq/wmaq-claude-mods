@@ -6,7 +6,9 @@ import { STAGE_SIZE } from '../../stage-toons/hooks/scene'
 import { HELPER_COLORS } from '../../stage-toons/hooks/waiting'
 import { WATER } from '../../stage-toons/hooks/waiting/rowing'
 import { CELL_H, CELL_W, type Canvas } from './grid'
-import { bandFrames, idleFrames, sceneFrames, turnFrames, waitingFrames, workDemoFrames } from './sources'
+import { SCENES } from '../../stage-toons/hooks/scenes'
+import { WAITING_SCENE_IDS } from '../../stage-toons/hooks/waiting/deal'
+import { bandFrames, idleFrames, sceneFrames, stillFrames, turnFrames, waitingFrames, workDemoFrames } from './sources'
 
 const has = (c: Canvas, colour: number) => c.px.includes(colour)
 
@@ -171,4 +173,26 @@ test("the band's area follows the width setting and the band's rows", () => {
   for (let row = 2; row < narrowed!.rows; row++) for (let col = 80; col < 200; col++) assert.ok(!inCell(narrowed!, col, row, hex('#D97757')))
   const [full] = bandFrames({ stage: 'plan', columns: 600, width: 'full' }, [0])
   assert.equal(full!.cols, 600)
+})
+
+test('calm mode draws the same frame over time, but for a change: a turn dissolves from the idle still to the scene\'s and back', () => {
+  const same = (frames: Canvas[]) => frames.every(f => f.px.every((p, i) => p === frames[0]!.px[i]))
+  assert.ok(same(sceneFrames('bricklaying', { calm: true }, [0, 1000, 5000, 9000], STAGE_SIZE)))
+  assert.ok(same(idleFrames('yo-yo', false, [0, 1000, 3000], STAGE_SIZE, true)))
+  // The second helper sits down at 500 ms: the picture dissolves to it at the next draw (1000), then holds.
+  assert.ok(same(waitingFrames(['fable', 'opus'], [1000, 6000, 9000, 12000], STAGE_SIZE, 'rowing', true).slice(1)))
+  assert.ok(!same(sceneFrames('bricklaying', {}, [0, 1000], STAGE_SIZE)))
+  const turn = turnFrames({ stage: 'develop', calm: true }, [500, 1250, 3000, 4000, 5250, 6000], STAGE_SIZE)
+  assert.ok(same([turn[2]!, turn[3]!]))
+  assert.ok(!same([turn[0]!, turn[1]!]))
+  assert.ok(!same([turn[1]!, turn[2]!]))
+  assert.ok(!same([turn[3]!, turn[4]!]))
+})
+
+test("stills draws every picture's still, captioned with its id", () => {
+  assert.deepEqual(stillFrames('scenes').captions, Object.keys(SCENES))
+  assert.deepEqual(stillFrames('waiting').captions, [...WAITING_SCENE_IDS])
+  const idle = stillFrames('idle').captions
+  for (const id of ['classic', 'nyan', 'coffee', 'reading', 'yo-yo', 'celebrate', 'show-off:roadmap', 'show-off:cleanup', 'doze']) assert.ok(idle.includes(id), id)
+  assert.throws(() => stillFrames('props'), /unknown stills kind "props"/)
 })

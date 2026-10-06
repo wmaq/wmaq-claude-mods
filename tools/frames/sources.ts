@@ -13,7 +13,7 @@ import { AREA_ROWS, areaSize, BAR_TONES, bandLayout, bandMode, type BandSite, ty
 import { WORK_DEMO_SECONDS } from '../../stage-toons/hooks/demo'
 import { createDirector, react, withAuditing } from '../../stage-toons/hooks/director'
 import { areaCells } from '../../stage-toons/hooks/frames'
-import { CELEBRATE, DOZE_MS, IDLE_IDS, routineOf, SHOW_OFF_PREFIX } from '../../stage-toons/hooks/idle'
+import { CELEBRATE, DOZE_MS, IDLE_IDS, routineOf, SHOW_OFF_PREFIX, showOffId } from '../../stage-toons/hooks/idle'
 import { createMod, type Mod } from '../../stage-toons/hooks/mod'
 import { type Phase, PHASES } from '../../stage-toons/hooks/phase'
 import { hex } from '../../stage-toons/hooks/pixels'
@@ -49,7 +49,7 @@ function cellsCanvas(cells: string, size: AreaSize): Canvas {
 }
 
 // mode, phase (with what) and say put the activity layer over the scene,
-// from time 0 and held for the sheet.
+// from time 0 and held for the sheet; calm draws it in calm mode.
 export type SceneOptions = {
   reaction?: 'advance' | 'failure'
   auditing?: boolean
@@ -57,6 +57,7 @@ export type SceneOptions = {
   phase?: string
   what?: string
   say?: string
+  calm?: boolean
 }
 export const MODES: readonly string[] = ['thinking', 'responding']
 
@@ -78,6 +79,7 @@ export function sceneFrames(id: string, opts: SceneOptions, times: readonly numb
   if (opts.mode !== undefined) known('mode', opts.mode, MODES)
   if (opts.phase !== undefined) known('phase', opts.phase, PHASES)
   const mod = workingMod(id, opts.auditing ?? false, opts.reaction)
+  mod.isCalm = opts.calm ?? false
   if (opts.mode !== undefined) mod.activity = withMode(mod.activity, opts.mode as 'thinking' | 'responding')
   if (opts.phase !== undefined) mod.activity = toolStarted(mod.activity, 'tu-sheet', opts.phase as Phase, opts.what ?? '')
   const say = opts.say
@@ -88,12 +90,14 @@ export function sceneFrames(id: string, opts: SceneOptions, times: readonly numb
 }
 
 // The idle Clawd in the band's area, the idle period starting at time 0;
-// with doze, from the doze on (still once DEEP_SLEEP_MS has passed).
-export function idleFrames(routine: string, doze: boolean, times: readonly number[], size: AreaSize = STAGE_SIZE): Canvas[] {
+// with doze, from the doze on (still once DEEP_SLEEP_MS has passed); calm,
+// in calm mode.
+export function idleFrames(routine: string, doze: boolean, times: readonly number[], size: AreaSize = STAGE_SIZE, calm = false): Canvas[] {
   knownRoutine(routine)
   const mod = createMod()
   mod.idle = routine
   mod.idleSince = 0
+  mod.isCalm = calm
 
   return times.map(t => cellsCanvas(areaCells(mod, size, doze ? DOZE_MS + t : t, quiet) ?? '', size))
 }
@@ -151,11 +155,14 @@ export function workDemoFrames(opts: WorkDemoOptions, times: readonly number[], 
 }
 
 // The waiting toon with these agents at work, or its demo ('demo': the
-// script /stage demo waiting plays, from time 0), at a waiting scene.
-export function waitingFrames(agents: readonly string[] | 'demo', times: readonly number[], size: AreaSize = STAGE_SIZE, scene: string = FALLBACK_WAITING): Canvas[] {
+// script /stage demo waiting plays, from time 0), at a waiting scene;
+// calm, in calm mode (not the demo, which moves by design).
+export function waitingFrames(agents: readonly string[] | 'demo', times: readonly number[], size: AreaSize = STAGE_SIZE, scene: string = FALLBACK_WAITING, calm = false): Canvas[] {
   known('waiting scene', scene, WAITING_SCENE_IDS)
   if (agents !== 'demo' && agents.length === 0) throw new Error('waiting needs --agents (for example --agents fable,sonnet) or --demo')
+  if (agents === 'demo' && calm) throw new Error('the waiting demo moves by design: no --calm with --demo')
   const mod = waitingMod(agents === 'demo' ? [] : agents, scene as WaitingSceneId)
+  mod.isCalm = calm
   if (agents === 'demo') mod.demo = { kind: 'waiting', at: 0, scene: scene as WaitingSceneId, columns: size.columns }
 
   return areaFrames(mod, size, times).map(cells => cellsCanvas(cells, size))
@@ -180,6 +187,8 @@ export type BandOptions = {
   idle?: string
   // Claude's task list's count on the bar.
   tasks?: TaskCount
+  // The area in calm mode.
+  calm?: boolean
 }
 
 const styleOf = (span: Span): TextStyle => {
@@ -219,12 +228,17 @@ export function bandFrames(opts: BandOptions, times: readonly number[]): Canvas[
   const size = areaSize(site, opts.width ?? DEFAULT_WIDTH, null)
   const agents = opts.agents ?? []
   let area: string[] = []
+  const calm = (mod: Mod): Mod => {
+    mod.isCalm = opts.calm ?? false
+
+    return mod
+  }
   if (hasArea) {
     if (opts.working) {
-      area = areaFrames(workingMod(opts.scene ?? stageOf(w, opts.stage)?.scenes[0] ?? FALLBACK_SCENE, opts.auditing ?? false), size, times)
-    } else if (agents.length > 0) area = areaFrames(waitingMod(agents), size, times)
+      area = areaFrames(calm(workingMod(opts.scene ?? stageOf(w, opts.stage)?.scenes[0] ?? FALLBACK_SCENE, opts.auditing ?? false)), size, times)
+    } else if (agents.length > 0) area = areaFrames(calm(waitingMod(agents)), size, times)
     else {
-      const mod = createMod()
+      const mod = calm(createMod())
       mod.idleSince = 0
       if (opts.idle !== undefined) mod.idle = opts.idle
       area = times.map(t => areaCells(mod, size, t, quiet) ?? '')
@@ -243,7 +257,7 @@ export function bandFrames(opts: BandOptions, times: readonly number[]): Canvas[
   })
 }
 
-export type TurnOptions = { stage?: string; scene?: string; idle?: string; start?: number; end?: number }
+export type TurnOptions = { stage?: string; scene?: string; idle?: string; start?: number; end?: number; calm?: boolean }
 
 // The area through one turn: the idle Clawd (classic, or the routine asked
 // for) until start, the stage's scene (its first, or the one asked for)
@@ -259,6 +273,7 @@ export function turnFrames(opts: TurnOptions, times: readonly number[], size: Ar
   if (end < start) throw new Error(`--end (${end}) is before --start (${start})`)
   const mod = createMod()
   mod.idleSince = 0
+  mod.isCalm = opts.calm ?? false
   if (opts.idle !== undefined) mod.idle = opts.idle
   mod.director = createDirector(opts.scene ?? (opts.stage === undefined ? undefined : stageOf(w, opts.stage)?.scenes[0]) ?? FALLBACK_SCENE, false)
   const at = (t: number) => {
@@ -278,4 +293,44 @@ export function turnFrames(opts: TurnOptions, times: readonly number[], size: Ar
 
     return cellsCanvas(at(t), size)
   })
+}
+
+// Every picture's still in calm mode, one frame each, captioned with its
+// id: the library's scenes ('scenes'); the idle routines, the celebration,
+// the doze and each default track stage's show-off ('idle'); the waiting
+// scenes with four helpers present ('waiting').
+export const STILL_KINDS: readonly string[] = ['scenes', 'idle', 'waiting']
+const STILL_HELPERS = ['fable', 'sonnet', 'opus', 'haiku']
+
+export function stillFrames(kind: string, size: AreaSize = STAGE_SIZE): { frames: Canvas[]; captions: string[] } {
+  known('stills kind', kind, STILL_KINDS)
+  const shots: [string, string][] = []
+  if (kind === 'scenes') {
+    for (const id of SCENE_IDS) {
+      const mod = workingMod(id, false)
+      mod.isCalm = true
+      shots.push([id, areaFrames(mod, size, [0])[0]!])
+    }
+  } else if (kind === 'idle') {
+    const routines = [...IDLE_IDS, CELEBRATE, ...DEFAULT_WORKFLOW.track.map(s => showOffId(s.id))]
+    for (const routine of routines) {
+      const mod = createMod()
+      mod.idle = routine
+      mod.isCalm = true
+      shots.push([routine, areaCells(mod, size, 0, quiet) ?? ''])
+    }
+    const mod = createMod()
+    mod.isCalm = true
+    shots.push(['doze', areaCells(mod, size, DOZE_MS, quiet) ?? ''])
+  } else {
+    for (const scene of WAITING_SCENE_IDS) {
+      // The helpers arrive half a second apart: drawn once all are there
+      // and the dissolve that brought the last one in is over.
+      const mod = waitingMod(STILL_HELPERS, scene)
+      mod.isCalm = true
+      shots.push([scene, areaFrames(mod, size, [2000, 3000]).at(-1)!])
+    }
+  }
+
+  return { frames: shots.map(([, cells]) => cellsCanvas(cells, size)), captions: shots.map(([id]) => id) }
 }
