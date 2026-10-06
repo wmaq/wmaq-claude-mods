@@ -61,3 +61,35 @@ export function countText(count: TaskCount): string {
 
   return count.done === count.total ? `${words} ✓` : words
 }
+
+const field = (value: unknown, key: string): unknown => (typeof value === 'object' && value !== null ? (value as Record<string, unknown>)[key] : undefined)
+
+// A task id as a result or the arguments give it: a string, or a number.
+const idOf = (value: unknown): string | undefined =>
+  typeof value === 'string' && value !== '' ? value : typeof value === 'number' && Number.isFinite(value) ? String(value) : undefined
+
+// The list after a call of the main conversation that did not fail, read
+// from its arguments and its result (the tool's output, whose shape the
+// engine's types don't give, so each field is checked): TaskCreate adds its
+// task (the result's task.id, or a "#3" in a text result), a TaskUpdate
+// sets the status it changed to (or the one it asked for) unless its
+// result says it failed, TodoWrite gives the whole list (the result's, or
+// the one it sent). Any other call, or a result that names no task, leaves
+// the list as it was.
+export function afterTaskCall(list: TaskList, tool: string, args: Record<string, unknown>, output: unknown): TaskList {
+  if (tool === 'TaskCreate') {
+    const id = idOf(field(field(output, 'task'), 'id')) ?? (typeof output === 'string' ? /#(\d+)/.exec(output)?.[1] : undefined)
+
+    return id === undefined ? list : taskCreated(list, id)
+  }
+  if (tool === 'TaskUpdate') {
+    if (field(output, 'success') === false) return list
+    const id = idOf(field(output, 'taskId')) ?? idOf(args.taskId)
+    if (id === undefined) return list
+
+    return taskUpdated(list, id, field(field(output, 'statusChange'), 'to') ?? args.status)
+  }
+  if (tool === 'TodoWrite') return todosWritten(field(output, 'newTodos') ?? args.todos)
+
+  return list
+}

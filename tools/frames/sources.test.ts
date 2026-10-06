@@ -51,6 +51,12 @@ test("the band at Plan shows the bar's done colour at its first step, with the a
   assert.equal(frame!.rows, 2 + 7)
 })
 
+test("the band's bar shows Claude's tasks when given", () => {
+  const [plain] = bandFrames({ stage: 'plan', columns: 100 }, [0])
+  const [tasks] = bandFrames({ stage: 'plan', columns: 100, tasks: { done: 3, total: 8 } }, [0])
+  assert.notDeepEqual(tasks!.px, plain!.px)
+})
+
 test("a working band draws the stage's scene under the bar; agents and the idle routine then change nothing", () => {
   const [working] = bandFrames({ stage: 'plan', columns: 100, working: true }, [500])
   assert.equal(working!.rows, 2 + 7)

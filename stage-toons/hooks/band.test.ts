@@ -165,3 +165,20 @@ test('in Done the bar reads ✓ Done with the feature, and the message under it'
   // Narrow: one line.
   expect(bandLayout(W, done, false, 40).map(text)).toEqual(['✓ Done — Merged and done'])
 })
+
+test("the tasks' count follows the position; the feature goes before it when room runs out", () => {
+  const tasks = { done: 3, total: 8 }
+  expect(text(bandLayout(W, plan, false, 100, undefined, tasks)[0])).toBe(' ●━●━●━●━◉─○─○─○─○─○  5/10 Plan · 3 of 8 tasks · stage-toons')
+  expect(text(bandLayout(W, plan, false, 60, undefined, tasks)[0])).toBe(' ●━●━●━●━◉─○─○─○─○─○  5/10 Plan · 3 of 8 tasks')
+  expect(text(bandLayout(W, plan, false, 50, undefined, { done: 8, total: 8 })[0])).toBe(' ●━●━●━●━◉─○─○─○─○─○  5/10 Plan · 8 of 8 tasks ✓')
+  // The Fable tag goes before either.
+  expect(text(bandLayout(W, plan, true, 70, undefined, tasks)[0])).toBe(' ●━●━●━●━◉─○─○─○─○─○  5/10 Plan · 3 of 8 tasks · stage-toons')
+})
+
+test("the tasks' count shows untracked too, but not on one line or a side stage", () => {
+  const tasks = { done: 1, total: 2 }
+  expect(text(bandLayout(W, freshProgress(0), false, 100, undefined, tasks)[0])).toBe(' ○─○─○─○─○─○─○─○─○─○  Not tracked yet · 1 of 2 tasks')
+  expect(bandLayout(W, plan, false, 49, undefined, tasks).map(text)).toEqual(['5/10 Plan — Writing the implementation plan'])
+  const side = applyMove(W, plan, { stage: 'debugging', message: 'Hunting', by: 'claude', at: 2 })
+  expect(text(bandLayout(W, side, false, 100, undefined, tasks)[0])).toBe(' Debugging · stage-toons   ↩ 5/10 Plan')
+})

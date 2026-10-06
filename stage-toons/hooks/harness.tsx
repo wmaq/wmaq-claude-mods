@@ -63,12 +63,15 @@ export type World = {
   isRegisterBroken: boolean
   // How many times the store was read.
   storeReads: number
+  // A test's own answer to a tool call (the task tools' results, a call
+  // held while it runs); undefined passes to the answers below.
+  answerTool: (call: Record<string, unknown>) => unknown
 }
 
 // The store starts with the welcome given (a test that wants the first
 // session's toast presets welcomed: undefined).
 export function engine(on: On, preset: { store?: Record<string, unknown> } = {}) {
-  const world: World = { store: { welcomed: true, ...preset.store }, isStoreBroken: false, isBlitRefused: false, blits: [], invalidations: 0, commands: [], toasts: [], files: {}, isFsBroken: false, schemas: [], agents: [], spawnModel: 'claude-sonnet-5-5', spawned: 0, cwd: START.cwd, prompts: [], isBashFailing: true, isCwdBroken: false, isExistsBroken: false, isRegisterBroken: false, storeReads: 0 }
+  const world: World = { store: { welcomed: true, ...preset.store }, isStoreBroken: false, isBlitRefused: false, blits: [], invalidations: 0, commands: [], toasts: [], files: {}, isFsBroken: false, schemas: [], agents: [], spawnModel: 'claude-sonnet-5-5', spawned: 0, cwd: START.cwd, prompts: [], isBashFailing: true, isCwdBroken: false, isExistsBroken: false, isRegisterBroken: false, storeReads: 0, answerTool: () => undefined }
   const clock = mock.clock(on, { now: NOW })
   const guard = () => {
     if (world.isStoreBroken) throw new Error('store unavailable')
@@ -178,7 +181,12 @@ export function engine(on: On, preset: { store?: Record<string, unknown> } = {})
 
     return <Text>engine</Text>
   })
-  on('tool.call', ($, e) => (e.tool === 'Bash' && world.isBashFailing ? { result: 'boom', text: 'boom', isError: true } : e.tool === 'Read' ? { result: 'ok', text: 'ok', context: ['read note'] } : { result: 'ok', text: 'ok' }) as never)
+  on('tool.call', async ($, e) => {
+    const own = await world.answerTool(e as unknown as Record<string, unknown>)
+    if (own !== undefined) return own as never
+
+    return (e.tool === 'Bash' && world.isBashFailing ? { result: 'boom', text: 'boom', isError: true } : e.tool === 'Read' ? { result: 'ok', text: 'ok', context: ['read note'] } : { result: 'ok', text: 'ok' }) as never
+  })
 
   return { world, clock }
 }

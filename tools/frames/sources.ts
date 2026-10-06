@@ -17,6 +17,7 @@ import { hex } from '../../stage-toons/hooks/pixels'
 import { FALLBACK_SCENE, STAGE_W } from '../../stage-toons/hooks/scene'
 import { SCENES } from '../../stage-toons/hooks/scenes'
 import { applyMove, freshProgress } from '../../stage-toons/hooks/stages'
+import type { TaskCount } from '../../stage-toons/hooks/tasks'
 import { TOON_ROWS } from '../../stage-toons/hooks/toon'
 import { DEFAULT_WORKFLOW, stageIds, stageOf } from '../../stage-toons/hooks/workflow'
 import { said, toolStarted, withMode } from '../../stage-toons/hooks/work'
@@ -143,6 +144,8 @@ export type BandOptions = {
   workflow?: Workflow
   // The idle routine under the bar (classic when not given).
   idle?: string
+  // Claude's task list's count on the bar.
+  tasks?: TaskCount
 }
 
 const styleOf = (span: Span): TextStyle => {
@@ -168,7 +171,7 @@ export function bandFrames(opts: BandOptions, times: readonly number[]): Canvas[
     by: 'claude',
     at: 0,
   })
-  const lines = bandLayout(w, progress, opts.auditing ?? false, columns, undefined)
+  const lines = bandLayout(w, progress, opts.auditing ?? false, columns, undefined, opts.tasks ?? null)
   const site: BandSite = {
     surface: 'terminal',
     hasSurvey: false,

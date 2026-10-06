@@ -24,13 +24,16 @@ import { createMod, endDemo, type Mod, queued, reseat } from './mod'
 import { animate, type Ports } from './paint'
 import { dealCard } from './deck'
 import { addCost, type Cost, costText, creditAt, currentEntry, logText, NO_COST, timeText, tokensOf } from './history'
+import { momentOf, phaseOf, whatOf } from './phase'
 import { type KV, loadProgress, PRUNE_EVERY_MS, saveProgress, staleKeys, storeKey, validate } from './progress'
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolSchema, workflowText } from './prompt'
 import type { SceneId } from './scene'
 import { STAGE_SCENES } from './scenes'
 import { applyMove, describe, freshProgress, isAdvance, reconcile, stageLabel } from './stages'
+import { afterTaskCall, atTurnStart, countOf, isAllDone } from './tasks'
 import { TOON_ROWS } from './toon'
 import { isDone } from './track'
+import { createActivity, lineOf, said, toolEnded, toolStarted, withMode } from './work'
 import { DEFAULT_WORKFLOW, parseWorkflow, sameWorkflow, stageIds, stageList, stageOf, UNTRACKED_SCENE, withScenes, workflowJson } from './workflow'
 
 const HIDDEN_KEY = 'hidden'
@@ -76,6 +79,8 @@ const kindsAtom = atom({ plugin: 'stage-toons', key: 'agentKinds' } as const, {}
 // The session's cost already credited to the history (null: not known yet):
 // kept across reloads, so dollars are neither lost nor counted twice.
 const usdAtom = atom({ plugin: 'stage-toons', key: 'usdCredited' } as const, null)
+// Claude's task list, as the bar counts it: kept across reloads.
+const tasksAtom = atom({ plugin: 'stage-toons', key: 'tasks' } as const, {})
 
 // A queued step of the mod's own (an automatic move, a turn's credit) that
 // must not fail the call or event it rides on: a failure goes to the debug log.
@@ -589,6 +594,21 @@ async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promis
   return { text: lines.join('\n'), context: [`[stage-toons] The workflow changed: ${stageList(mod.workflow)}. Now: ${describe(mod.workflow, progress)}`] }
 }
 
+// A call of the main conversation's that ended: the line it says (a test
+// run, a commit, a push), and the task list it moved, the bar redrawn with
+// the count and "All done!" said when the last task is done.
+async function heardCall($: EngineInterface, mod: Mod, args: ToolArgs, output: unknown, isError: boolean, now: number) {
+  const moment = momentOf(String(args.tool), args, isError)
+  if (moment !== null) mod.activity = said(mod.activity, lineOf(moment, now), now)
+  if (isError) return
+  const before = await read($, tasksAtom)
+  const after = afterTaskCall(before, String(args.tool), args, output)
+  if (after === before) return
+  await update($, tasksAtom, () => after)
+  $.ui.invalidate('ui.render')
+  if (isAllDone(after) && !isAllDone(before)) mod.activity = said(mod.activity, lineOf('all-done', now), now)
+}
+
 export const register: Register = on => {
   const mod = createMod()
 
@@ -711,13 +731,33 @@ export const register: Register = on => {
     const now = await $.clock.now()
     mod.workSince = now
     mod.workEntry = currentEntry(await current($, now))
+    // A new turn: no tools running, no line said; the spinner's mode stays.
+    mod.activity = { ...createActivity(), mode: mod.activity.mode }
+    // A task list all done showed through the turn it finished in.
+    const tasks = await read($, tasksAtom)
+    if (atTurnStart(tasks) !== tasks) {
+      await update($, tasksAtom, atTurnStart)
+      $.ui.invalidate('ui.render')
+    }
 
     return next(e)
   })
 
   on('tool.call', async ($, e, next) => {
     if (e.tool === mod.toolName) return queued(mod, () => setStage($, mod, argsOf(e)))
-    const result = await next(e)
+    // The model's own calls in the main conversation show their phase's
+    // badge while they run.
+    const isModelCall = e.agentId === undefined && next.origin.plugin === 'engine'
+    const phase = isModelCall ? phaseOf(e.tool, argsOf(e), mod.toolName) : null
+    if (phase !== null) mod.activity = toolStarted(mod.activity, e.tool_use_id, phase, whatOf(e.tool, argsOf(e)))
+    let result: Awaited<ReturnType<typeof next>>
+    try {
+      result = await next(e)
+    } finally {
+      // The clock fails only as the plugin unloads: the call's own outcome stands.
+      const end = phase === null ? null : await $.clock.now().catch(() => null)
+      if (end !== null) mod.activity = toolEnded(mod.activity, e.tool_use_id, end)
+    }
     if (e.agentId !== undefined || result.deny !== undefined) return result
     if (result.isError === true) {
       const now = await $.clock.now()
@@ -729,6 +769,8 @@ export const register: Register = on => {
     // Only the model's own calls (the engine's dispatch) move the stage and
     // carry notes: a plugin's $.tool.call result reaches no model.
     if (next.origin.plugin !== 'engine') return result
+    // Never at the cost of the call's result: a failure goes to the debug log.
+    await settle($, 'hearing a tool call', heardCall($, mod, argsOf(e), result.result, result.isError === true, await $.clock.now()))
     const kind = SIGNAL_KINDS[e.tool]
     if (result.isError !== true && kind !== undefined && mod.isAuto && hasRules(mod.workflow, kind)) {
       const signal = await signalOf($, mod, argsOf(e))
@@ -767,7 +809,7 @@ export const register: Register = on => {
     if (cmd.kind === 'demo' || cmd.kind === 'demo-idle' || cmd.kind === 'demo-waiting') {
       const { demo, label } = demoFor(cmd, mod.workflow, now)
       // The bar's lines with the demo's line under it, at the band's width.
-      const barLines = bandLayout(mod.workflow, before, false, mod.lastBand?.columns ?? 100, 'demo').length
+      const barLines = bandLayout(mod.workflow, before, false, mod.lastBand?.columns ?? 100, 'demo', countOf(await read($, tasksAtom))).length
       const text = startDemo(mod, demo, label, now, await read($, hiddenAtom), barLines)
       // The band grows to hold it.
       if (mod.demo) $.ui.invalidate('ui.render')
@@ -912,6 +954,15 @@ export const register: Register = on => {
     return next(e)
   })
 
+  // The main conversation's spinner: its mode (thinking, responding, ...)
+  // is what Clawd's layer shows. The engine's spinner draws as it does. A
+  // background agent's row has its own, whose requestId is the agent's id.
+  on('ui.render', { component: 'Spinner' }, async ($, e, next) => {
+    if (e.requestId === undefined || !mod.roster.has(e.requestId)) mod.activity = withMode(mod.activity, e.props.mode)
+
+    return next(e)
+  })
+
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const now = await $.clock.now()
     if (mod.demo && !demoStep(mod.demo, now)) mod.demo = null
@@ -926,6 +977,8 @@ export const register: Register = on => {
       mod.isBandWorking = false
       mod.idleSince = now
       mod.idle = mod.nextIdle
+      // The scene's picture keeps the layer it had through its dissolve.
+      mod.activity = createActivity()
     }
     const progress = await read($, progressAtom)
     const columns = e.props.bodyColumns
@@ -935,7 +988,8 @@ export const register: Register = on => {
     if (idleFrameOfDemo) mod.demoLineIndex = idleFrameOfDemo.index
     const demoText =
       sceneFrame && mod.demo ? demoLine(sceneFrame, mod.demo, mod.workflow) : idleFrameOfDemo ? idleDemoLine(idleFrameOfDemo) : mod.demo?.kind === 'waiting' ? WAITING_DEMO_LINE : undefined
-    const lines = progress === null ? [] : bandLayout(mod.workflow, progress, await read($, auditingAtom), columns, demoText)
+    const tasks = countOf(await read($, tasksAtom))
+    const lines = progress === null ? [] : bandLayout(mod.workflow, progress, await read($, auditingAtom), columns, demoText, tasks)
     const site: BandSite = {
       surface: e.surface,
       hasSurvey: e.props.hasSurvey,

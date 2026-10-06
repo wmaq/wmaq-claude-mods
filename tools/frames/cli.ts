@@ -24,6 +24,7 @@ const USAGE = `usage: npx -y tsx tools/frames/cli.ts <what> [options]
   waiting --agents fable,sonnet,... [--columns N]
   band --stage <id> [--feature F] [--message M] [--columns N] [--max-rows N]
        [--agents a,b] [--auditing] [--working] [--scene id] [--workflow file.json] [--idle routine]
+       [--tasks done/total]
   turn [--stage id] [--scene id] [--idle routine] [--start MS] [--end MS] [--columns N]
 common: --from MS (0) --every MS (250; 500 for turn) --count N (16) --columns-per-row N (4)
         --scale N (1) --out file.png`
@@ -37,7 +38,7 @@ const OPTIONS: Record<string, readonly string[]> = {
   scene: ['reaction', 'auditing', 'width', 'mode', 'phase', 'what', 'say'],
   idle: ['doze'],
   waiting: ['agents', 'columns'],
-  band: ['stage', 'feature', 'message', 'columns', 'max-rows', 'agents', 'auditing', 'working', 'scene', 'workflow', 'idle'],
+  band: ['stage', 'feature', 'message', 'columns', 'max-rows', 'agents', 'auditing', 'working', 'scene', 'workflow', 'idle', 'tasks'],
   turn: ['stage', 'scene', 'idle', 'start', 'end', 'columns'],
 }
 
@@ -66,6 +67,16 @@ export function parseArgs(argv: readonly string[]): Args {
   }
 
   return { what, id, opts }
+}
+
+// --tasks 3/8: three of eight tasks done.
+function tasksOpt(opts: Map<string, string>): { done: number; total: number } | undefined {
+  const raw = opts.get('tasks')
+  if (raw === undefined) return undefined
+  const m = /^(\d+)\/(\d+)$/.exec(raw)
+  if (!m || Number(m[1]) > Number(m[2]) || Number(m[2]) === 0) throw new Error(`--tasks must be done/total, as 3/8, not "${raw}"`)
+
+  return { done: Number(m[1]), total: Number(m[2]) }
 }
 
 function numberOpt(opts: Map<string, string>, name: string, fallback: number, min = 0): number {
@@ -152,6 +163,7 @@ function render(args: Args, times: readonly number[]): { frames: Canvas[]; name:
           scene: opts.get('scene'),
           workflow: workflowOpt(opts),
           idle: opts.get('idle'),
+          tasks: tasksOpt(opts),
         },
         times,
       )
