@@ -144,23 +144,32 @@ test('light-bulbs: the wings\' bulbs are unlit, each on a wire from the area\'s 
   expect(at(draw('light-bulbs', 1, 120, 7), 52, 0)).toBe(C.darkGray)
 })
 
-test('scales: the weights in the wings stand on the floor, smallest to largest', () => {
-  const b = draw('scales', 1, 120)
-  // Each weight's top row, left to right along the first row of five.
-  const tops: number[] = []
-  let top: number | null = null
-  for (let x = 50; x < 92; x++) {
-    let y = 0
-    while (y < 14 && at(b, x, y) === EMPTY) y++
-    if (y < 14) top = Math.min(top ?? y, y)
-    else if (top !== null) {
-      tops.push(top)
-      top = null
+test('scales: a shelf in the wings holds sets of brass weights, smallest to largest, in every bay to the edge', () => {
+  const b = draw('scales', 1, 200)
+  // The plank on row 11 from 49 to the edge, an upright every 35 columns.
+  for (let x = 49; x < 200; x++) expect(at(b, x, 11)).not.toBe(EMPTY)
+  expect([49, 84, 119, 154, 189].map(x => at(b, x, 6))).toEqual(Array(5).fill(C.woodDark))
+  // In each bay, four weights stand on the plank, each taller than the one before.
+  for (const bay of [49, 84, 119, 154]) {
+    const tops: number[] = []
+    let top: number | null = null
+    for (let x = bay + 1; x < bay + 35; x++) {
+      let y = 0
+      while (y < 11 && at(b, x, y) === EMPTY) y++
+      if (y < 11) top = Math.min(top ?? y, y)
+      else if (top !== null) {
+        tops.push(top)
+        top = null
+      }
     }
+    expect(tops).toHaveLength(4)
+    for (let i = 1; i < tops.length; i++) expect(tops[i]!).toBeLessThan(tops[i - 1]!)
   }
-  expect(tops).toHaveLength(5)
-  for (let i = 1; i < tops.length; i++) expect(tops[i]!).toBeLessThan(tops[i - 1]!)
-  expect(at(b, 50, 13)).toBe(C.darkGray)
+  // Brass: gold in the light, brassDark in shade, standing right on the plank.
+  expect(at(b, 52, 10)).toBe(C.gold)
+  expect(at(b, 53, 10)).toBe(C.brassDark)
+  // Nothing on the shelf moves.
+  for (const t of [0, 2.6, 5.9]) expect(wings(draw('scales', t, 200))).toEqual(wings(b))
 })
 
 test('scroll and treasure-map: the scroll and the map unroll as far as ever on a wide area', () => {

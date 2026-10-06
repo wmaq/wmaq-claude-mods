@@ -30,6 +30,8 @@ export const C = {
   smoke: 0x9e9e9e,
   // A torch's beam in the dark: a dim yellow.
   beam: 0x5f5326,
+  // Brass in shade, under gold's light: the scales' spare weights.
+  brassDark: 0x8c6a2c,
   // The rainbow's orange and violet: well apart from Clawd's orange and
   // Fable's violet.
   orange: 0xff8c1a,

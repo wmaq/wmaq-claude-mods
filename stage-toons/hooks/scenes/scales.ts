@@ -1,12 +1,12 @@
 // Scales: a gold weight sits on one pan of a balance; Clawd adds blocks to
 // the other until the beam levels, a tick shows, and he takes them off.
-// On a wider area, spare weights stand in a row in the wings, smallest to
-// largest, the row starting over as it runs on.
+// On a wider area, a low shelf runs on to the edge, holding sets of spare
+// brass weights, smallest to largest.
 
-import { fillRect, type PixelBuffer, setPixel } from '../pixels'
+import { fillRect, type PixelBuffer, rightOf, setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene } from '../scene'
 import { blinking, C, lerp, still, TICK } from './kit'
-import { tileOn } from './wings'
+import { tileOn, WINGS_X } from './wings'
 
 const LOOP = 6
 const PIVOT = { x: 31, y: 5 }
@@ -37,21 +37,44 @@ function drawPan(b: PixelBuffer, x: number, y: number) {
   fillRect(b, x - 2, y + 4, 5, 1, C.darkGray)
 }
 
-// A weight of size 1 to 5 on the floor from column x: s + 2 wide and s + 1
-// tall, its top row a pixel in at each end, a knob on top.
-const weightW = (s: number) => s + 2
+// The wings: a wooden shelf unit, its plank on row 11 and an upright at
+// each bay's ends, holding sets of brass weights, smallest to largest, the
+// set starting over in each bay to the edge. A weight of size 1 to 4 is
+// 2s + 1 wide: a body s tall, lit gold down its left side and brass in
+// shade elsewhere, a neck and a knob on top (a size 1 is all knob).
+const SHELF_Y = 11
+const UPRIGHT_TOP = 4
+const weightW = (s: number) => 2 * s + 1
 function drawWeight(b: PixelBuffer, x: number, s: number) {
   const w = weightW(s)
-  fillRect(b, x, 13 - s + 1, w, s, C.darkGray)
-  fillRect(b, x + 1, 13 - s, w - 2, 1, C.gray)
-  setPixel(b, x + Math.floor(w / 2), 12 - s, C.gray)
+  const top = SHELF_Y - s
+  fillRect(b, x, top, w, s, C.brassDark)
+  fillRect(b, x, top, 1, s, C.gold)
+  if (s === 1) {
+    setPixel(b, x + 1, top - 1, C.gold)
+
+    return
+  }
+  setPixel(b, x + s, top - 1, C.brassDark)
+  fillRect(b, x + s - 1, top - 2, 3, 1, C.brassDark)
+  setPixel(b, x + s - 1, top - 2, C.gold)
 }
-const WEIGHT_SIZES = [1, 2, 3, 4, 5]
-const WEIGHT_GAP = 3
-// Where each weight of a row starts, from the row's start, and how far
-// the next row starts.
+const WEIGHT_SIZES = [1, 2, 3, 4]
+const WEIGHT_GAP = 2
+// Where each weight of a set starts, from the bay's first weight.
 const WEIGHT_AT = WEIGHT_SIZES.map((_, i) => WEIGHT_SIZES.slice(0, i).reduce((sum, s) => sum + weightW(s) + WEIGHT_GAP, 0))
-const WEIGHT_ROW = WEIGHT_SIZES.reduce((sum, s) => sum + weightW(s) + WEIGHT_GAP, 0)
+// A bay: a leg, two columns, the set, two columns, the next leg.
+const BAY_X = WINGS_X + 1
+const BAY = 1 + 2 + WEIGHT_AT.at(-1)! + weightW(WEIGHT_SIZES.at(-1)!) + 2
+
+function shelf(b: PixelBuffer) {
+  if (rightOf(b) <= BAY_X) return
+  fillRect(b, BAY_X, SHELF_Y, rightOf(b) - BAY_X, 1, C.wood)
+  tileOn(b, BAY_X, BAY, x => {
+    fillRect(b, x, UPRIGHT_TOP, 1, 14 - UPRIGHT_TOP, C.woodDark)
+    WEIGHT_SIZES.forEach((s, i) => drawWeight(b, x + 3 + WEIGHT_AT[i]!, s))
+  })
+}
 
 export const scales: Scene = {
   id: 'scales',
@@ -60,7 +83,7 @@ export const scales: Scene = {
   backdrop: b => {
     fillRect(b, PIVOT.x, PIVOT.y + 1, 1, 7, C.woodDark)
     fillRect(b, PIVOT.x - 3, 13, 7, 1, C.woodDark)
-    tileOn(b, 50, WEIGHT_ROW, x => WEIGHT_SIZES.forEach((s, i) => drawWeight(b, x + WEIGHT_AT[i]!, s)))
+    shelf(b)
   },
   actors: [
     {
