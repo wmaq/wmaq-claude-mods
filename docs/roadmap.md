@@ -117,10 +117,10 @@ Decided in the discussions:
   terminal gives the final look. The research's "Terminal" labels predate
   it.
 - **After phase 4 (2026-10-06): extending first, release last.** Scene
-  authoring and presets come first, so new scenes are easy to add; then
-  calm mode and scene polish, then Clawd DJ; a full review, cleanup and
-  community readiness close the plan, and then a release. Everything else
-  is parked.
+  authoring, presets and a public stage contract come first, so new
+  scenes and other mods are easy to add; then calm mode and scene polish,
+  then Clawd DJ; a full review, cleanup and community readiness close the
+  plan, and then a release. Everything else is parked.
 
 The phases run in order; each feature takes the full workflow, spec and
 plan included. (Phases 1 and 2, the polish pass and the hook wins, shipped
@@ -137,6 +137,11 @@ canvas (#25), in 0.12.0, which finished phase 4, richer art.)
   this.
 - **Workflow presets** (#18): a file that "extends the default", and
   presets for spec-kit and Kiro.
+- **A public stage contract** (#30): document the stage state other mods
+  can read (the existing `PluginState` keys) first; a `$.stage` noun or a
+  `stage-toons:auditor` agent type later, if other mods need more. The
+  scene format and the presets file are contracts too, so they are
+  documented to the same standard.
 
 **Phase 6: calm mode and scene polish.**
 - **Calm mode** (#10): the bar stays, the rasters hold still.
@@ -167,11 +172,10 @@ account or token. The note, the research and the probe mod:
 - Then a release.
 
 **Parked** (2026-10-06, the person: not in the plan for now):
-achievements for finished stages (#28); a public stage contract for other
-mods (#30); a timeline pane for `/stage log` and `/stage time` (#19;
-whether the app places plugin panes for a cloud session is unconfirmed);
-the Svg rendition for VS Code and mobile (#24, beyond the desktop app
-maybe in phase 6); #13 (un-defer `set_stage`: tokens on every request for
+achievements for finished stages (#28); a timeline pane for `/stage log`
+and `/stage time` (#19; whether the app places plugin panes for a cloud
+session is unconfirmed); the Svg rendition for VS Code and mobile (#24,
+beyond the desktop app maybe in phase 6); #13 (un-defer `set_stage`: tokens on every request for
 one tool); #14 (a status line; off by default if ever built).
 
 **Dropped:** #29 (pet or drag Clawd with the pointer; the person,
