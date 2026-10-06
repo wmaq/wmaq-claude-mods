@@ -3,17 +3,20 @@
 // model, waits for a seat and takes the first one freed; they leave one by
 // one, Clawd walks back, and the idle routine plays the last seconds.
 // It keeps four seats at any width, so the fifth helper still waits; its
-// helpers walk from the area's edge as it was when the demo started, and
-// on a very wide area the demo lasts as long as their walks need.
+// helpers walk from the area's edge as it was when the demo started, each
+// sits at least MIN_STAY_MS before it leaves, and on a very wide area the
+// demo lasts as long as their walks need.
 
 import type { ModelKind } from '../agents'
-import { AREA_W, CLAWD_ASIDE, CLAWD_HOME, CLAWD_SPEED, freesAt, type SeatEntry, type SeatLog, SEATS } from './seats'
+import { AREA_W, CLAWD_ASIDE, CLAWD_HOME, CLAWD_SPEED, freesAt, type SeatEntry, type SeatLog, seatedAt, SEATS } from './seats'
 
 // The demo's length on a 48-column area.
 export const WAITING_DEMO_MS = 25_000
 
 // Each helper: its seat, kind, and when it arrives and leaves, from the
-// demo's start; the fifth arrives when the first seat frees.
+// demo's start; the fifth arrives when the first seat frees. On a wide
+// area, where the walks are long, a helper leaves later, so that it still
+// sits MIN_STAY_MS (it never binds up to about 150 columns).
 const CAST: { id: string; seat: number; kind: ModelKind; arrives: number | 'first-free'; leaves: number }[] = [
   { id: 'demo-sonnet', seat: 0, kind: 'sonnet', arrives: 0, leaves: 10_000 },
   { id: 'demo-opus', seat: 1, kind: 'opus', arrives: 1_500, leaves: 13_000 },
@@ -21,12 +24,14 @@ const CAST: { id: string; seat: number; kind: ModelKind; arrives: number | 'firs
   { id: 'demo-haiku', seat: 3, kind: 'haiku', arrives: 4_500, leaves: 17_000 },
   { id: 'demo-other', seat: 0, kind: 'unknown', arrives: 'first-free', leaves: 19_000 },
 ]
+const MIN_STAY_MS = 3_000
 
 function entriesFrom(start: number, edge: number): SeatEntry[] {
   const entries: SeatEntry[] = []
   for (const c of CAST) {
     const arrivedAt = c.arrives === 'first-free' ? freesAt(entries[0]!) : start + c.arrives
-    entries.push({ agentId: c.id, seat: c.seat, kind: c.kind, arrivedAt, leftAt: start + c.leaves, edge })
+    const entry: SeatEntry = { agentId: c.id, seat: c.seat, kind: c.kind, arrivedAt, leftAt: null, edge }
+    entries.push({ ...entry, leftAt: Math.max(start + c.leaves, seatedAt(entry) + MIN_STAY_MS) })
   }
 
   return entries

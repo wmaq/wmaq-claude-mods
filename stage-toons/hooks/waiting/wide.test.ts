@@ -67,3 +67,12 @@ test('the waiting demo keeps four seats, and lasts as long as the walks need at 
   expect('log' in at && at.log.entries.every(e => e.edge === 120)).toBe(true)
   expect('idleMs' in waitingDemoAt(0, waitingDemoMs(512) - 1, 512)).toBe(true)
 })
+
+test('on any width each demo helper sits a while before it leaves; none turns round mid-walk', () => {
+  for (const columns of [48, 120, 145, 200, 274, 512]) {
+    const at = waitingDemoAt(0, 1, columns)
+    if (!('log' in at)) throw new Error('the demo should be waiting at its start')
+    for (const e of at.log.entries) expect(e.leftAt! - seatedAt(e) >= 3_000).toBe(true)
+    expect('idleMs' in waitingDemoAt(0, waitingDemoMs(columns) - 1, columns)).toBe(true)
+  }
+})
