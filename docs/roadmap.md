@@ -8,14 +8,15 @@ the workflow's step 10).
 
 ### Where things stand
 
-0.11.0 is on `main`: automatic moves and history with cost per stage, 38
+0.12.0 is on `main`: automatic moves and history with cost per stage, 38
 scenes dealt like a deck and played in the area below the bar with Z
-layers and a dissolve at every change of picture, Clawd's pop-ups for the
-work at hand and a task count on the bar, four waiting scenes, 5 idle
-routines with a prop show-off and a celebration, Done after a merge,
-per-project settings, and the frame tool (`tools/frames/`) for checking
-the drawing from a cloud session. Phases 1 to 3 of the plan below and 4a
-to 4d are done. History:
+layers and a dissolve at every change of picture, an area that grows with
+the terminal (`/stage width`) with every scene's set or wings to the edge,
+Clawd's pop-ups for the work at hand and a task count on the bar, four
+waiting scenes seating up to 8 helpers, 5 idle routines with a prop
+show-off and a celebration, Done after a merge, per-project settings, and
+the frame tool (`tools/frames/`) for checking the drawing from a cloud
+session. Phases 1 to 4 of the plan below are done; phase 5 is next. History:
 `stage-toons/CHANGELOG.md`. Sources for what comes next: the research
 report (`docs/research/2026-10-04-stage-toons-improvement-ideas.md`, ideas
 #1-#30) and the code review (`docs/reviews/2026-10-04-code-review.md`).
@@ -120,20 +121,8 @@ The phases run in order; each feature takes the full workflow, spec and
 plan included. (Phases 1 and 2, the polish pass and the hook wins, shipped
 in 0.7.0; phase 3, "done" after a merge, in 0.8.0; 4a, Clawd in one
 place, in 0.9.0; 4b, smoother scenes, in 0.10.0; 4c, Clawd follows the
-work, and 4d, more waiting scenes, together in 0.11.0.)
-
-**Phase 4: richer art.** Split into five sub-phases (the person, 2026-10-05),
-run in this order. Each is its own release, tested and merged before the
-next starts, in a thread and branch of its own. 4a, the stage scenes in
-the area below the bar, shipped in 0.9.0; 4b, smoother scenes (Z
-layers, the dissolve, scene clocks), in 0.10.0; 4c, Clawd follows the
-work (#15, #20, #21), and 4d, more waiting scenes (#27), in 0.11.0. 4e is
-what remains.
-
-**4e, a wider canvas.**
-- **A width-adaptive canvas** (#25): the toon, the idle box and the demo
-  grow with the terminal or are set in the workflow file. Every scene is
-  reworked, so it comes after the others.
+work, and 4d, more waiting scenes, together in 0.11.0; 4e, a wider
+canvas (#25), in 0.12.0, which finished phase 4, richer art.)
 
 **Phase 5: sharing.**
 - **Community readiness** (#22): a GIF for the README, a CHANGELOG drawn

@@ -6,7 +6,7 @@ the marketplace manifest `.claude-plugin/marketplace.json`.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with an area below the bar where Clawd lives: the stage's pixel-art scene while Claude works, an idle Clawd between turns, and a desk row of helpers while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.11.0 (Clawd follows the work: thought puffs, tool badges, speech bubbles and a task count on the bar; four waiting scenes dealt per wait; tested locally; 0.10.0 brought Z layers and the dissolve); the frame tool in `tools/frames/`; releases in `stage-toons/CHANGELOG.md`; the plan ahead in `docs/roadmap.md`, ideas in `docs/research/`; the latest review in `docs/reviews/` |
+| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with an area below the bar where Clawd lives: the stage's pixel-art scene while Claude works, an idle Clawd between turns, and a desk row of helpers while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.12.0 (a wider canvas: the area grows with the terminal, 120 x 9 by default, `/stage width`; every scene's set or wings to the edge; up to 8 waiting helpers; tested locally; 0.11.0 brought Clawd's pop-ups and four waiting scenes); the frame tool in `tools/frames/`; releases in `stage-toons/CHANGELOG.md`; the plan ahead in `docs/roadmap.md`, ideas in `docs/research/`; the latest review in `docs/reviews/` |
 
 ## The workflow
 

@@ -6,6 +6,36 @@ release (departures from the spec, review findings, live checks) are in its
 spec and plan under `docs/superpowers/`, the hand-offs in `docs/handoffs/`
 and the git history.
 
+## 0.12.0 (2026-10-06)
+
+Roadmap phase 4e, a wider canvas, built by a cloud session and tested
+locally, all six checks passing. Spec and plan:
+`docs/superpowers/specs/2026-10-06-stage-toons-wider-canvas-design.md`,
+`docs/superpowers/plans/2026-10-06-stage-toons-wider-canvas.md`.
+Hand-off: `docs/handoffs/2026-10-06-stage-toons-wider-canvas.md`.
+- **The area grows with the terminal:** as wide as the band, up to 120
+  columns by default, and 9 rows high (8 or 7 in a shorter band, with a
+  row of hysteresis). `/stage width [<n> | full]` (48 to 512 columns, also
+  a workflow-file setting).
+- **Every scene keeps its 48-column picture at the left;** its set runs on
+  to the edge, or quiet wings of its own stand from column 48. The rows
+  above are headroom for the pop-ups and the reactions; Nyan's starfield
+  fills the area.
+- **The waiting toon seats up to 8 helpers** (one more each 8 columns past
+  48), each walking in from the edge it arrived at, so a resize moves
+  nobody.
+- **From the local test:** the waiting demo's helpers sit at least 3 s
+  before they leave (on a full-width area the last one turned round
+  mid-walk). Thirteen pictures redrawn at the person's request:
+  light-bulbs' chalk maths, thought-clouds' blue-grey sky, stepping-stones'
+  mountains with a flag, fishing's jumping fish, scales' brass weights,
+  terminal's desk props, workbench's pegboard and robots, waiting-bench's
+  clock and "now serving" display, writing-desk's stack on the desk,
+  sweeping's full shelf, recycling's sorting bins, mystery-box's closer
+  piles, and Nyan on a navy sky, bobbing with the rainbow in a wave.
+- The frame tool draws any size (`--columns 48,120,200`, `--rows 7` to 9,
+  `band --width`).
+
 ## 0.11.0 (2026-10-06)
 
 Roadmap phases 4c and 4d, built by a cloud session overnight and tested
