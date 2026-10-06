@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import { hex } from '../../stage-toons/hooks/pixels'
 import { HELPER_COLORS } from '../../stage-toons/hooks/waiting'
 import { CELL_H, CELL_W, type Canvas } from './grid'
-import { bandFrames, idleFrames, sceneFrames, turnFrames, waitingFrames } from './sources'
+import { bandFrames, idleFrames, sceneFrames, turnFrames, waitingFrames, workDemoFrames } from './sources'
 
 const has = (c: Canvas, colour: number) => c.px.includes(colour)
 
@@ -49,6 +49,15 @@ test("the band at Plan shows the bar's done colour at its first step, with the a
   assert.ok(inCell(frame!, 1, 0, hex('#D97757')))
   assert.equal(frame!.cols, 100)
   assert.equal(frame!.rows, 2 + 7)
+})
+
+test("the work demo draws its steps' layer over the stage's scene; its scene is the stage's first, or --scene's", () => {
+  const [thinking, searching] = workDemoFrames({ stage: 'develop' }, [1500, 4500])
+  assert.notDeepEqual(thinking!.px, searching!.px)
+  assert.equal(searching!.cols, 48)
+  const [dice] = workDemoFrames({ stage: 'develop', scene: 'dice' }, [4500])
+  assert.notDeepEqual(dice!.px, searching!.px)
+  assert.throws(() => workDemoFrames({ scene: 'nope' }, [0]), /unknown scene "nope"/)
 })
 
 test("the band's bar shows Claude's tasks when given", () => {

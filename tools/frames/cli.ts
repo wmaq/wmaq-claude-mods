@@ -15,7 +15,7 @@ import { parseWorkflow } from '../../stage-toons/hooks/workflow'
 import { type Canvas, toRgba } from './grid'
 import { encodePng } from './png'
 import { contactSheet } from './sheet'
-import { bandFrames, idleFrames, sceneFrames, turnFrames, waitingFrames } from './sources'
+import { bandFrames, idleFrames, sceneFrames, turnFrames, waitingFrames, workDemoFrames } from './sources'
 
 const USAGE = `usage: npx -y tsx tools/frames/cli.ts <what> [options]
   scene <id> [--reaction advance|failure] [--auditing] [--width N]
@@ -26,6 +26,7 @@ const USAGE = `usage: npx -y tsx tools/frames/cli.ts <what> [options]
        [--agents a,b] [--auditing] [--working] [--scene id] [--workflow file.json] [--idle routine]
        [--tasks done/total]
   turn [--stage id] [--scene id] [--idle routine] [--start MS] [--end MS] [--columns N]
+  demo-work [--stage id] [--scene id] [--seconds N]
 common: --from MS (0) --every MS (250; 500 for turn) --count N (16) --columns-per-row N (4)
         --scale N (1) --out file.png`
 
@@ -40,6 +41,7 @@ const OPTIONS: Record<string, readonly string[]> = {
   waiting: ['agents', 'columns'],
   band: ['stage', 'feature', 'message', 'columns', 'max-rows', 'agents', 'auditing', 'working', 'scene', 'workflow', 'idle', 'tasks'],
   turn: ['stage', 'scene', 'idle', 'start', 'end', 'columns'],
+  'demo-work': ['stage', 'scene', 'seconds', 'workflow'],
 }
 
 type Args = { what: string; id: string | undefined; opts: Map<string, string> }
@@ -109,7 +111,7 @@ function workflowOpt(opts: Map<string, string>): Workflow | undefined {
 function render(args: Args, times: readonly number[]): { frames: Canvas[]; name: string } {
   const { what, id, opts } = args
   const known = OPTIONS[what]
-  if ((what === 'band' || what === 'waiting' || what === 'turn') && id !== undefined) throw new Error(`unexpected "${id}" for ${what}\n${USAGE}`)
+  if ((what === 'band' || what === 'waiting' || what === 'turn' || what === 'demo-work') && id !== undefined) throw new Error(`unexpected "${id}" for ${what}\n${USAGE}`)
   if (known !== undefined) {
     for (const name of opts.keys()) {
       if (!known.includes(name) && !COMMON.includes(name)) throw new Error(`unknown option --${name} for ${what}\n${USAGE}`)
@@ -185,6 +187,19 @@ function render(args: Args, times: readonly number[]): { frames: Canvas[]; name:
 
       return { frames, name: `frames-turn-${opts.get('scene') ?? opts.get('stage') ?? 'standing'}.png` }
     }
+    case 'demo-work': {
+      const frames = workDemoFrames(
+        {
+          stage: opts.get('stage'),
+          scene: opts.get('scene'),
+          seconds: opts.has('seconds') ? numberOpt(opts, 'seconds', 3, 1) : undefined,
+          workflow: workflowOpt(opts),
+        },
+        times,
+      )
+
+      return { frames, name: `frames-demo-work-${opts.get('scene') ?? opts.get('stage') ?? 'standing'}.png` }
+    }
     default:
       throw new Error(`unknown "${what}"\n${USAGE}`)
   }
@@ -192,9 +207,12 @@ function render(args: Args, times: readonly number[]): { frames: Canvas[]; name:
 
 export function main(argv: readonly string[]): { path: string; width: number; height: number } {
   const args = parseArgs(argv)
-  const from = numberOpt(args.opts, 'from', 0)
-  const every = numberOpt(args.opts, 'every', args.what === 'turn' ? 500 : 250)
-  const count = numberOpt(args.opts, 'count', 16)
+  // The work demo's defaults: the middle of each of its 14 steps.
+  const isWork = args.what === 'demo-work'
+  const seconds = isWork && args.opts.has('seconds') ? numberOpt(args.opts, 'seconds', 3, 1) : 3
+  const from = numberOpt(args.opts, 'from', isWork ? seconds * 500 : 0)
+  const every = numberOpt(args.opts, 'every', args.what === 'turn' ? 500 : isWork ? seconds * 1000 : 250)
+  const count = numberOpt(args.opts, 'count', isWork ? 14 : 16)
   if (count < 1) throw new Error('--count must be at least 1')
   const times = Array.from({ length: count }, (_, i) => from + i * every)
   const { frames, name } = render(args, times)

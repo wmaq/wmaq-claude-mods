@@ -8,6 +8,7 @@
 import type { Workflow } from '../../stage-toons/types'
 import { spawned } from '../../stage-toons/hooks/agents'
 import { areaColumns, BAR_TONES, bandLayout, bandMode, type BandSite, type Span } from '../../stage-toons/hooks/band'
+import { WORK_DEMO_SECONDS } from '../../stage-toons/hooks/demo'
 import { createDirector, react, withAuditing } from '../../stage-toons/hooks/director'
 import { areaCells } from '../../stage-toons/hooks/frames'
 import { CELEBRATE, DOZE_MS, IDLE_IDS, routineOf, SHOW_OFF_PREFIX } from '../../stage-toons/hooks/idle'
@@ -122,6 +123,23 @@ function areaFrames(mod: Mod, columns: number, times: readonly number[], before?
 
     return areaCells(mod, columns, t, quiet) ?? ''
   })
+}
+
+// The work demo (/stage demo work) over a stage's scene (its first) or
+// --scene's, started at time 0, seconds per step.
+export type WorkDemoOptions = { stage?: string; scene?: string; seconds?: number; workflow?: Workflow }
+
+export function workDemoFrames(opts: WorkDemoOptions, times: readonly number[]): Canvas[] {
+  const w = opts.workflow ?? DEFAULT_WORKFLOW
+  if (opts.stage !== undefined) known('stage', opts.stage, stageIds(w))
+  if (opts.scene !== undefined) known('scene', opts.scene, SCENE_IDS)
+  const scene = opts.scene ?? (opts.stage !== undefined ? stageOf(w, opts.stage)?.scenes[0] : undefined) ?? FALLBACK_SCENE
+  const mod = createMod()
+  mod.band.requestId = 'r1'
+  mod.idleSince = 0
+  mod.demo = { kind: 'work', at: 0, seconds: opts.seconds ?? WORK_DEMO_SECONDS, scene }
+
+  return areaFrames(mod, STAGE_W, times).map(cells => cellsCanvas(cells, STAGE_W, TOON_ROWS))
 }
 
 export function waitingFrames(agents: readonly string[], times: readonly number[], columns = STAGE_W): Canvas[] {
