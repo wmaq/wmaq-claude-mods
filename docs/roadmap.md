@@ -16,15 +16,17 @@ Clawd's pop-ups for the work at hand and a task count on the bar, four
 waiting scenes seating up to 8 helpers, 5 idle routines with a prop
 show-off and a celebration, Done after a merge, per-project settings, and
 the frame tool (`tools/frames/`) for checking the drawing from a cloud
-session. Phases 1 to 4 of the plan below are done; phase 5 is next. History:
-`stage-toons/CHANGELOG.md`. Sources for what comes next: the research
-report (`docs/research/2026-10-04-stage-toons-improvement-ideas.md`, ideas
+session. Phases 1 to 4 of the plan below are done; phase 5, easy to
+extend, is next. History: `stage-toons/CHANGELOG.md`. Sources for what
+comes next: the research report
+(`docs/research/2026-10-04-stage-toons-improvement-ideas.md`, ideas
 #1-#30) and the code review (`docs/reviews/2026-10-04-code-review.md`).
 
 ### Open leftovers, not scheduled
 
 Minor findings accepted as they are; pick them up when work passes by.
-Leftovers the plan schedules are listed in their phase instead.
+Phase 8's cleanup takes the ones still worth fixing. Leftovers the plan
+schedules are listed in their phase instead.
 - **Waiting toon (0.5):** with the waiting toon broken (it threw), the idle
   routine stands in and can doze while agents still work. `/stage demo
   waiting` started during a real waiting period ends with Clawd at x 0
@@ -96,14 +98,15 @@ line). `toon.ts`, `TOON_ROWS` and `TOON_MIN` keep
   known. Stamp's and the ladder's high-head rule were checked on sheets
   only (fishing live).
 
-### The plan after the frame tool (agreed 2026-10-04)
+### The plan after the frame tool (agreed 2026-10-04, reordered 2026-10-06)
 
 Agreed with the person in a roadmap discussion that went through the
-release history, the research and the code review. Item numbers (#n) are
-the research report's; letter codes (C7, P5, ...) are the code review's.
-stage-toons stays the only mod for now; the repository is ready for more.
+release history, the research and the code review, and reordered by them
+on 2026-10-06 once phase 4 was merged. Item numbers (#n) are the research
+report's; letter codes (C7, P5, ...) are the code review's. stage-toons
+stays the only mod for now; the repository is ready for more.
 
-Decided in the discussion:
+Decided in the discussions:
 - **#8 (keep the stage through compaction) is done.** The `session.compact`
   hook rebuilds the stage section of the system prompt after every real
   compaction (since v0.3), so the stage survives one.
@@ -113,9 +116,11 @@ Decided in the discussion:
   session checks scenes and the band from contact sheets; the person's
   terminal gives the final look. The research's "Terminal" labels predate
   it.
-- **After #17: richer art first, then sharing, then the Claude app.** The
-  person uses Claude Code in a terminal and Claude on the web, so the app
-  surfaces come last.
+- **After phase 4 (2026-10-06): extending first, release last.** Scene
+  authoring and presets come first, so new scenes are easy to add; then
+  calm mode and scene polish, then Clawd DJ; a full review, cleanup and
+  community readiness close the plan, and then a release. Everything else
+  is parked.
 
 The phases run in order; each feature takes the full workflow, spec and
 plan included. (Phases 1 and 2, the polish pass and the hook wins, shipped
@@ -124,45 +129,53 @@ place, in 0.9.0; 4b, smoother scenes, in 0.10.0; 4c, Clawd follows the
 work, and 4d, more waiting scenes, together in 0.11.0; 4e, a wider
 canvas (#25), in 0.12.0, which finished phase 4, richer art.)
 
-**Phase 5: sharing.**
+**Phase 5: easy to extend.**
+- **Scene authoring** (#26): a data format for scenes (sprites and
+  keyframed actors), a sandboxed interpreter, `/stage preview <scene>`, a
+  validation harness and a skill that teaches an agent to make one, so new
+  scenes are easy to add. Large: claude-toons needed about 3,000 lines for
+  this.
+- **Workflow presets** (#18): a file that "extends the default", and
+  presets for spec-kit and Kiro.
+
+**Phase 6: calm mode and scene polish.**
+- **Calm mode** (#10): the bar stays, the rasters hold still.
+- **Scene polish:** new scenes, and re-choreographing the ones that look
+  unpolished on the wider canvas (props spread out, longer walks,
+  compositions per width; the person chose the wider set in 4e and
+  deferred this).
+- Maybe: an Svg rendition for the desktop app (#24), the only element
+  known to reach the app; needs the person's devices to check first.
+
+**Phase 7: Clawd DJ.** While Spotify (or any media app) plays, Clawd DJs
+and the band notes `♪ Artist – Title`. Reading the track through Windows'
+media session with Windows PowerShell is proven live from a mod, with no
+account or token. The note, the research and the probe mod:
+`docs/ideas/2026-10-06-clawd-dj.md`,
+`docs/research/2026-10-06-spotify-now-playing.md`,
+`docs/ideas/clawd-dj-probe/`.
+
+**Phase 8: review, cleanup and community readiness, then a release.**
+- A full code review of the mod and the frame tool.
+- Clean up the open leftovers above that are still worth fixing.
+- Documentation cleanup (README, CLAUDE.md, CHANGELOG) and a full test
+  pass.
 - **Community readiness** (#22): a GIF for the README, a CHANGELOG drawn
   from this roadmap, release tags, CI running `validate` and `test`, a
   "not affiliated with Anthropic" line. The GIF needs the frame tool to
   write GIFs (out of its first scope) or a screen recording.
-- **Scene authoring by others** (#26): a data format for scenes (sprites
-  and keyframed actors), a sandboxed interpreter, `/stage preview
-  <scene>`, a validation harness and a skill that teaches an agent to make
-  one. Large: claude-toons needed about 3,000 lines for this.
-- **Workflow presets** (#18): a file that "extends the default", and
-  presets for spec-kit and Kiro.
-- Maybe: achievements for finished stages (#28); a public stage contract
-  for other mods (#30).
+- Then a release.
 
-**Phase 6: the Claude app and other surfaces.**
-- A timeline pane for `/stage log` and `/stage time` (#19); whether the
-  app places plugin panes for a cloud session is unconfirmed.
-- An Svg rendition for desktop, VS Code and mobile (#24): the only element
-  known to reach the app; needs the person's devices to check first.
-- Calm mode (#10): the bar stays, the rasters hold still.
+**Parked** (2026-10-06, the person: not in the plan for now):
+achievements for finished stages (#28); a public stage contract for other
+mods (#30); a timeline pane for `/stage log` and `/stage time` (#19;
+whether the app places plugin panes for a cloud session is unconfirmed);
+the Svg rendition for VS Code and mobile (#24, beyond the desktop app
+maybe in phase 6); #13 (un-defer `set_stage`: tokens on every request for
+one tool); #14 (a status line; off by default if ever built).
 
 **Dropped:** #29 (pet or drag Clawd with the pointer; the person,
-2026-10-05: not worth it in a terminal). **Parked:** #13 (un-defer
-`set_stage`: tokens on every request for one tool) and #14 (a status line; off by default if ever built). **Ruled out**
-by the research: sound (`$.audio` plays only on macOS), model-written
-scenes or summaries (token cost; breaks the no-model-requests promise),
-`turn.step` streaming, the kitty image protocol.
-
-**Stashed ideas** (researched, not yet placed in the plan; each awaits a
-roadmap discussion and the full workflow before development):
-- **Clawd DJ** (the person, 2026-10-06): while Spotify (or any media app)
-  plays, Clawd DJs and the band notes `♪ Artist – Title`. Reading the track
-  through Windows' media session with Windows PowerShell is proven live
-  from a mod, with no account or token. The note, the research and the
-  probe mod: `docs/ideas/2026-10-06-clawd-dj.md`,
-  `docs/research/2026-10-06-spotify-now-playing.md`,
-  `docs/ideas/clawd-dj-probe/`.
-
-**Deferred:**
-- Re-choreograph the scenes for their width (props spread out, longer
-  walks, compositions per width): the person, 2026-10-06, after 4e chose
-  the wider set.
+2026-10-05: not worth it in a terminal). **Ruled out** by the research:
+sound (`$.audio` plays only on macOS), model-written scenes or summaries
+(token cost; breaks the no-model-requests promise), `turn.step`
+streaming, the kitty image protocol.
