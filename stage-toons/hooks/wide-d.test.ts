@@ -5,6 +5,7 @@ import { EMPTY, getPixel, type PixelBuffer } from './pixels'
 import { LOOP_LAST_S, renderFull, type Scene, STAGE_W } from './scene'
 import { SCENES } from './scenes'
 import { C } from './scenes/kit'
+import { CHALK } from './scenes/light-bulbs'
 
 const WINGED = [
   'light-bulbs', 'mystery-box', 'proofread-page', 'proofread-checklist', 'red-pen', 'scroll', 'scales', 'stepping-stones', 'sticky-notes', 'thought-clouds', 'treasure-map',
@@ -95,17 +96,45 @@ test("sticky-notes fades at its loop point: the second board is the same at its 
   expect(wings(draw('sticky-notes', 0, 120)).length).toBeGreaterThan(0)
 })
 
-test("stepping-stones' stream ripples downstream, a column a step, and is back where it was at the loop point", () => {
-  const ripples = (t: number) => {
-    const b = draw('stepping-stones', t, 120)
-    const xs: number[] = []
-    for (let x = STAGE_W; x < 120; x++) if (at(b, x, 12) === C.glass) xs.push(x)
-    return xs
+// The wings' pixels as [x, y, colour], y in the core's coordinates.
+const wingPixels = (b: PixelBuffer) => wings(b).map(p => p.split(',').map(Number) as [number, number, number])
+
+test('stepping-stones: ground to the edge under a snowy mountain range, the tallest peak near the edge flying a red flag', () => {
+  for (const columns of [120, 200]) {
+    const b = draw('stepping-stones', 1, columns)
+    for (let x = STAGE_W; x < columns; x++) {
+      expect(at(b, x, 12)).toBe(C.green)
+      expect(at(b, x, 13)).toBe(C.woodDark)
+    }
+    const px = wingPixels(b)
+    const rock = px.filter(([, , c]) => c === C.gray || c === C.darkGray || c === C.white)
+    // Snow on the peaks; with the headroom the range stands taller than on 7 rows.
+    expect(px.filter(([, , c]) => c === C.white).length).toBeGreaterThan(10)
+    const lowRock = wingPixels(draw('stepping-stones', 1, columns, 7)).filter(([, , c]) => c === C.gray || c === C.darkGray)
+    expect(rock.filter(([, , c]) => c !== C.white).length).toBeGreaterThan(lowRock.length + 100)
+    // The goal: the highest peak, 14 columns in from the edge, its flag
+    // reaching the area's top row.
+    const peak = Math.min(...rock.map(([, y]) => y))
+    expect(rock.filter(([, y]) => y === peak).map(([x]) => x)).toEqual([columns - 14])
+    const flag = px.filter(([, , c]) => c === C.red)
+    expect(flag.length).toBeGreaterThan(0)
+    expect(flag.every(([x]) => x > columns - 14 && x <= columns - 12)).toBe(true)
+    expect(Math.min(...px.filter(([x]) => x === columns - 14).map(([, y]) => y))).toBe(-4)
   }
-  expect(ripples(0)).not.toEqual(ripples(3))
-  // The last step of the loop moves each ripple one column on, as every step does.
-  expect(ripples(5.9).map(x => x + 1).filter(x => x < 120)).toEqual(ripples(0).filter(x => x > STAGE_W))
-  expect(ripples(1.6).map(x => x + 1).filter(x => x < 120)).toEqual(ripples(2.3).filter(x => x > STAGE_W))
+  // At 7 rows the range is lower, and the flag still reaches the top row.
+  const low = wingPixels(draw('stepping-stones', 1, 120, 7))
+  expect(Math.min(...low.filter(([x]) => x === 106).map(([, y]) => y))).toBe(0)
+  // Too narrow to show the goal whole past the core: no goal, no flag.
+  expect(wingPixels(draw('stepping-stones', 1, 60)).some(([, , c]) => c === C.red)).toBe(false)
+})
+
+test('stepping-stones: the range stands where it is at any width, still; only the flag flutters', () => {
+  const left = (b: PixelBuffer) => wings(b).filter(p => Number(p.split(',')[0]) < 90)
+  expect(left(draw('stepping-stones', 1, 200))).toEqual(left(draw('stepping-stones', 1, 120)))
+  const rock = (t: number) => wings(draw('stepping-stones', t, 120)).filter(p => ![C.red, C.woodDark].includes(Number(p.split(',')[2])) || Number(p.split(',')[1]) >= 12)
+  for (const t of moments(scene('stepping-stones'))) expect(rock(t)).toEqual(rock(0))
+  const flag = (t: number) => wings(draw('stepping-stones', t, 120)).filter(p => Number(p.split(',')[2]) === C.red)
+  expect(flag(0.1)).not.toEqual(flag(0.6))
 })
 
 test("thought-clouds' wing clouds drift right to left on unwrapped time, never jumping back at the loop point", () => {
@@ -133,15 +162,38 @@ test('mystery-box: the piles of taped boxes stand 5 columns apart, from 52 to th
   expect(at(b, 196, 13)).toBe(C.woodDark)
 })
 
-test('light-bulbs: the wings\' bulbs are unlit, each on a wire from the area\'s top', () => {
-  for (const t of moments(scene('light-bulbs'))) {
-    const b = draw('light-bulbs', t, 120)
-    expect(wings(b).some(p => Number(p.split(',')[2]) === C.gold)).toBe(false)
-    expect(getPixel(b, 52, 0)).toBe(C.darkGray)
-    expect(at(b, 52, 2)).toBe(C.darkGray)
+test("thought-clouds' wing clouds are blue-grey sky clouds, never the white of his thought bubbles", () => {
+  for (const t of moments(scene('thought-clouds'))) {
+    const colors = new Set(wingPixels(draw('thought-clouds', t, 200)).map(([, , c]) => c))
+    expect([...colors].sort()).toEqual([C.sky, C.skyShade].sort())
   }
-  // At 7 rows the wire starts on the core's top row.
-  expect(at(draw('light-bulbs', 1, 120, 7), 52, 0)).toBe(C.darkGray)
+})
+
+test('light-bulbs: dim chalk symbols float in the wings, bobbing; now and then one lights up gold', () => {
+  const s = scene('light-bulbs')
+  const times = Array.from({ length: 60 }, (_, i) => 0.013 + (i * s.loop) / 60)
+  let litMoments = 0
+  for (const t of times) {
+    const px = wingPixels(draw('light-bulbs', t, 200))
+    expect(px.every(([, , c]) => c === CHALK || c === C.gold)).toBe(true)
+    // At most two symbols lit at once: a few pixels of gold, against many of chalk.
+    const gold = px.filter(([, , c]) => c === C.gold).length
+    expect(gold).toBeLessThan(25)
+    expect(px.length - gold).toBeGreaterThan(100)
+    if (gold > 0) litMoments++
+  }
+  // Lit now and then: some moments, never most.
+  expect(litMoments).toBeGreaterThan(3)
+  expect(litMoments).toBeLessThan(times.length / 2)
+  // Placed by column: the wider area shows the same symbols, and more.
+  const shape = (b: PixelBuffer) => wingPixels(b).filter(([x]) => x < 110).map(([x, y]) => `${x},${y}`)
+  expect(shape(draw('light-bulbs', 1, 200))).toEqual(shape(draw('light-bulbs', 1, 120)))
+  // Each bobs a pixel up and down every 3 s: moving, and back where it was.
+  expect(shape(draw('light-bulbs', 1, 120))).not.toEqual(shape(draw('light-bulbs', 2, 120)))
+  expect(shape(draw('light-bulbs', 4, 120))).toEqual(shape(draw('light-bulbs', 1, 120)))
+  // Symbols up in the headroom show only on an area tall enough for them.
+  expect(wingPixels(draw('light-bulbs', 1, 120)).some(([, y]) => y < 0)).toBe(true)
+  for (const t of times) expect(wingPixels(draw('light-bulbs', t, 120, 7)).every(([, y]) => y >= 0)).toBe(true)
 })
 
 test('scales: a shelf in the wings holds sets of brass weights, smallest to largest, in every bay to the edge', () => {

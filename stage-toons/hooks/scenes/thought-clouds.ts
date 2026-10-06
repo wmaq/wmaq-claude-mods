@@ -44,9 +44,17 @@ const THIN_AT = 5.4
 // columns of the core it thins to smaller frames, and is gone at its edge.
 const SKY_EVERY = 40
 const SKY_SPEED = 1.5
-// A puff's frames in dimmer colours: far off, so they don't pass for his
-// thoughts.
-const FAR_PUFF: Sprite = { palette: { w: C.paperShade, s: C.gray }, frames: PUFF.frames }
+// A sky cloud, small to large: long and flat, in a pale blue-grey, so it
+// never passes for one of his white thought puffs.
+const FAR_PUFF: Sprite = {
+  palette: { w: C.sky, s: C.skyShade },
+  frames: [
+    ['ww'],
+    ['.ww.', 'ssss'],
+    ['..ww...', '.wwwww.', 'wwwwwww', '.sssss.'],
+    ['....www......', '..wwwwwww.ww.', 'wwwwwwwwwwwww', '..sssssssss..'],
+  ],
+}
 const SKY: { at: number; y: number; frame: number }[] = [
   { at: 4, y: 1, frame: 3 },
   { at: 25, y: 4, frame: 2 },

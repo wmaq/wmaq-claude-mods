@@ -1,9 +1,10 @@
 // Light bulbs: ideas pop around Clawd and fizzle, until one stays lit: one
 // peeks up from behind his head, one pops up in front of him. On a wider
-// area, unlit bulbs hang on wires in the wings, at varied heights.
+// area, dim chalk symbols of maths float in the wings, bobbing gently; now
+// and then one lights up gold for a moment, like an idea.
 
 import { type PixelBuffer, setPixel, topOf } from '../pixels'
-import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
+import { CLAWD_TOP, drawSprite, type Scene } from '../scene'
 import { blinking, BULB_OFF, BULB_ON, C, every, still, wave } from './kit'
 import { tileOn } from './wings'
 
@@ -15,23 +16,68 @@ const SPOTS = [
   { x: 28, y: 8, z: 1 },
 ]
 const EUREKA = 4.8
-// A bulb hanging from its wire: the cap on top, the glass below, unlit.
-const HANGING: Sprite = { palette: { y: C.bulbOff, g: C.gray }, frames: [['.g.', 'yyy', 'yyy', '.y.']] }
-// The wings' bulbs, one every 9 columns, their tops on these rows in turn.
-const HANG_EVERY = 9
-const HANG_TOPS = [3, 6, 4, 7, 5]
+const LOOP = 6
+
+// The wings' symbols, in chalk ('x'; '.' is nothing): plus, minus, times,
+// divide, equals, pi, a root, a sum, x squared and infinity.
+export const GLYPHS: readonly (readonly string[])[] = [
+  ['.x.', 'xxx', '.x.'],
+  ['xxx'],
+  ['x.x', '.x.', 'x.x'],
+  ['.x.', '...', 'xxx', '...', '.x.'],
+  ['xxx', '...', 'xxx'],
+  ['xxxx', '.x.x', '.x.x'],
+  ['..xxx', '..x..', 'x.x..', '.x...'],
+  ['xxx', 'x..', '.x.', 'x..', 'xxx'],
+  ['....xx', '.....x', 'x.x.x.', '.x..xx', 'x.x...'],
+  ['.x.x.', 'x.x.x', '.x.x.'],
+]
+// Dim chalk, quieter than Clawd; a symbol that lights up turns gold.
+export const CHALK = C.darkGray
+// The wings' symbols: a pattern of SYMBOL_EVERY columns repeated from
+// column 50 to the edge. Each spot has its column in the pattern, the row
+// of its middle (in the core's coordinates: one above the core's top shows
+// only on an area tall enough for it, bob and all) and its bob's phase.
+// Each tile takes the glyphs on by 3, so neighbouring tiles differ.
+const SYMBOL_EVERY = 40
+const SYMBOLS = [
+  { dx: 0, y: 3, phase: 0 },
+  { dx: 8, y: 8, phase: 1.1 },
+  { dx: 15, y: -1, phase: 2.3 },
+  { dx: 21, y: 5, phase: 0.6 },
+  { dx: 28, y: 1, phase: 1.8 },
+  { dx: 33, y: 9, phase: 2.7 },
+]
+// Each symbol bobs a pixel up and down every BOB seconds (half the loop).
+const BOB = 3
+// Every fifth symbol lights up once a loop for LIT_FOR seconds, each at its
+// own moment, scattered: one at a time, on an area up to 200 columns.
+const LIT_FOR = 0.5
+
+// The wings' symbols at a moment of the loop.
+function drawSymbols(b: PixelBuffer, t: number) {
+  const top = topOf(b)
+  tileOn(b, 50, SYMBOL_EVERY, (x, k) => {
+    SYMBOLS.forEach((s, i) => {
+      const n = k * SYMBOLS.length + i
+      const glyph = GLYPHS[(i + k * 3) % GLYPHS.length]!
+      const from = s.y - Math.floor(glyph.length / 2)
+      if (from - 1 < top) return
+      const y = from + Math.round(wave(t + s.phase, BOB))
+      const litAt = (n * 2.9) % LOOP
+      const isLit = n % 5 === 2 && (((t - litAt) % LOOP) + LOOP) % LOOP < LIT_FOR
+      glyph.forEach((row, dy) => {
+        for (let dx = 0; dx < row.length; dx++) if (row[dx] === 'x') setPixel(b, x + s.dx + dx, y + dy, isLit ? C.gold : CHALK)
+      })
+    })
+  })
+}
 
 export const lightBulbs: Scene = {
   id: 'light-bulbs',
-  loop: 6,
+  loop: LOOP,
   focusX: 24,
-  backdrop: b => {
-    tileOn(b, 51, HANG_EVERY, (x, k) => {
-      const top = HANG_TOPS[k % HANG_TOPS.length]!
-      for (let y = topOf(b); y < top; y++) setPixel(b, x + 1, y, C.darkGray)
-      drawSprite(b, HANGING, 0, x, top)
-    })
-  },
+  backdrop: drawSymbols,
   actors: [
     {
       kind: 'clawd',

@@ -32,6 +32,10 @@ export const C = {
   beam: 0x5f5326,
   // Brass in shade, under gold's light: the scales' spare weights.
   brassDark: 0x8c6a2c,
+  // Far clouds in the sky: a muted blue-grey and its shade, well apart
+  // from the white of Clawd's own thought bubbles.
+  sky: 0x9fb0c2,
+  skyShade: 0x7f93a8,
   // The rainbow's orange and violet: well apart from Clawd's orange and
   // Fable's violet.
   orange: 0xff8c1a,
