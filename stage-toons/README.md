@@ -82,7 +82,7 @@ You can move it yourself with `/stage`:
 | `/stage message <text>` | Set the message |
 | `/stage hide` | Hide or show the bar and the cartoons |
 | `/stage demo [<stage> \| idle] [seconds]` | Play every scene, one stage's scenes (by id), or the idle routines, 10 s each (2 to 60); a bare number is the seconds |
-| `/stage demo waiting` | Play the waiting toon with pretend agents (about 25 s) |
+| `/stage demo waiting [scene]` | Play the waiting toon with pretend agents (about 25 s): the next of its four scenes, or the one named (`laptops`, `building`, `rowing`, `conveyor`) |
 | `/stage demo work [seconds]` | Play what Clawd shows while Claude works (thinking, each kind of tool, his lines), 3 s a step |
 | `/stage demo stop` | End the demo |
 | `/stage workflow` | Show the workflow, where it came from, and each stage's scenes |
@@ -198,13 +198,21 @@ make while Claude waits shows at once.
 
 When Claude's turn ends while agents still work (background subagents, a
 Fable audit, teammates), Clawd walks aside with a cup of coffee and a row
-of small helpers sits at laptops beside him, one for each agent at work,
-in its model's colour: Sonnet magenta, Opus orange, Fable violet (with a
+of small helpers gets to work beside him, one for each agent at work, in
+its model's colour: Sonnet magenta, Opus orange, Fable violet (with a
 monocle), Haiku teal, any other model grey. Four seats; more agents wait
 for one to free. A helper hops up and walks off when its agent finishes,
 and when the last has gone Clawd walks back and his idle routine plays. He
-doesn't doze while agents work. `/stage demo waiting` plays it with
-pretend agents.
+doesn't doze while agents work.
+
+Each wait plays one of four scenes, dealt at random like a stage's scenes
+(each once before any again): the helpers type at **laptops**, build
+brick **walls** that rise behind them (a flag on top when one is done),
+**row** a long boat with their oars in time, or mark the boxes riding a
+**conveyor** belt past them, each box keeping a mark from every helper
+it passed. `/stage demo waiting` plays the next one with pretend agents;
+`/stage demo waiting rowing` (or `laptops`, `building`, `conveyor`) plays
+that one.
 
 The area shows in a terminal at least 35 columns wide (30 for the band,
 beside Claude Code's own mark) with room for the bar and 7 rows (8 or 9

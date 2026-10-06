@@ -24,6 +24,8 @@ npx -y tsx tools/frames/cli.ts band --stage plan --tasks 3/8
 npx -y tsx tools/frames/cli.ts idle classic
 npx -y tsx tools/frames/cli.ts idle classic --doze --from 290000 --every 2000
 npx -y tsx tools/frames/cli.ts waiting --agents fable,sonnet,opus,haiku --every 500
+npx -y tsx tools/frames/cli.ts waiting --agents fable,sonnet --scene rowing
+npx -y tsx tools/frames/cli.ts waiting --demo --scene conveyor --every 1000 --count 24
 npx -y tsx tools/frames/cli.ts band --stage plan --feature "frame tool" --agents fable
 npx -y tsx tools/frames/cli.ts idle show-off:spec
 npx -y tsx tools/frames/cli.ts band --stage done --feature login --idle celebrate
@@ -36,7 +38,8 @@ npx -y tsx tools/frames/cli.ts turn --scene sweeping --from 4900 --every 83
 |---|---|
 | `scene <id> [--reaction advance\|failure] [--auditing] [--width N] [--mode thinking\|responding] [--phase <phase>] [--what text] [--say line]` | the area while Claude works with that scene (48 columns by default); `--auditing` plays Fable's walk-in over it from time 0. The rest draw the layer over Clawd's head from time 0, held for the sheet: `--mode` the thought puffs or the typing dots, `--phase` a tool's icon (`search`, `read`, `edit`, `test`, `build`, `git`, `run`, `web`, `agents`) with `--what` its label, `--say` a line in a bubble |
 | `idle <routine> [--doze]` | the area's idle Clawd, the idle period starting at 0; `--doze` from the doze on (still after 5 minutes). Besides the five routines: `celebrate` (Done's), and `show-off:<stage id>`, the prop of that stage (any id: one of your own gets the page with a tick) |
-| `waiting --agents a,b,… [--columns N]` | the desk row: a helper per agent, coloured by model family (`fable`, `sonnet`, `opus`, `haiku`; anything else grey), arriving from time 0; `--columns` is the area's width (48 by default) |
+| `waiting --agents a,b,… [--scene id] [--columns N]` | the waiting toon: a helper per agent, coloured by model family (`fable`, `sonnet`, `opus`, `haiku`; anything else grey), arriving from time 0, at the waiting scene `--scene` names (`laptops`, the default, `building`, `rowing` or `conveyor`); `--columns` is the area's width (48 by default) |
+| `waiting --demo [--scene id] [--columns N]` | the script `/stage demo waiting` plays (helpers arriving, one waiting for a seat, all leaving, Clawd back), from time 0, at the scene `--scene` names |
 | `band --stage <id> [--feature F] [--message M] [--columns N] [--max-rows N] [--agents …] [--auditing] [--working] [--scene id] [--workflow file.json] [--idle routine] [--tasks done/total]` | the band: the bar's lines (100 columns by default; `--tasks 3/8` adds Claude's task count), and under them the idle Clawd (`--idle`'s routine, classic by default), or the waiting toon with `--agents`; `--working` draws the stage's scene instead (its first, or `--scene`'s; `--auditing` walks Fable in from time 0), and ignores `--agents` and `--idle` |
 | `turn [--stage id] [--scene id] [--idle routine] [--start MS] [--end MS] [--columns N]` | the area through one turn: the idle Clawd (classic, or `--idle`'s) until `--start` (1000), the stage's scene (the stage's first, or `--scene`) until `--end` (5000), then the idle Clawd again, both edges dissolving (`--start 0` skips the idle Clawd before). Its own defaults are `--every 500 --count 16`; a closer look at an edge takes `--from` and `--every 83` |
 | `demo-work [--stage id] [--scene id] [--seconds N] [--workflow file.json]` | `/stage demo work`: the layer's 14 steps over the stage's scene (its first, or `--scene`'s), `--seconds` each (3); its own defaults sample the middle of each step |
