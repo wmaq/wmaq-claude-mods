@@ -1,10 +1,12 @@
 // Recycling: Clawd tosses balls of crumpled paper into a bin. Two go in;
 // the third sails past, bounces and rolls away; on a wider area it rolls
-// up against a second bin in the wings and lies there.
+// up against a second bin in the wings and lies there, and past that bin
+// a row of sorting bins (paper, glass, plastic) runs on to the edge.
 
 import { fillRect, type PixelBuffer, rightOf, setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, C, lerp, still } from './kit'
+import { tileOn } from './wings'
 
 const LOOP = 6.4
 const FLIGHT = 0.8
@@ -29,6 +31,18 @@ const SECOND_BIN_X = 50
 const ROLL_TO = 49
 const STOP_AT = SECOND_BIN_X - 2
 const BALL: Sprite = { palette: { w: C.white, s: C.paperShade }, frames: [['ws', 'sw']] }
+// Past the second bin, a row of sorting bins to the edge, as far apart as
+// the first two (14 columns): paper, glass and plastic in turn, each in its
+// usual colour, muted so the wings stay quiet, with a darker lid and a
+// small sign of what goes in, in a light shade of its colour (4 x 4, in the
+// rows under the lid): a page with a folded corner, a bottle, a carrier bag.
+const BIN_EVERY = SECOND_BIN_X - BIN.x
+type SortingBin = { body: number; lid: number; sign: number; shape: readonly string[] }
+const SORTING_BINS: readonly SortingBin[] = [
+  { body: 0x4a6aa8, lid: 0x34497a, sign: 0x93acdc, shape: ['xxx.', 'x.xx', 'x..x', 'xxxx'] },
+  { body: 0x4a8a55, lid: 0x33613b, sign: 0x8fc699, shape: ['.xx.', '.xx.', 'xxxx', 'xxxx'] },
+  { body: 0xa89040, lid: 0x76652d, sign: 0xdcc683, shape: ['.xx.', 'x..x', 'xxxx', 'xxxx'] },
+]
 
 // The ball in Clawd's claw before a throw, if any: each comes HOLD_FOR
 // before its throw (the first one at the end of the loop before).
@@ -40,6 +54,15 @@ function drawBin(b: PixelBuffer, x: number) {
   fillRect(b, x, BIN.y, BIN.w, 14 - BIN.y, C.gray)
   fillRect(b, x - 1, BIN.y - 1, BIN.w + 2, 1, C.darkGray)
   for (const [dx, dy] of [[2, 2], [3, 2], [1, 3], [4, 3], [2, 4], [3, 4]] as const) setPixel(b, x + dx, BIN.y + dy, C.green)
+}
+
+// A sorting bin, the same size and in the same place in its slot as the grey ones.
+function drawSortingBin(b: PixelBuffer, x: number, bin: SortingBin) {
+  fillRect(b, x, BIN.y, BIN.w, 14 - BIN.y, bin.body)
+  fillRect(b, x - 1, BIN.y - 1, BIN.w + 2, 1, bin.lid)
+  bin.shape.forEach((row, dy) => {
+    for (let dx = 0; dx < row.length; dx++) if (row[dx] === 'x') setPixel(b, x + 1 + dx, BIN.y + 1 + dy, bin.sign)
+  })
 }
 
 export const recycling: Scene = {
@@ -79,5 +102,7 @@ export const recycling: Scene = {
     }
     drawBin(b, BIN.x)
     if (hasSecondBin) drawBin(b, SECOND_BIN_X)
+    // From the lid's left end, so a bin whose lid alone reaches the area shows it.
+    tileOn(b, SECOND_BIN_X + BIN_EVERY - 1, BIN_EVERY, (x, k) => drawSortingBin(b, x + 1, SORTING_BINS[k % SORTING_BINS.length]!))
   },
 }

@@ -127,6 +127,32 @@ test('recycling: past 50 columns the missed ball rolls against a second bin and 
   expect(ball(6.05, { columns: 51, rows: 7 })).toBe(48)
 })
 
+test('recycling: past the second bin, sorting bins to the edge, 14 columns apart: paper, glass, plastic in turn', () => {
+  const b = draw('recycling', 1)
+  const blue = 0x4a6aa8
+  const green = 0x4a8a55
+  const yellow = 0xa89040
+  // Bins at 64, 78, ... 190, each a body of its colour, a lid, and a sign in a lighter shade.
+  const xs = Array.from({ length: 10 }, (_, k) => 64 + 14 * k)
+  expect(xs.map(x => at(b, x, 13))).toEqual([blue, green, yellow, blue, green, yellow, blue, green, yellow, blue])
+  for (const x of xs) {
+    expect(gaps(b, 7, x - 1, x + 7)).toEqual([])
+    expect(at(b, x - 1, 7)).not.toBe(at(b, x, 13))
+    const body = at(b, x, 13)
+    const sign = Array.from({ length: 16 }, (_, i) => at(b, x + 1 + (i % 4), 9 + Math.floor(i / 4))).filter(c => c !== body)
+    expect(sign.length).toBeGreaterThanOrEqual(8)
+    expect(new Set(sign).size).toBe(1)
+    expect(sign[0]).not.toBe(CLAWD_ORANGE)
+    // Nothing between this bin's lid and the next one's.
+    expect(gaps(b, 7, x + 7, x + 13)).toHaveLength(6)
+  }
+  // The core's bin and the second stay grey, the second 14 columns on.
+  expect([36, 50].map(x => at(b, x, 13))).toEqual([C.gray, C.gray])
+  // Still bins all through the loop, the same at 120 columns as at 200.
+  const mid = draw('recycling', 5.9, MID)
+  for (let x = 57; x < 120; x++) for (let y = 7; y < 14; y++) expect(at(mid, x, y)).toBe(at(b, x, y))
+})
+
 test('road-trip: the road winds to the edge, flags standing past the core from the start; still through the fade', () => {
   const b = draw('road-trip', 0)
   const roadY = (x: number) => 11 + Math.round(Math.sin((x - 18) / 5) * 1.5)
