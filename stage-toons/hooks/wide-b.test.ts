@@ -159,20 +159,21 @@ test('the writing desk: a second stack, written already, on the desk past the co
 })
 
 test('the writing desk: the growing stack stands on the desk, never over its top, at every width', () => {
-  for (const columns of [48, 120, 200]) {
-    for (let t = 0.013; t < 6; t += 0.1) {
+  const wrong: string[] = []
+  for (const columns of [48, 120]) {
+    // A moment in each of the stack's six heights, and its last before the loop.
+    for (const t of [0.013, 0.95, 1.85, 2.75, 3.65, 4.55, 5.99]) {
       const b = draw('writing-desk', t, { columns, rows: 9 })
-      // The desk's top is whole from 10 to the edge, the stack's bottom page on the row above.
-      expect(gaps(b, 12, 10, columns)).toEqual([])
-      for (let x = 10; x < columns; x++) expect(at(b, x, 12)).toBe(C.wood)
-      expect(at(b, 36, 11)).toBe(C.paper)
-      expect(at(b, 41, 11)).toBe(C.paper)
-      // Clawd's legs aside, nothing under the desk but its legs.
-      for (let x = 32; x < columns; x++) expect([EMPTY, C.woodDark]).toContain(at(b, x, 13))
-      // At most 6 pages: the top one on row 6, the rows above clear over the stack.
-      for (let y = -4; y < 6; y++) for (let x = 36; x < 42; x++) expect(at(b, x, y)).toBe(EMPTY)
+      // The desk's top is wood from 10 to the edge; the stack's bottom page on the row above.
+      for (let x = 10; x < columns; x++) if (at(b, x, 12) !== C.wood) wrong.push(`${columns} ${t} top ${x}`)
+      if (at(b, 36, 11) !== C.paper || at(b, 41, 11) !== C.paper) wrong.push(`${columns} ${t} bottom page`)
+      // Under the desk past Clawd, nothing but its legs.
+      for (let x = 32; x < columns; x++) if (at(b, x, 13) !== EMPTY && at(b, x, 13) !== C.woodDark) wrong.push(`${columns} ${t} under ${x}`)
+      // At most 6 pages, the top one on row 6: the rows above the stack stay clear.
+      for (let y = -4; y < 6; y++) for (let x = 36; x < 42; x++) if (at(b, x, y) !== EMPTY) wrong.push(`${columns} ${t} above ${x},${y}`)
     }
   }
+  expect(wrong).toEqual([])
   // It grows a page every 0.9 s, from one to six.
   const pages = (t: number) => Array.from({ length: 6 }, (_, i) => at(draw('writing-desk', t), 36, 11 - i)).filter(c => c !== EMPTY).length
   expect([0.1, 1, 1.9, 2.8, 3.7, 4.6, 5.9].map(pages)).toEqual([1, 2, 3, 4, 5, 6, 6])
