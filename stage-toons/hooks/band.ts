@@ -3,12 +3,13 @@
 // auditor runs, and the message. Sized to the band in terminal cells, so
 // nothing wraps.
 
-import type { Progress, Workflow } from '../types'
-import { STAGE_W } from './scene'
+import type { Progress, WidthSetting, Workflow } from '../types'
+import type { AreaSize } from './scene'
 import { cellWidth, fitCells, NOT_TRACKED, position, stageLabel } from './stages'
 import { type TaskCount, countText } from './tasks'
 import { TOON_ROWS } from './toon'
 import { isDone } from './track'
+import { WIDTH_MAX } from './width'
 import { isTrack, rank, stageOf } from './workflow'
 
 export type Tone = 'done' | 'current' | 'future' | 'label' | 'tag' | 'message' | 'note'
@@ -33,9 +34,9 @@ export const TAG = '⌕ Fable reviewing'
 // wide there, cropped).
 export const TOON_MIN = 30
 
-// How wide the area under the bar is drawn in a band this many columns wide:
-// one column spare, as the bar keeps.
-export const areaColumns = (columns: number) => Math.min(STAGE_W, columns - 1)
+// The most rows the area takes, where the band has them (TOON_ROWS, 7, is
+// the fewest).
+export const AREA_ROWS = 9
 
 export type BandMode = 'none' | 'text' | 'area'
 // barLines: how many lines the bar takes, as bandLayout laid it out.
@@ -59,6 +60,22 @@ export function bandMode(s: BandSite): BandMode {
   if (s.surface !== 'terminal') return 'text'
 
   return s.columns >= TOON_MIN && s.maxRows >= s.barLines + TOON_ROWS ? 'area' : 'text'
+}
+
+// The area's size in a band: as wide as the band (one column spare, as the
+// bar keeps) up to the width setting and the widest Raster; 9 rows where
+// the band has them under the bar, else 8, else 7. previous: the rows the
+// area last showed with, null when it has not shown since the session or
+// the last band without it. It shrinks at once, and grows only with a row
+// to spare, so a line that comes and goes under it (the spinner's, at a
+// turn's start) does not make it flicker.
+export function areaSize(s: BandSite, limit: WidthSetting, previous: number | null): AreaSize {
+  const columns = Math.min(limit === 'full' ? WIDTH_MAX : limit, s.columns - 1, WIDTH_MAX)
+  const room = s.maxRows - s.barLines
+  const fit = Math.min(AREA_ROWS, room)
+  const rows = previous === null || fit <= previous ? fit : Math.max(previous, Math.min(AREA_ROWS, room - 1))
+
+  return { columns, rows }
 }
 
 // The track as it stands: done steps and the links between them, the

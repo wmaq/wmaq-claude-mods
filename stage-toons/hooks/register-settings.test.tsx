@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { bandText, callTool, engine, runStage, START } from './harness'
+import { bandText, callTool, engine, mountBand, runStage, START } from './harness'
 import { DEFAULT_WORKFLOW, workflowJson } from './workflow'
 
 const FILE = '.claude/stage-toons.json'
@@ -164,4 +164,44 @@ test("a file's auto: true and hide: false win over the person's own settings off
   expect(text(await runStage($, 'auto'))).toContain("This project's workflow file starts it on.")
   await callTool($, 'Skill', brainstorm)
   expect(text(await runStage($, ''))).toContain('2/10 Brainstorm by auto')
+})
+
+test("/stage width sets how wide the cartoons grow and saves it for every project; a file's width starts a session so", async ($, on) => {
+  const { world } = engine(on)
+  await $.session.start(START)
+  expect(text(await runStage($, 'width'))).toBe('The cartoons grow up to 120 columns. /stage width <n> or /stage width full changes it.')
+  await mountBand($)
+  expect(text(await runStage($, 'width 90'))).toBe('The cartoons grow up to 90 columns (the band has room for 99). /stage width <n> or /stage width full changes it.')
+  expect(world.store.width).toBe(90)
+  expect(text(await runStage($, 'width 30'))).toBe('Usage: /stage width [<n> | full], n a whole number of columns from 48 to 512.')
+  expect(world.store.width).toBe(90)
+  world.files[FILE] = fileWith({ width: 'full' })
+  expect(text(await runStage($, 'workflow reload'))).toBe("workflow unchanged (now from .claude/stage-toons.json); applied its settings: the cartoons up to the band's whole width.")
+  expect(text(await runStage($, 'width'))).toContain("grow to the band's whole width, up to 512 columns (the band has room for 99). /stage width <n> or /stage width full changes it. This project's workflow file starts it at full.")
+  // The person's own setting is theirs.
+  expect(world.store.width).toBe(90)
+})
+
+test("the store's width starts a session", async ($, on) => {
+  engine(on, { store: { width: 64 } })
+  await $.session.start(START)
+  expect(text(await runStage($, 'width'))).toContain('up to 64 columns')
+})
+
+test("a store's width that is not a width reads as the default", async ($, on) => {
+  engine(on, { store: { width: 'wide' } })
+  await $.session.start(START)
+  expect(text(await runStage($, 'width'))).toContain('up to 120 columns')
+})
+
+test("a hot reload keeps the session's own width, whatever the store says", async ($, on) => {
+  on('state.get', ($, e, next) => {
+    if (e.key === 'workflow') return { value: { value: { workflow: DEFAULT_WORKFLOW, source: 'default' }, version: 1 } }
+    if (e.key === 'width') return { value: { value: 'full', version: 1 } }
+
+    return next(e)
+  })
+  engine(on, { store: { width: 64 } })
+  await $.session.start(START)
+  expect(text(await runStage($, 'width'))).toContain("grow to the band's whole width")
 })

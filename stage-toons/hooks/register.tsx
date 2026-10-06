@@ -9,11 +9,11 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, ToolCallInput } from 'claude-code'
 
-import type { Progress, ScenePick, SessionWorkflow, StageId, TaskList, Workflow, WorkflowSettings } from '../types'
+import type { Progress, ScenePick, SessionWorkflow, StageId, TaskList, WidthSetting, Workflow, WorkflowSettings } from '../types'
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { ended, reconcileRoster, rememberKind, spawned } from './agents'
 import { autoMatch, hasRules, type Heard, isWindowsPath, relativePath, type Signal, typedSkill, viaOf } from './auto'
-import { areaColumns, BAR_TONES, bandLayout, bandMode, type BandSite } from './band'
+import { areaSize, BAR_TONES, bandLayout, bandMode, type BandSite } from './band'
 import { autoText, bubblesText, hideText, moveFor, parseCommand, settingsText, settingsWords, showText, unknownText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { demoAt, demoFor, demoLine, demoStep, idleDemoAt, idleDemoLine, startDemo, waitingDemoLine, workDemoAt, workDemoLine } from './demo'
 import { createDirector, react, restarted, withAuditing, withScene } from './director'
@@ -31,14 +31,15 @@ import type { SceneId } from './scene'
 import { STAGE_SCENES } from './scenes'
 import { applyMove, describe, freshProgress, isAdvance, reconcile, stageLabel } from './stages'
 import { afterTaskCall, atTurnStart, countOf, isAllDone, sameCount, TASK_TOOLS } from './tasks'
-import { TOON_ROWS } from './toon'
 import { isDone } from './track'
+import { DEFAULT_WIDTH, isWidth, WIDTH_MAX, WIDTH_USAGE, widthText } from './width'
 import { createActivity, lineOf, said, toolEnded, toolStarted, withMode } from './work'
 import { DEFAULT_WORKFLOW, parseWorkflow, sameWorkflow, stageIds, stageList, stageOf, UNTRACKED_SCENE, withScenes, workflowJson } from './workflow'
 
 const HIDDEN_KEY = 'hidden'
 const AUTO_KEY = 'auto'
 const BUBBLES_KEY = 'bubbles'
+const WIDTH_KEY = 'width'
 const PRUNED_KEY = 'pruned-at'
 // Set once the first session's welcome toast was given.
 const WELCOMED_KEY = 'welcomed'
@@ -84,6 +85,8 @@ const usdAtom = atom({ plugin: 'stage-toons', key: 'usdCredited' } as const, nul
 const tasksAtom = atom({ plugin: 'stage-toons', key: 'tasks' } as const, {})
 // Whether Clawd's pop-ups show, for this session, as autoAtom is.
 const bubblesAtom = atom({ plugin: 'stage-toons', key: 'bubbles' } as const, true)
+// How wide the cartoons grow, for this session, as autoAtom is.
+const widthAtom = atom({ plugin: 'stage-toons', key: 'width' } as const, DEFAULT_WIDTH as WidthSetting)
 
 // A queued step of the mod's own (an automatic move, a turn's credit) that
 // must not fail the call or event it rides on: a failure goes to the debug log.
@@ -492,11 +495,24 @@ async function readWorkflowFile($: EngineInterface): Promise<FileWorkflow> {
   }
 }
 
+// /stage width <n> or full, kept for every project. The band redraws at
+// its new size.
+async function setWidth($: EngineInterface, mod: Mod, width: WidthSetting) {
+  mod.width = width
+  await update($, widthAtom, () => width)
+  try {
+    await $.store.set(WIDTH_KEY, width)
+  } catch {
+    // Lasts for this session.
+  }
+  $.ui.invalidate('ui.render')
+}
+
 const sessionWorkflowOf = (file: FileWorkflow): SessionWorkflow =>
   file.kind === 'ok' ? { workflow: file.workflow, source: 'file', ...(file.settings ? { settings: file.settings } : {}) } : { workflow: DEFAULT_WORKFLOW, source: 'default' }
 
 // The project's starting state, at a fresh session start and at /stage
-// workflow reload: the file's auto, hide and bubbles where it sets them, else the
+// workflow reload: the file's auto, hide, bubbles and width where it sets them, else the
 // person's own (the store's), else as the session has it. Nothing is
 // saved: the store keeps the person's own settings.
 async function applySettings($: EngineInterface, mod: Mod, settings: WorkflowSettings | undefined) {
@@ -528,13 +544,26 @@ async function applySettings($: EngineInterface, mod: Mod, settings: WorkflowSet
       // As this session had it.
     }
   }
+  const wasWidth = await read($, widthAtom)
+  let width = wasWidth
+  if (settings?.width !== undefined) width = settings.width
+  else {
+    try {
+      const kept = await $.store.get(WIDTH_KEY)
+      width = isWidth(kept) ? kept : DEFAULT_WIDTH
+    } catch {
+      // As this session had it.
+    }
+  }
   mod.isAuto = isAuto
   mod.isHidden = isHidden
   mod.isBubbles = isBubbles
+  mod.width = width
   await update($, autoAtom, () => isAuto)
   await update($, hiddenAtom, () => isHidden)
   await update($, bubblesAtom, () => isBubbles)
-  if (isHidden !== wasHidden) $.ui.invalidate('ui.render')
+  await update($, widthAtom, () => width)
+  if (isHidden !== wasHidden || width !== wasWidth) $.ui.invalidate('ui.render')
 }
 
 // Registers set_stage for the workflow; false when the engine refused.
@@ -682,6 +711,7 @@ export const register: Register = on => {
       mod.isAuto = await read($, autoAtom)
       mod.isHidden = await read($, hiddenAtom)
       mod.isBubbles = await read($, bubblesAtom)
+      mod.width = await read($, widthAtom)
     }
     mod.surface = e.surface
     mod.idleSince = now
@@ -705,8 +735,8 @@ export const register: Register = on => {
         await $.command.register({
           name: COMMAND,
           description:
-            "Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene, a stage's scenes, the idle routines, the waiting toon or what Clawd shows while Claude works; /stage workflow shows or reloads the workflow; /stage auto, bubbles, log and time: the automatic moves, Clawd's pop-ups, the history, the time spent",
-          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work] [seconds] | demo waiting [scene] | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | log [n] | time]',
+            "Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene, a stage's scenes, the idle routines, the waiting toon or what Clawd shows while Claude works; /stage workflow shows or reloads the workflow; /stage auto, bubbles, width, log and time: the automatic moves, Clawd's pop-ups, how wide the cartoons grow, the history, the time spent",
+          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work] [seconds] | demo waiting [scene] | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | width [<n> | full] | log [n] | time]',
           immediate: true,
         })
       ).command
@@ -851,6 +881,13 @@ export const register: Register = on => {
 
       return { text: bubblesText(mod.isBubbles, (await read($, workflowAtom))?.settings?.bubbles) }
     }
+    if (cmd.kind === 'width') {
+      if (cmd.width !== null) await setWidth($, mod, cmd.width)
+      const room = mod.lastBand === null ? null : Math.min(mod.lastBand.columns - 1, WIDTH_MAX)
+
+      return { text: widthText(mod.width, room, (await read($, workflowAtom))?.settings?.width) }
+    }
+    if (cmd.kind === 'width-usage') return { text: WIDTH_USAGE }
     if (cmd.kind === 'help') return { text: usage(mod.workflow) }
     if (cmd.kind === 'usage') return { text: unknownText(mod.workflow, e.args) }
     if (cmd.kind === 'demo' || cmd.kind === 'demo-idle' || cmd.kind === 'demo-waiting' || cmd.kind === 'demo-work') {
@@ -1102,8 +1139,11 @@ export const register: Register = on => {
     }
     const wasShown = band.requestId !== undefined
     band.requestId = e.requestId
-    band.columns = areaColumns(columns)
-    band.rows = TOON_ROWS
+    // As wide as the band and the width setting allow, as tall as it has
+    // the rows for (band.ts).
+    const size = areaSize(site, mod.width, wasShown ? band.rows : null)
+    band.columns = size.columns
+    band.rows = size.rows
     band.isSeen = false
     // Shown again: an agent may have ended, or started, while the area was
     // away (a paint loop still running from before polls on its own time).

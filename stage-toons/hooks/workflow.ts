@@ -4,8 +4,10 @@
 
 import type { AutoRule, DoneDef, StageDef, Workflow, WorkflowSettings } from '../types'
 import { chars, rulesAt, unknownFrom } from './auto'
+import { STAGE_W } from './scene'
 import type { LibraryScene } from './scenes'
 import { allStages, DONE_ID, DONE_MESSAGE, DONE_SCENES, doneOf } from './track'
+import { isWidth, WIDTH_MAX } from './width'
 
 export type { DoneDef, StageDef, Workflow, WorkflowSettings }
 export { allStages, DONE_ID, doneOf, isDone, isTrack, rank } from './track'
@@ -76,7 +78,7 @@ export function stageList(w: Workflow): string {
   return w.side.length > 0 ? `${track}; side: ${w.side.map(s => s.id).join(', ')}` : track
 }
 
-export const RESERVED_IDS = ['next', 'back', 'hide', 'demo', 'feature', 'message', 'workflow', 'auto', 'bubbles', 'log', 'time', 'help', 'done'] as const
+export const RESERVED_IDS = ['next', 'back', 'hide', 'demo', 'feature', 'message', 'workflow', 'auto', 'bubbles', 'width', 'log', 'time', 'help', 'done'] as const
 export const TRACK_MAX = 15
 export const SIDE_MAX = 5
 
@@ -194,7 +196,7 @@ function stagesAt(value: unknown, name: 'track' | 'side', min: number, max: numb
 
 // The file's top-level fields: the stages, Done, and the settings for the
 // start.
-const TOP_FIELDS = ['track', 'side', 'done', 'auto', 'hide', 'bubbles'] as const
+const TOP_FIELDS = ['track', 'side', 'done', 'auto', 'hide', 'bubbles', 'width'] as const
 const DONE_FIELDS = ['message', 'scenes', 'auto'] as const
 
 // The file's "done": what it sets of Done's message, scenes and rules, or
@@ -256,6 +258,8 @@ export function parseWorkflow(json: string, sceneNames: readonly string[]): { wo
     if (typeof value === 'boolean') settings[name] = value
     else if (value !== undefined) errors.push(`${name}: must be true or false`)
   }
+  if (isWidth(top.width)) settings.width = top.width
+  else if (top.width !== undefined) errors.push(`width: must be a whole number from ${STAGE_W} to ${WIDTH_MAX}, or "full"`)
   if (errors.length > 0) return { errors }
   const workflow: Workflow = { track: track.map(f => f.stage), side: side.map(f => f.stage), ...(done ? { done } : {}) }
 

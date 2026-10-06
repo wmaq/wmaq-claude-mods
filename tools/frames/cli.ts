@@ -9,9 +9,11 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 
 import type { Workflow } from '../../stage-toons/types'
+import { AREA_ROWS } from '../../stage-toons/hooks/band'
+import type { AreaSize } from '../../stage-toons/hooks/scene'
 import { STAGE_SCENES } from '../../stage-toons/hooks/scenes'
-import { STAGE_W } from '../../stage-toons/hooks/scene'
 import { FALLBACK_WAITING } from '../../stage-toons/hooks/waiting/deal'
+import { parseWidth, WIDTH_MAX } from '../../stage-toons/hooks/width'
 import { parseWorkflow } from '../../stage-toons/hooks/workflow'
 import { type Canvas, toRgba } from './grid'
 import { encodePng } from './png'
@@ -19,17 +21,19 @@ import { contactSheet } from './sheet'
 import { bandFrames, idleFrames, sceneFrames, turnFrames, waitingFrames, workDemoFrames } from './sources'
 
 const USAGE = `usage: npx -y tsx tools/frames/cli.ts <what> [options]
-  scene <id> [--reaction advance|failure] [--auditing] [--width N]
+  scene <id> [--reaction advance|failure] [--auditing]
         [--mode thinking|responding] [--phase <phase>] [--what text] [--say line]
   idle <routine> [--doze]
-  waiting --agents fable,sonnet,... [--scene id] [--columns N]
-  waiting --demo [--scene id] [--columns N]
-  band --stage <id> [--feature F] [--message M] [--columns N] [--max-rows N]
+  waiting --agents fable,sonnet,... [--scene id]
+  waiting --demo [--scene id]
+  band --stage <id> [--feature F] [--message M] [--columns N] [--max-rows N] [--width N|full]
        [--agents a,b] [--auditing] [--working] [--scene id] [--workflow file.json] [--idle routine]
        [--tasks done/total]
-  turn [--stage id] [--scene id] [--idle routine] [--start MS] [--end MS] [--columns N]
+  turn [--stage id] [--scene id] [--idle routine] [--start MS] [--end MS]
   demo-work [--stage id] [--scene id] [--seconds N]
-common: --from MS (0) --every MS (250; 500 for turn) --count N (16) --columns-per-row N (4)
+the area (all but band): --columns N[,N...] (120; scene's --width is another name) --rows N (7 to 9; 9)
+common: --from MS (0) --every MS (250; 500 for turn) --count N (16; 4 with several --columns)
+        --columns-per-row N (4; 2 for frames over 64 columns; a row per width with several --columns)
         --scale N (1) --out file.png`
 
 const FLAGS = new Set(['auditing', 'demo', 'doze', 'working'])
@@ -38,13 +42,17 @@ const FLAGS = new Set(['auditing', 'demo', 'doze', 'working'])
 // an error, so a mistyped option is not drawn with its default.
 const COMMON = ['from', 'every', 'count', 'columns-per-row', 'scale', 'out']
 const OPTIONS: Record<string, readonly string[]> = {
-  scene: ['reaction', 'auditing', 'width', 'mode', 'phase', 'what', 'say'],
-  idle: ['doze'],
-  waiting: ['agents', 'columns', 'scene', 'demo'],
-  band: ['stage', 'feature', 'message', 'columns', 'max-rows', 'agents', 'auditing', 'working', 'scene', 'workflow', 'idle', 'tasks'],
-  turn: ['stage', 'scene', 'idle', 'start', 'end', 'columns'],
-  'demo-work': ['stage', 'scene', 'seconds', 'workflow'],
+  scene: ['reaction', 'auditing', 'width', 'columns', 'rows', 'mode', 'phase', 'what', 'say'],
+  idle: ['doze', 'columns', 'rows'],
+  waiting: ['agents', 'columns', 'rows', 'scene', 'demo'],
+  band: ['stage', 'feature', 'message', 'columns', 'max-rows', 'width', 'agents', 'auditing', 'working', 'scene', 'workflow', 'idle', 'tasks'],
+  turn: ['stage', 'scene', 'idle', 'start', 'end', 'columns', 'rows'],
+  'demo-work': ['stage', 'scene', 'seconds', 'workflow', 'columns', 'rows'],
 }
+// The area's size when not given: the width setting's default, and the
+// most rows.
+const AREA_COLUMNS = 120
+const BAND_COLUMNS = 100
 
 type Args = { what: string; id: string | undefined; opts: Map<string, string> }
 
@@ -99,6 +107,44 @@ const listOpt = (opts: Map<string, string>, name: string): string[] =>
     .map(s => s.trim())
     .filter(s => s !== '')
 
+// --columns 48,80,120 (scene's --width too): the widths to draw, each a
+// whole number from 1 (for the area, to 512); band's is the band's width.
+function columnsOpt(opts: Map<string, string>, what: string): number[] {
+  if (what === 'scene' && opts.has('width') && opts.has('columns')) throw new Error('scene takes --columns or --width (another name for it), not both')
+  const name = what === 'scene' && opts.has('width') ? 'width' : 'columns'
+  const raw = opts.get(name)
+  if (raw === undefined) return [what === 'band' ? BAND_COLUMNS : AREA_COLUMNS]
+
+  return raw.split(',').map(part => {
+    const n = Number(part.trim())
+    if (part.trim() === '' || !Number.isInteger(n) || n < 0) throw new Error(`--${name} must be whole numbers, as 120 or 48,80,120, not "${raw}"`)
+    if (n < 1) throw new Error(`--${name} must be at least 1, not "${part.trim()}"`)
+    if (what !== 'band' && n > WIDTH_MAX) throw new Error(`--${name} must be at most ${WIDTH_MAX}, not "${part.trim()}"`)
+
+    return n
+  })
+}
+
+// --rows: the area's rows, 7 to 9.
+function rowsOpt(opts: Map<string, string>): number {
+  const raw = opts.get('rows')
+  if (raw === undefined) return AREA_ROWS
+  const n = Number(raw)
+  if (![7, 8, 9].includes(n)) throw new Error(`--rows must be 7, 8 or 9, not "${raw}"`)
+
+  return n
+}
+
+// band's --width: the width setting, a number from 48 to 512 or full.
+function widthOpt(opts: Map<string, string>) {
+  const raw = opts.get('width')
+  if (raw === undefined) return undefined
+  const width = parseWidth(raw.toLowerCase())
+  if (width === null) throw new Error(`--width must be a whole number from 48 to ${WIDTH_MAX}, or full, not "${raw}"`)
+
+  return width
+}
+
 function workflowOpt(opts: Map<string, string>): Workflow | undefined {
   const path = opts.get('workflow')
   if (path === undefined) return undefined
@@ -109,8 +155,9 @@ function workflowOpt(opts: Map<string, string>): Workflow | undefined {
   return parsed.workflow
 }
 
-// The frames a request asks for, and the file they go to by default.
-function render(args: Args, times: readonly number[]): { frames: Canvas[]; name: string } {
+// The frames a request asks for at one width (the area's; band's, the
+// band's), and the file they go to by default.
+function render(args: Args, times: readonly number[], columns: number): { frames: Canvas[]; name: string } {
   const { what, id, opts } = args
   const known = OPTIONS[what]
   if ((what === 'band' || what === 'waiting' || what === 'turn' || what === 'demo-work') && id !== undefined) throw new Error(`unexpected "${id}" for ${what}\n${USAGE}`)
@@ -119,6 +166,7 @@ function render(args: Args, times: readonly number[]): { frames: Canvas[]; name:
       if (!known.includes(name) && !COMMON.includes(name)) throw new Error(`unknown option --${name} for ${what}\n${USAGE}`)
     }
   }
+  const size: AreaSize = { columns, rows: rowsOpt(opts) }
   const need = () => {
     if (id === undefined) throw new Error(`${what} needs an id\n${USAGE}`)
 
@@ -133,25 +181,25 @@ function render(args: Args, times: readonly number[]): { frames: Canvas[]; name:
         {
           reaction,
           auditing: opts.has('auditing'),
-          width: opts.has('width') ? numberOpt(opts, 'width', 0, 1) : undefined,
           mode: opts.get('mode') as 'thinking' | 'responding' | undefined,
           phase: opts.get('phase'),
           what: opts.get('what'),
           say: opts.get('say'),
         },
         times,
+        size,
       )
 
       return { frames, name: `frames-scene-${id}.png` }
     }
     case 'idle':
-      return { frames: idleFrames(need(), opts.has('doze'), times), name: `frames-idle-${id?.replace(/[:*]/g, '-')}${opts.has('doze') ? '-doze' : ''}.png` }
+      return { frames: idleFrames(need(), opts.has('doze'), times, size), name: `frames-idle-${id?.replace(/[:*]/g, '-')}${opts.has('doze') ? '-doze' : ''}.png` }
     case 'waiting': {
       const agents = listOpt(opts, 'agents')
       const scene = opts.get('scene') ?? FALLBACK_WAITING
       const isDemo = opts.has('demo')
       if (isDemo && opts.has('agents')) throw new Error(`waiting takes --agents or --demo, not both\n${USAGE}`)
-      const frames = waitingFrames(isDemo ? 'demo' : agents, times, numberOpt(opts, 'columns', STAGE_W, 1), scene)
+      const frames = waitingFrames(isDemo ? 'demo' : agents, times, size, scene)
 
       return { frames, name: `frames-waiting-${scene}-${isDemo ? 'demo' : agents.join('-')}.png` }
     }
@@ -163,8 +211,9 @@ function render(args: Args, times: readonly number[]): { frames: Canvas[]; name:
           stage,
           feature: opts.get('feature'),
           message: opts.get('message'),
-          columns: opts.has('columns') ? numberOpt(opts, 'columns', 100, 1) : undefined,
+          columns,
           maxRows: opts.has('max-rows') ? numberOpt(opts, 'max-rows', 0) : undefined,
+          width: widthOpt(opts),
           agents: listOpt(opts, 'agents'),
           auditing: opts.has('auditing'),
           working: opts.has('working'),
@@ -186,9 +235,9 @@ function render(args: Args, times: readonly number[]): { frames: Canvas[]; name:
           idle: opts.get('idle'),
           start: opts.has('start') ? numberOpt(opts, 'start', 0) : undefined,
           end: opts.has('end') ? numberOpt(opts, 'end', 0) : undefined,
-          columns: opts.has('columns') ? numberOpt(opts, 'columns', STAGE_W, 1) : undefined,
         },
         times,
+        size,
       )
 
       return { frames, name: `frames-turn-${opts.get('scene') ?? opts.get('stage') ?? 'standing'}.png` }
@@ -202,6 +251,7 @@ function render(args: Args, times: readonly number[]): { frames: Canvas[]; name:
           workflow: workflowOpt(opts),
         },
         times,
+        size,
       )
 
       return { frames, name: `frames-demo-work-${opts.get('scene') ?? opts.get('stage') ?? 'standing'}.png` }
@@ -218,11 +268,18 @@ export function main(argv: readonly string[]): { path: string; width: number; he
   const seconds = isWork && args.opts.has('seconds') ? numberOpt(args.opts, 'seconds', 3, 1) : 3
   const from = numberOpt(args.opts, 'from', isWork ? seconds * 500 : 0)
   const every = numberOpt(args.opts, 'every', args.what === 'turn' ? 500 : isWork ? seconds * 1000 : 250)
-  const count = numberOpt(args.opts, 'count', isWork ? 14 : 16)
+  const widths = columnsOpt(args.opts, args.what)
+  // Several widths: a row of frames per width.
+  const isList = widths.length > 1
+  const count = numberOpt(args.opts, 'count', isWork ? 14 : isList ? 4 : 16)
   if (count < 1) throw new Error('--count must be at least 1')
   const times = Array.from({ length: count }, (_, i) => from + i * every)
-  const { frames, name } = render(args, times)
-  const sheet = contactSheet(frames, times, numberOpt(args.opts, 'columns-per-row', 4, 1))
+  const rendered = widths.map(columns => render(args, times, columns))
+  const frames = rendered.flatMap(r => r.frames)
+  const captions = widths.flatMap(columns => times.map(t => (isList ? `${columns} cols, t=${t}ms` : `t=${t}ms`)))
+  const isWide = Math.max(...frames.map(f => f.cols)) > 64
+  const sheet = contactSheet(frames, captions, numberOpt(args.opts, 'columns-per-row', isList ? count : isWide ? 2 : 4, 1))
+  const { name } = rendered[0]!
   const { width, height, rgba } = toRgba(sheet, numberOpt(args.opts, 'scale', 1, 1))
   const path = args.opts.get('out') ?? name
   writeFileSync(path, encodePng(width, height, rgba))

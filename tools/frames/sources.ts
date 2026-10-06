@@ -3,11 +3,13 @@
 // while Claude works, the idle Clawd, the waiting toon, a turn's start and
 // end, and the whole band. Each sheet's frames are drawn in time order on
 // one mod, as the paint loop draws them, so a dissolve starts at the first
-// sample after a change.
+// sample after a change. Each draws on an area of the size asked for (48 by
+// 7 when none is: the cli's defaults are its own); the band works out its
+// area's size as the band's hook does.
 
-import type { Workflow } from '../../stage-toons/types'
+import type { WidthSetting, Workflow } from '../../stage-toons/types'
 import { spawned } from '../../stage-toons/hooks/agents'
-import { areaColumns, BAR_TONES, bandLayout, bandMode, type BandSite, type Span } from '../../stage-toons/hooks/band'
+import { AREA_ROWS, areaSize, BAR_TONES, bandLayout, bandMode, type BandSite, type Span } from '../../stage-toons/hooks/band'
 import { WORK_DEMO_SECONDS } from '../../stage-toons/hooks/demo'
 import { createDirector, react, withAuditing } from '../../stage-toons/hooks/director'
 import { areaCells } from '../../stage-toons/hooks/frames'
@@ -15,12 +17,12 @@ import { CELEBRATE, DOZE_MS, IDLE_IDS, routineOf, SHOW_OFF_PREFIX } from '../../
 import { createMod, type Mod } from '../../stage-toons/hooks/mod'
 import { type Phase, PHASES } from '../../stage-toons/hooks/phase'
 import { hex } from '../../stage-toons/hooks/pixels'
-import { FALLBACK_SCENE, STAGE_W } from '../../stage-toons/hooks/scene'
+import { type AreaSize, FALLBACK_SCENE, STAGE_SIZE } from '../../stage-toons/hooks/scene'
 import { SCENES } from '../../stage-toons/hooks/scenes'
 import { applyMove, freshProgress } from '../../stage-toons/hooks/stages'
 import type { TaskCount } from '../../stage-toons/hooks/tasks'
-import { TOON_ROWS } from '../../stage-toons/hooks/toon'
 import { FALLBACK_WAITING, WAITING_SCENE_IDS, type WaitingSceneId } from '../../stage-toons/hooks/waiting/deal'
+import { DEFAULT_WIDTH } from '../../stage-toons/hooks/width'
 import { DEFAULT_WORKFLOW, stageIds, stageOf } from '../../stage-toons/hooks/workflow'
 import { said, toolStarted, withMode } from '../../stage-toons/hooks/work'
 import { type Canvas, createCanvas, drawCells, drawText, type TextStyle } from './grid'
@@ -39,9 +41,9 @@ function knownRoutine(routine: string) {
   if (routineOf(routine) === undefined) known('idle routine', routine, [...IDLE_IDS, CELEBRATE, `${SHOW_OFF_PREFIX}<stage>`])
 }
 
-function cellsCanvas(cells: string, columns: number, rows: number): Canvas {
-  const c = createCanvas(columns, rows)
-  drawCells(c, 0, 0, cells, columns, rows)
+function cellsCanvas(cells: string, size: AreaSize): Canvas {
+  const c = createCanvas(size.columns, size.rows)
+  drawCells(c, 0, 0, cells, size.columns, size.rows)
 
   return c
 }
@@ -51,7 +53,6 @@ function cellsCanvas(cells: string, columns: number, rows: number): Canvas {
 export type SceneOptions = {
   reaction?: 'advance' | 'failure'
   auditing?: boolean
-  width?: number
   mode?: 'thinking' | 'responding'
   phase?: string
   what?: string
@@ -72,11 +73,10 @@ function workingMod(id: string, auditing: boolean, reaction?: 'advance' | 'failu
 }
 
 // The area while Claude works, as its paint loop composes it (areaCells).
-export function sceneFrames(id: string, opts: SceneOptions, times: readonly number[]): Canvas[] {
+export function sceneFrames(id: string, opts: SceneOptions, times: readonly number[], size: AreaSize = STAGE_SIZE): Canvas[] {
   known('scene', id, SCENE_IDS)
   if (opts.mode !== undefined) known('mode', opts.mode, MODES)
   if (opts.phase !== undefined) known('phase', opts.phase, PHASES)
-  const width = opts.width ?? STAGE_W
   const mod = workingMod(id, opts.auditing ?? false, opts.reaction)
   if (opts.mode !== undefined) mod.activity = withMode(mod.activity, opts.mode as 'thinking' | 'responding')
   if (opts.phase !== undefined) mod.activity = toolStarted(mod.activity, 'tu-sheet', opts.phase as Phase, opts.what ?? '')
@@ -84,18 +84,18 @@ export function sceneFrames(id: string, opts: SceneOptions, times: readonly numb
   // A line is said again before each frame, so it holds.
   const before = say === undefined ? undefined : (t: number) => (mod.activity = said(mod.activity, say, t))
 
-  return areaFrames(mod, width, times, before).map(cells => cellsCanvas(cells, width, TOON_ROWS))
+  return areaFrames(mod, size, times, before).map(cells => cellsCanvas(cells, size))
 }
 
 // The idle Clawd in the band's area, the idle period starting at time 0;
 // with doze, from the doze on (still once DEEP_SLEEP_MS has passed).
-export function idleFrames(routine: string, doze: boolean, times: readonly number[], columns = STAGE_W): Canvas[] {
+export function idleFrames(routine: string, doze: boolean, times: readonly number[], size: AreaSize = STAGE_SIZE): Canvas[] {
   knownRoutine(routine)
   const mod = createMod()
   mod.idle = routine
   mod.idleSince = 0
 
-  return times.map(t => cellsCanvas(areaCells(mod, { columns, rows: TOON_ROWS }, doze ? DOZE_MS + t : t, quiet) ?? '', columns, TOON_ROWS))
+  return times.map(t => cellsCanvas(areaCells(mod, size, doze ? DOZE_MS + t : t, quiet) ?? '', size))
 }
 
 // A mod whose band's area is on screen while Claude waits on these agents,
@@ -118,14 +118,14 @@ function waitingMod(agents: readonly string[], scene: WaitingSceneId = FALLBACK_
 // The area's frames over time, on one mod in time order, the area first
 // drawn at time 0: the helpers sit down as it first sees them, and a
 // working scene comes on then.
-function areaFrames(mod: Mod, columns: number, times: readonly number[], before?: (t: number) => void): string[] {
+function areaFrames(mod: Mod, size: AreaSize, times: readonly number[], before?: (t: number) => void): string[] {
   before?.(0)
-  areaCells(mod, { columns, rows: TOON_ROWS }, 0, quiet)
+  areaCells(mod, size, 0, quiet)
 
   return [...times].map(t => {
     before?.(t)
 
-    return areaCells(mod, { columns, rows: TOON_ROWS }, t, quiet) ?? ''
+    return areaCells(mod, size, t, quiet) ?? ''
   })
 }
 
@@ -133,7 +133,7 @@ function areaFrames(mod: Mod, columns: number, times: readonly number[], before?
 // --scene's, started at time 0, seconds per step.
 export type WorkDemoOptions = { stage?: string; scene?: string; seconds?: number; workflow?: Workflow }
 
-export function workDemoFrames(opts: WorkDemoOptions, times: readonly number[]): Canvas[] {
+export function workDemoFrames(opts: WorkDemoOptions, times: readonly number[], size: AreaSize = STAGE_SIZE): Canvas[] {
   const w = opts.workflow ?? DEFAULT_WORKFLOW
   if (opts.stage !== undefined) known('stage', opts.stage, stageIds(w))
   if (opts.scene !== undefined) known('scene', opts.scene, SCENE_IDS)
@@ -143,18 +143,18 @@ export function workDemoFrames(opts: WorkDemoOptions, times: readonly number[]):
   mod.idleSince = 0
   mod.demo = { kind: 'work', at: 0, seconds: opts.seconds ?? WORK_DEMO_SECONDS, scene }
 
-  return areaFrames(mod, STAGE_W, times).map(cells => cellsCanvas(cells, STAGE_W, TOON_ROWS))
+  return areaFrames(mod, size, times).map(cells => cellsCanvas(cells, size))
 }
 
 // The waiting toon with these agents at work, or its demo ('demo': the
 // script /stage demo waiting plays, from time 0), at a waiting scene.
-export function waitingFrames(agents: readonly string[] | 'demo', times: readonly number[], columns = STAGE_W, scene: string = FALLBACK_WAITING): Canvas[] {
+export function waitingFrames(agents: readonly string[] | 'demo', times: readonly number[], size: AreaSize = STAGE_SIZE, scene: string = FALLBACK_WAITING): Canvas[] {
   known('waiting scene', scene, WAITING_SCENE_IDS)
   if (agents !== 'demo' && agents.length === 0) throw new Error('waiting needs --agents (for example --agents fable,sonnet) or --demo')
   const mod = waitingMod(agents === 'demo' ? [] : agents, scene as WaitingSceneId)
   if (agents === 'demo') mod.demo = { kind: 'waiting', at: 0, scene: scene as WaitingSceneId }
 
-  return areaFrames(mod, columns, times).map(cells => cellsCanvas(cells, columns, TOON_ROWS))
+  return areaFrames(mod, size, times).map(cells => cellsCanvas(cells, size))
 }
 
 export type BandOptions = {
@@ -162,7 +162,10 @@ export type BandOptions = {
   feature?: string
   message?: string
   columns?: number
+  // The band's rows: the bar's lines and 9 rows when not given.
   maxRows?: number
+  // The width setting (DEFAULT_WIDTH when not given).
+  width?: WidthSetting
   agents?: readonly string[]
   auditing?: boolean
   working?: boolean
@@ -205,44 +208,44 @@ export function bandFrames(opts: BandOptions, times: readonly number[]): Canvas[
     isAgentView: false,
     isHidden: false,
     columns,
-    maxRows: opts.maxRows ?? lines.length + TOON_ROWS,
+    maxRows: opts.maxRows ?? lines.length + AREA_ROWS,
     barLines: lines.length,
   }
   const hasArea = bandMode(site) === 'area'
-  const areaWidth = areaColumns(columns)
+  const size = areaSize(site, opts.width ?? DEFAULT_WIDTH, null)
   const agents = opts.agents ?? []
   let area: string[] = []
   if (hasArea) {
     if (opts.working) {
-      area = areaFrames(workingMod(opts.scene ?? stageOf(w, opts.stage)?.scenes[0] ?? FALLBACK_SCENE, opts.auditing ?? false), areaWidth, times)
-    } else if (agents.length > 0) area = areaFrames(waitingMod(agents), areaWidth, times)
+      area = areaFrames(workingMod(opts.scene ?? stageOf(w, opts.stage)?.scenes[0] ?? FALLBACK_SCENE, opts.auditing ?? false), size, times)
+    } else if (agents.length > 0) area = areaFrames(waitingMod(agents), size, times)
     else {
       const mod = createMod()
       mod.idleSince = 0
       if (opts.idle !== undefined) mod.idle = opts.idle
-      area = times.map(t => areaCells(mod, { columns: areaWidth, rows: TOON_ROWS }, t, quiet) ?? '')
+      area = times.map(t => areaCells(mod, size, t, quiet) ?? '')
     }
   }
 
   return times.map((_, i) => {
-    const c = createCanvas(columns, lines.length + (hasArea ? TOON_ROWS : 0))
+    const c = createCanvas(columns, lines.length + (hasArea ? size.rows : 0))
     lines.forEach((spans, row) => {
       let col = 0
       for (const span of spans) col += drawText(c, col, row, span.text, styleOf(span))
     })
-    if (hasArea) drawCells(c, 0, lines.length, area[i]!, areaWidth, TOON_ROWS)
+    if (hasArea) drawCells(c, 0, lines.length, area[i]!, size.columns, size.rows)
 
     return c
   })
 }
 
-export type TurnOptions = { stage?: string; scene?: string; idle?: string; start?: number; end?: number; columns?: number }
+export type TurnOptions = { stage?: string; scene?: string; idle?: string; start?: number; end?: number }
 
 // The area through one turn: the idle Clawd (classic, or the routine asked
 // for) until start, the stage's scene (its first, or the one asked for)
 // until end, then the idle Clawd again, his idle period starting at end.
 // Both edges dissolve.
-export function turnFrames(opts: TurnOptions, times: readonly number[]): Canvas[] {
+export function turnFrames(opts: TurnOptions, times: readonly number[], size: AreaSize = STAGE_SIZE): Canvas[] {
   const w = DEFAULT_WORKFLOW
   if (opts.stage !== undefined) known('stage', opts.stage, stageIds(w))
   if (opts.scene !== undefined) known('scene', opts.scene, SCENE_IDS)
@@ -250,7 +253,6 @@ export function turnFrames(opts: TurnOptions, times: readonly number[]): Canvas[
   const start = opts.start ?? 1000
   const end = opts.end ?? 5000
   if (end < start) throw new Error(`--end (${end}) is before --start (${start})`)
-  const columns = opts.columns ?? STAGE_W
   const mod = createMod()
   mod.idleSince = 0
   if (opts.idle !== undefined) mod.idle = opts.idle
@@ -259,7 +261,7 @@ export function turnFrames(opts: TurnOptions, times: readonly number[]): Canvas[
     mod.isBandWorking = t >= start && t < end
     if (t >= end && mod.idleSince < end) mod.idleSince = end
 
-    return areaCells(mod, { columns, rows: TOON_ROWS }, t, quiet) ?? ''
+    return areaCells(mod, size, t, quiet) ?? ''
   }
   // The turn's edges are drawn when they come, sampled or not, so each
   // dissolve starts on time.
@@ -270,6 +272,6 @@ export function turnFrames(opts: TurnOptions, times: readonly number[]): Canvas[
     for (const edge of [start, end]) if (edge > drawnTo && edge < t) at(edge)
     drawnTo = t
 
-    return cellsCanvas(at(t), columns, TOON_ROWS)
+    return cellsCanvas(at(t), size)
   })
 }

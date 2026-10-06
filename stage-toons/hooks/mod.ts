@@ -1,7 +1,7 @@
 // The module's own state, the paint sites it repaints, and the small rules
 // over them that need no engine. register.tsx makes one Mod per load.
 
-import type { IdleId, Workflow } from '../types'
+import type { IdleId, WidthSetting, Workflow } from '../types'
 import { EMPTY_ROSTER, type Roster } from './agents'
 import type { Heard } from './auto'
 import type { BandSite } from './band'
@@ -17,6 +17,7 @@ import { type Cast, TOON_ROWS } from './toon'
 import { dealWaiting, FALLBACK_WAITING, NEW_DEAL, type WaitingDeal, type WaitingSceneId } from './waiting/deal'
 import { EMPTY_LOG, freesAt, seat, type SeatEntry, type SeatLog } from './waiting/seats'
 import { type Activity, createActivity } from './work'
+import { DEFAULT_WIDTH } from './width'
 import { DEFAULT_WORKFLOW } from './workflow'
 
 export const PLUGIN = 'stage-toons'
@@ -27,7 +28,8 @@ export const PLUGIN = 'stage-toons'
 export const MAX_REFUSED = 3
 export const MAX_REFUSED_UNSEEN = 24
 
-// The Raster the mod repaints: the band's area, keyed 'area'. lastCells
+// The Raster the mod repaints: the band's area, keyed 'area', at the size
+// the band's hook worked out (band.ts' areaSize). lastCells
 // and blittedAt: the frame the Raster shows and when it was sent; isAsleep:
 // the area stopped on its still picture (P1).
 export type Site = {
@@ -118,6 +120,8 @@ export type Mod = {
   // scene shows it, and whether the layer shows (/stage bubbles).
   activity: Activity
   isBubbles: boolean
+  // How wide the area may grow (/stage width).
+  width: WidthSetting
   // What the scenes draw with (frames.ts's castOf), built once.
   cast: Cast | null
   // The agents known and their helpers at the desk row; whether the
@@ -180,6 +184,7 @@ export const createMod = (): Mod => ({
   broken: new Set(),
   activity: createActivity(),
   isBubbles: true,
+  width: DEFAULT_WIDTH,
   cast: null,
   roster: EMPTY_ROSTER,
   seats: EMPTY_LOG,

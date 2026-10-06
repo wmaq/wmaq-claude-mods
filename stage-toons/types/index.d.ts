@@ -48,11 +48,16 @@ export type DoneDef = { message?: string; scenes?: readonly string[]; auto?: rea
 // Done (absent: the defaults, no rules).
 export type Workflow = { track: readonly StageDef[]; side: readonly StageDef[]; done?: DoneDef }
 
+// How wide the area under the bar may grow (/stage width): a number of
+// columns, 48 to 512, or the band's whole width (hooks/width.ts).
+export type WidthSetting = number | 'full'
+
 // What a project's workflow file sets for the session's start: whether
-// rules move the stage (auto), whether the bar is hidden (hide) and whether
-// Clawd's pop-ups show (bubbles). Each left out where the file says
-// nothing, and the person's own setting holds.
-export type WorkflowSettings = { auto?: boolean; hide?: boolean; bubbles?: boolean }
+// rules move the stage (auto), whether the bar is hidden (hide), whether
+// Clawd's pop-ups show (bubbles) and how wide the cartoons grow (width).
+// Each left out where the file says nothing, and the person's own setting
+// holds.
+export type WorkflowSettings = { auto?: boolean; hide?: boolean; bubbles?: boolean; width?: WidthSetting }
 
 // The session's workflow, where it came from, and the file's settings.
 // Settings is absent where an older version kept it, or the file sets none.
@@ -106,6 +111,9 @@ declare module 'claude-code' {
       // Whether Clawd's pop-ups show (/stage bubbles): kept across a reload,
       // as auto is.
       bubbles: boolean
+      // How wide the cartoons grow (/stage width): kept across a reload, as
+      // bubbles is.
+      width: WidthSetting
     }
   }
 }

@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { areaColumns, BAR_TONES, bandLayout, bandMode, type Span, TOON_MIN, trackSpans } from './band'
+import { AREA_ROWS, areaSize, BAR_TONES, bandLayout, bandMode, type BandSite, type Span, TOON_MIN, trackSpans } from './band'
 import { applyMove, cellWidth, freshProgress } from './stages'
 import { DEFAULT_WORKFLOW } from './workflow'
 
@@ -142,10 +142,39 @@ test('the bar draws its tones as before: Clawd orange lit, the current stage bol
   })
 })
 
-test('the area is as wide as the band allows, 48 at most', () => {
-  expect(areaColumns(TOON_MIN)).toBe(29)
-  expect(areaColumns(49)).toBe(48)
-  expect(areaColumns(200)).toBe(48)
+const bandOf = (columns: number, maxRows: number): BandSite => ({ surface: 'terminal', hasSurvey: false, isAgentView: false, isHidden: false, columns, maxRows, barLines: 2 })
+
+test('the area is as wide as the band allows, up to the width setting and 512 columns', () => {
+  const columns = (band: number, limit: number | 'full') => areaSize(bandOf(band, 40), limit, null).columns
+  expect(columns(TOON_MIN, 120)).toBe(29)
+  expect(columns(49, 120)).toBe(48)
+  expect(columns(50, 120)).toBe(49)
+  expect(columns(140, 120)).toBe(120)
+  expect(columns(140, 48)).toBe(48)
+  expect(columns(140, 'full')).toBe(139)
+  expect(columns(600, 'full')).toBe(512)
+  expect(columns(600, 512)).toBe(512)
+})
+
+test('the area is 9 rows where the band has them under the bar, else 8, else 7', () => {
+  const rows = (maxRows: number) => areaSize(bandOf(100, maxRows), 120, null).rows
+  expect(AREA_ROWS).toBe(9)
+  expect(rows(2 + 7)).toBe(7)
+  expect(rows(2 + 8)).toBe(8)
+  expect(rows(2 + 9)).toBe(9)
+  expect(rows(40)).toBe(9)
+})
+
+test('the area shrinks at once, and grows only with a row to spare', () => {
+  const rows = (maxRows: number, previous: number) => areaSize(bandOf(100, maxRows), 120, previous).rows
+  expect(rows(2 + 8, 9)).toBe(8)
+  expect(rows(2 + 7, 9)).toBe(7)
+  expect(rows(2 + 9, 8)).toBe(8)
+  expect(rows(2 + 10, 8)).toBe(9)
+  expect(rows(2 + 9, 7)).toBe(8)
+  expect(rows(2 + 10, 7)).toBe(9)
+  expect(rows(2 + 8, 7)).toBe(7)
+  expect(rows(2 + 9, 9)).toBe(9)
 })
 
 const done = applyMove(W, applyMove(W, plan, { stage: 'cleanup', by: 'claude', at: 2 }), { stage: 'done', by: 'claude', at: 3 })

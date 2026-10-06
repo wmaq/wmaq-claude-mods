@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import { hex } from '../../stage-toons/hooks/pixels'
+import { STAGE_SIZE } from '../../stage-toons/hooks/scene'
 import { HELPER_COLORS } from '../../stage-toons/hooks/waiting'
 import { WATER } from '../../stage-toons/hooks/waiting/rowing'
 import { CELL_H, CELL_W, type Canvas } from './grid'
@@ -30,15 +31,15 @@ test('an unknown id is an error that lists the known ones', () => {
   assert.throws(() => bandFrames({ stage: 'plan', idle: 'nope' }, [0]), /unknown idle routine "nope"/)
   assert.throws(() => bandFrames({ stage: 'nope' }, [0]), /unknown stage "nope"; known: roadmap, brainstorm/)
   assert.throws(() => waitingFrames([], [0]), /waiting needs --agents/)
-  assert.throws(() => waitingFrames(['fable'], [0], 48, 'sailing'), /unknown waiting scene "sailing"; known: laptops, building, rowing, conveyor/)
+  assert.throws(() => waitingFrames(['fable'], [0], STAGE_SIZE, 'sailing'), /unknown waiting scene "sailing"; known: laptops, building, rowing, conveyor/)
 })
 
 test('waiting draws the scene asked for, and --demo the demo\'s script over it', () => {
-  const [rowing] = waitingFrames(['fable'], [3000], 48, 'rowing')
+  const [rowing] = waitingFrames(['fable'], [3000], STAGE_SIZE, 'rowing')
   const [laptops] = waitingFrames(['fable'], [3000])
   assert.ok(has(rowing!, WATER))
   assert.ok(!has(laptops!, WATER))
-  const [early, full] = waitingFrames('demo', [500, 9000], 48, 'conveyor')
+  const [early, full] = waitingFrames('demo', [500, 9000], STAGE_SIZE, 'conveyor')
   assert.ok(!has(early!, HELPER_COLORS.haiku))
   for (const kind of ['sonnet', 'opus', 'fable', 'haiku'] as const) assert.ok(has(full!, HELPER_COLORS[kind]))
 })
@@ -48,10 +49,13 @@ test("the waiting toon seats Fable's helper at the desk row, in violet", () => {
   assert.ok(has(frame!, HELPER_COLORS.fable))
 })
 
-test('a scene is as wide as asked, by the area’s rows', () => {
-  const [frame] = sceneFrames('bricklaying', { width: 40 }, [0])
-  assert.equal(frame!.cols, 40)
-  assert.equal(frame!.rows, 7)
+test('a scene is as wide and as tall as asked, 48 by 7 when not', () => {
+  const [frame] = sceneFrames('bricklaying', {}, [0], { columns: 40, rows: 7 })
+  assert.deepEqual([frame!.cols, frame!.rows], [40, 7])
+  const [wide] = sceneFrames('bricklaying', {}, [0], { columns: 120, rows: 9 })
+  assert.deepEqual([wide!.cols, wide!.rows], [120, 9])
+  const [plain] = sceneFrames('bricklaying', {}, [0])
+  assert.deepEqual([plain!.cols, plain!.rows], [48, 7])
 })
 
 test("the band at Plan shows the bar's done colour at its first step, with the area under the bar", () => {
@@ -60,7 +64,7 @@ test("the band at Plan shows the bar's done colour at its first step, with the a
   assert.ok(!inCell(frame!, 0, 0, hex('#D97757')))
   assert.ok(inCell(frame!, 1, 0, hex('#D97757')))
   assert.equal(frame!.cols, 100)
-  assert.equal(frame!.rows, 2 + 7)
+  assert.equal(frame!.rows, 2 + 9)
 })
 
 test("the work demo draws its steps' layer over the stage's scene; its scene is the stage's first, or --scene's", () => {
@@ -80,7 +84,7 @@ test("the band's bar shows Claude's tasks when given", () => {
 
 test("a working band draws the stage's scene under the bar; agents and the idle routine then change nothing", () => {
   const [working] = bandFrames({ stage: 'plan', columns: 100, working: true }, [500])
-  assert.equal(working!.rows, 2 + 7)
+  assert.equal(working!.rows, 2 + 9)
   const [busy] = bandFrames({ stage: 'plan', columns: 100, working: true, agents: ['fable'], idle: 'celebrate' }, [500])
   assert.deepEqual(busy!.px, working!.px)
   const [idle] = bandFrames({ stage: 'plan', columns: 100 }, [500])
@@ -89,8 +93,9 @@ test("a working band draws the stage's scene under the bar; agents and the idle 
 
 test('a working band plays the scene asked for, the same as the scene command draws it', () => {
   const [band] = bandFrames({ stage: 'plan', columns: 100, working: true, scene: 'dice' }, [1500])
-  const [scene] = sceneFrames('dice', {}, [1500])
-  // The area is 48 wide, its rows under the bar's two.
+  // The area is 99 wide (the band's 100, one spare) and 9 rows, under the
+  // bar's two.
+  const [scene] = sceneFrames('dice', {}, [1500], { columns: 99, rows: 9 })
   for (let y = 0; y < scene!.height; y++) {
     for (let x = 0; x < scene!.width; x++) assert.equal(band!.px[(y + 2 * CELL_H) * band!.width + x], scene!.px[y * scene!.width + x])
   }
@@ -108,7 +113,7 @@ test("the celebration and any stage's show-off draw as idle routines", () => {
 test('the band in Done draws with the idle routine asked for under it', () => {
   const [classic] = bandFrames({ stage: 'done', columns: 100 }, [500])
   const [celebrating] = bandFrames({ stage: 'done', columns: 100, idle: 'celebrate' }, [500])
-  assert.equal(celebrating!.rows, 2 + 7)
+  assert.equal(celebrating!.rows, 2 + 9)
   assert.notDeepEqual(celebrating!.px, classic!.px)
 })
 
@@ -155,4 +160,15 @@ test('a scene with --phase, --what, --say and --mode draws the layer over it, he
   assert.notDeepEqual(thinking[0]!.px, plain[0]!.px)
   assert.throws(() => sceneFrames('workbench', { phase: 'dancing' }, [0]), /unknown phase "dancing"; known: search, read/)
   assert.throws(() => sceneFrames('workbench', { mode: 'sleeping' as never }, [0]), /unknown mode "sleeping"/)
+})
+
+test("the band's area follows the width setting and the band's rows", () => {
+  const [wide] = bandFrames({ stage: 'plan', columns: 200 }, [0])
+  assert.deepEqual([wide!.cols, wide!.rows], [200, 2 + 9])
+  const [narrowed] = bandFrames({ stage: 'plan', columns: 200, width: 80, maxRows: 2 + 8 }, [0])
+  assert.deepEqual([narrowed!.cols, narrowed!.rows], [200, 2 + 8])
+  // The area's 80 columns: nothing of it right of them.
+  for (let row = 2; row < narrowed!.rows; row++) for (let col = 80; col < 200; col++) assert.ok(!inCell(narrowed!, col, row, hex('#D97757')))
+  const [full] = bandFrames({ stage: 'plan', columns: 600, width: 'full' }, [0])
+  assert.equal(full!.cols, 600)
 })

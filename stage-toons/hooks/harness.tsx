@@ -277,10 +277,13 @@ export const mountSpinner = ($: Engine, columns?: number, requestId?: string) =>
 export const decode = (cells: string) => new Uint32Array(Uint8Array.from(atob(cells), c => c.charCodeAt(0)).buffer)
 
 // Whether a color shows, as foreground or background, in the given cell
-// rows of a blitted frame.
-export function colorInRows(blit: Blit | undefined, rows: number[], color: number): boolean {
+// rows of a blitted frame's core: its bottom 7 rows, row 0 the core's top
+// (the area's own top row on a 7-row area; a negative row is in the
+// headroom above).
+export function colorInRows(blit: Blit | undefined, coreRows: number[], color: number): boolean {
   if (!blit) return false
   const words = decode(blit.cells)
+  const rows = coreRows.map(row => row + blit.rows - 7)
 
   return rows.some(row => {
     for (let x = 0; x < blit.columns; x++) {

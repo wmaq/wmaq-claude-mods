@@ -167,3 +167,16 @@ test('/stage auto lists the rules into Done after the track', () => {
   expect(lines[done - 1]).toBe('  cleanup: skill superpowers:finishing-a-development-branch')
   expect(lines[done + 1]).toBe('  debugging: skill superpowers:systematic-debugging')
 })
+
+test('/stage width parses a width from 48 to 512 or full; anything else answers its usage', () => {
+  expect(parseCommand(W, 'width')).toEqual({ kind: 'width', width: null })
+  expect(parseCommand(W, 'width 90')).toEqual({ kind: 'width', width: 90 })
+  expect(parseCommand(W, 'Width FULL')).toEqual({ kind: 'width', width: 'full' })
+  expect(parseCommand(W, 'width 48')).toEqual({ kind: 'width', width: 48 })
+  expect(parseCommand(W, 'width 512')).toEqual({ kind: 'width', width: 512 })
+  for (const bad of ['width 47', 'width 513', 'width 90.5', 'width wide', 'width 90 full', 'width -1']) expect(parseCommand(W, bad)).toEqual({ kind: 'width-usage' })
+  expect(usage(W)).toContain('width [<n> | full]')
+  expect(usage(W)).toContain('/stage width [<n> | full]  how wide the cartoons may grow under the bar (120 columns by default, 512 at most)')
+  expect(settingsWords({ width: 80 })).toBe('the cartoons up to 80 columns')
+  expect(settingsWords({ bubbles: true, width: 'full' })).toBe("Clawd's pop-ups on and the cartoons up to the band's whole width")
+})

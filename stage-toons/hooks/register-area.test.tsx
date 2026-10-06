@@ -15,7 +15,9 @@ test('while Claude works, the area plays the stage scene: a forward move makes C
   await mountBand($, 'terminal', WORKING)
   await setStage($, { stage: 'plan', message: 'Writing the plan' })
   await clock.advance(500)
-  expect(lastArea(world)?.columns).toBe(48)
+  // A 100-column band: the area takes 99 of them, under the default width
+  // of 120.
+  expect(lastArea(world)?.columns).toBe(99)
   expect(colorInRows(lastArea(world), [0, 1, 2], CLAWD_ORANGE)).toBe(true)
   await clock.advance(3000)
   expect(colorInRows(lastArea(world), [0, 1, 2], CLAWD_ORANGE)).toBe(false)
@@ -69,7 +71,7 @@ test('the area dissolves from the idle Clawd into the scene when Claude starts, 
   await ui.redraw(bandProps(100))
   const cells = String((await ui.find({ key: 'area' }))?.props.cells ?? '')
   expect(cells).not.toBe('')
-  expect(colorInRows({ key: 'area', cells, columns: 48, rows: 7 }, [0, 1], C.red)).toBe(true)
+  expect(colorInRows({ key: 'area', cells, columns: 99, rows: 9 }, [0, 1], C.red)).toBe(true)
   const before = blitsOf(world, 'area').length
   await clock.advance(600)
   expect(blitsOf(world, 'area').length - before).toBeGreaterThanOrEqual(5)
@@ -157,7 +159,7 @@ test("the area follows the band's width while Claude works", async ($, on) => {
   const { world, clock } = engine(on)
   await $.session.start(START)
   const ui = await mountBand($, 'terminal', bandProps(40, { isWorking: true }))
-  expect((await ui.find({ key: 'area' }))?.props).toMatchObject({ columns: 39, rows: 7 })
+  expect((await ui.find({ key: 'area' }))?.props).toMatchObject({ columns: 39, rows: 9 })
   await clock.advance(300)
   expect(lastArea(world)?.columns).toBe(39)
 })

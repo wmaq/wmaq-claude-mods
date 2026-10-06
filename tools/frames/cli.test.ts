@@ -14,10 +14,10 @@ const SIGNATURE = [0x89, 0x50, 0x4e, 0x47]
 // side, each frame's cells plus a caption row, a one-cell gap around them.
 test('each command writes a PNG of its sheet', () => {
   const cases: [string[], number, number][] = [
-    [['scene', 'bricklaying'], 2 * (48 + 1) + 1, 7 + 1 + 2],
-    [['idle', 'classic', '--doze'], 2 * (48 + 1) + 1, 7 + 1 + 2],
-    [['waiting', '--agents', 'fable,opus'], 2 * (48 + 1) + 1, 7 + 1 + 2],
-    [['band', '--stage', 'plan', '--columns', '80'], 2 * (80 + 1) + 1, 2 + 7 + 1 + 2],
+    [['scene', 'bricklaying'], 2 * (120 + 1) + 1, 9 + 1 + 2],
+    [['idle', 'classic', '--doze'], 2 * (120 + 1) + 1, 9 + 1 + 2],
+    [['waiting', '--agents', 'fable,opus'], 2 * (120 + 1) + 1, 9 + 1 + 2],
+    [['band', '--stage', 'plan', '--columns', '80'], 2 * (80 + 1) + 1, 2 + 9 + 1 + 2],
   ]
   for (const [args, cols, rows] of cases) {
     const out = join(dir, `${args[0]}.png`)
@@ -30,7 +30,7 @@ test('each command writes a PNG of its sheet', () => {
 test('--scale multiplies the size', () => {
   const out = join(dir, 'scaled.png')
   const result = main(['scene', 'bricklaying', '--count', '1', '--scale', '2', '--out', out])
-  assert.equal(result.width, 2 * (48 + 2) * 8)
+  assert.equal(result.width, 2 * (120 + 2) * 8)
 })
 
 test('the command line reads an id, flags and values', () => {
@@ -107,19 +107,19 @@ test('a show-off sheet is named without the colon, which Windows refuses in a fi
 test('band takes --scene, the scene under a working bar', () => {
   const out = join(dir, 'working.png')
   const result = main(['band', '--stage', 'develop', '--working', '--scene', 'dice', '--columns', '80', '--count', '1', '--out', out])
-  assert.equal(result.height, (2 + 7 + 1 + 2) * 16)
+  assert.equal(result.height, (2 + 9 + 1 + 2) * 16)
 })
 
 test('band takes --idle, the routine under the bar', () => {
   const out = join(dir, 'done.png')
   const result = main(['band', '--stage', 'done', '--idle', 'celebrate', '--columns', '80', '--count', '1', '--out', out])
-  assert.equal(result.height, (2 + 7 + 1 + 2) * 16)
+  assert.equal(result.height, (2 + 9 + 1 + 2) * 16)
 })
 
 test('turn draws the area through a turn, 500 ms apart unless told, and takes no id', () => {
   const out = join(dir, 'turn.png')
   const result = main(['turn', '--stage', 'develop', '--count', '2', '--columns-per-row', '2', '--out', out])
-  assert.deepEqual(result, { path: out, width: (2 * (48 + 1) + 1) * 8, height: (7 + 1 + 2) * 16 })
+  assert.deepEqual(result, { path: out, width: (2 * (120 + 1) + 1) * 8, height: (9 + 1 + 2) * 16 })
   assert.throws(() => main(['turn', 'dice']), /unexpected "dice" for turn/)
   assert.throws(() => main(['turn', '--working']), /unknown option --working for turn/)
 })
@@ -128,4 +128,31 @@ test('scene takes --mode, --phase, --what and --say', () => {
   const out = join(dir, 'layer.png')
   main(['scene', 'workbench', '--phase', 'git', '--what', 'git push', '--say', 'Pushed!', '--mode', 'thinking', '--count', '1', '--out', out])
   assert.deepEqual([...readFileSync(out).subarray(0, 4)], SIGNATURE)
+})
+
+test('--columns takes a list: a row of frames per width, 4 moments each unless told', () => {
+  const out = join(dir, 'widths.png')
+  const result = main(['scene', 'fishing', '--columns', '48,80,120', '--out', out])
+  // Each tile is as wide as the widest frame; three rows, one per width.
+  assert.deepEqual(result, { path: out, width: (4 * (120 + 1) + 1) * 8, height: (3 * (9 + 1 + 1) + 1) * 16 })
+  const one = main(['scene', 'fishing', '--columns', '48,80', '--count', '2', '--rows', '7', '--out', out])
+  assert.deepEqual(one, { path: out, width: (2 * (80 + 1) + 1) * 8, height: (2 * (7 + 1 + 1) + 1) * 16 })
+})
+
+test('--rows is 7, 8 or 9; --columns at most 512 for the area; frames over 64 columns go 2 to a row', () => {
+  const out = join(dir, 'rows.png')
+  assert.equal(main(['idle', 'classic', '--rows', '8', '--count', '1', '--out', out]).height, (8 + 1 + 2) * 16)
+  assert.throws(() => main(['idle', 'classic', '--rows', '10', '--out', out]), /--rows must be 7, 8 or 9, not "10"/)
+  assert.throws(() => main(['scene', 'dice', '--columns', '513', '--out', out]), /--columns must be at most 512, not "513"/)
+  assert.throws(() => main(['scene', 'dice', '--columns', '48,x', '--out', out]), /--columns must be whole numbers/)
+  assert.throws(() => main(['scene', 'dice', '--columns', '48', '--width', '48', '--out', out]), /scene takes --columns or --width/)
+  assert.equal(main(['scene', 'dice', '--count', '4', '--columns', '65', '--out', out]).width, (2 * (65 + 1) + 1) * 8)
+  assert.equal(main(['scene', 'dice', '--count', '4', '--columns', '64', '--out', out]).width, (4 * (64 + 1) + 1) * 8)
+})
+
+test("band takes --width, the width setting; the band's own --columns may be wider than 512", () => {
+  const out = join(dir, 'band-width.png')
+  assert.equal(main(['band', '--stage', 'plan', '--columns', '600', '--width', 'full', '--count', '1', '--out', out]).width, (600 + 2) * 8)
+  assert.equal(main(['band', '--stage', 'plan', '--columns', '200', '--width', '80', '--count', '1', '--out', out]).width, (200 + 2) * 8)
+  assert.throws(() => main(['band', '--stage', 'plan', '--width', '30', '--out', out]), /--width must be a whole number from 48 to 512, or full, not "30"/)
 })

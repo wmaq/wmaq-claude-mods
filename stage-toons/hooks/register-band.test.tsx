@@ -19,7 +19,7 @@ test('while Claude waits, the band shows the idle Clawd in the area below the ba
   const { world, clock } = engine(on)
   await $.session.start(START)
   const ui = await mountBand($)
-  expect((await ui.find({ key: 'area' }))?.props).toMatchObject({ columns: 48, rows: 7 })
+  expect((await ui.find({ key: 'area' }))?.props).toMatchObject({ columns: 99, rows: 9 })
   expect((await ui.find({ key: 'stage-toons' }))?.text).toContain('Not tracked yet')
   await clock.advance(1000)
   // The idle Clawd is calm: about six frames a second, of which only those
@@ -72,7 +72,7 @@ test('when Claude starts working the area goes on repainting, on the same Raster
   // It was repainting before Claude started.
   expect(blitsOf(world, 'area').length).toBeGreaterThan(0)
   await ui.redraw(bandProps(100, { isWorking: true }))
-  expect((await ui.find({ key: 'area' }))?.props).toMatchObject({ columns: 48, rows: 7 })
+  expect((await ui.find({ key: 'area' }))?.props).toMatchObject({ columns: 99, rows: 9 })
   await clock.advance(200)
   const before = blitsOf(world, 'area').length
   await clock.advance(2000)
@@ -117,7 +117,7 @@ test('/stage demo plays every scene below the bar, then gives the band back', as
   expect(text(await runStage($, 'demo 2'))).toContain('Playing 38 scenes, 2 s each')
   expect(world.invalidations).toBeGreaterThan(0)
   await ui.redraw()
-  expect((await ui.find({ key: 'area' }))?.props).toMatchObject({ columns: 48, rows: 7 })
+  expect((await ui.find({ key: 'area' }))?.props).toMatchObject({ columns: 99, rows: 8 })
   expect((await ui.find({ key: 'stage-toons' }))?.text).toContain('Demo 1/38: road-trip (Roadmap) · /stage demo stop ends it')
   // The line under the bar is text: the band is drawn again for each scene.
   const started = world.invalidations
@@ -189,7 +189,7 @@ test('the idle Clawd starts awake when the band stops working, before the turn i
   await ui.redraw(bandProps(100))
   const cells = String((await ui.find({ key: 'area' }))?.props.cells ?? '')
   expect(cells).not.toBe('')
-  expect(colorInRows({ key: 'area', cells, columns: 48, rows: 7 }, ALL_ROWS, Z_COLOR)).toBe(false)
+  expect(colorInRows({ key: 'area', cells, columns: 99, rows: 9 }, ALL_ROWS, Z_COLOR)).toBe(false)
 })
 
 test('/stage demo says so when the band has no room for it', async ($, on) => {
@@ -294,4 +294,45 @@ test('dozing he repaints at most three times a second; after five minutes he is 
   const before = world.invalidations
   await spawnAgent($)
   expect(world.invalidations).toBeGreaterThan(before)
+})
+
+test('the area takes the width setting, the whole band up to 512 columns with full, and follows the band when it resizes', async ($, on) => {
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  const ui = await mountBand($, 'terminal', bandProps(200))
+  expect((await ui.find({ key: 'area' }))?.props).toMatchObject({ columns: 120, rows: 9 })
+  expect(text(await runStage($, 'width full'))).toContain("The cartoons grow to the band's whole width")
+  expect(world.store.width).toBe('full')
+  await ui.redraw(bandProps(600))
+  expect((await ui.find({ key: 'area' }))?.props).toMatchObject({ columns: 512, rows: 9 })
+  // The loop paints on at the new size (the idle Clawd's frame is sent again
+  // at least every RESEND_MS).
+  await clock.advance(2500)
+  expect(blitsOf(world, 'area').at(-1)?.columns).toBe(512)
+  await ui.redraw(bandProps(80))
+  expect((await ui.find({ key: 'area' }))?.props).toMatchObject({ columns: 79, rows: 9 })
+  await clock.advance(2500)
+  expect(blitsOf(world, 'area').at(-1)).toMatchObject({ columns: 79, rows: 9 })
+})
+
+test('the area shrinks with the band at once, and grows back only with a row to spare', async ($, on) => {
+  engine(on)
+  await $.session.start(START)
+  // Untracked, the bar is one line.
+  const ui = await mountBand($, 'terminal', bandProps(100, { maxRows: 10 }))
+  const rows = async () => (await ui.find({ key: 'area' }))?.props.rows
+  expect(await rows()).toBe(9)
+  await ui.redraw(bandProps(100, { maxRows: 9 }))
+  expect(await rows()).toBe(8)
+  await ui.redraw(bandProps(100, { maxRows: 10 }))
+  expect(await rows()).toBe(8)
+  await ui.redraw(bandProps(100, { maxRows: 11 }))
+  expect(await rows()).toBe(9)
+  await ui.redraw(bandProps(100, { maxRows: 8 }))
+  expect(await rows()).toBe(7)
+  // Gone (too short) and back: it takes what fits.
+  await ui.redraw(bandProps(100, { maxRows: 7 }))
+  expect(await ui.find({ key: 'area' })).toBeUndefined()
+  await ui.redraw(bandProps(100, { maxRows: 10 }))
+  expect(await rows()).toBe(9)
 })

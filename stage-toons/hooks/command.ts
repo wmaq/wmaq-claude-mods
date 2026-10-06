@@ -1,11 +1,12 @@
 // /stage: what its arguments ask for, the move it makes, and what it shows.
 
-import type { Progress, StageDef, StageId, Workflow, WorkflowSettings } from '../types'
+import type { Progress, StageDef, StageId, WidthSetting, Workflow, WorkflowSettings } from '../types'
 import { ruleText } from './auto'
 import { DEMO_MAX, DEMO_MIN, DEMO_SECONDS, WORK_DEMO_SECONDS } from './demo'
 import { ago, LOG_DEFAULT } from './history'
 import { applyMove, backStage, describe, HISTORY_MAX, nextStage, parseStage, stageLabel } from './stages'
 import { isWaitingScene, WAITING_SCENE_IDS, type WaitingSceneId } from './waiting/deal'
+import { DEFAULT_WIDTH, parseWidth, WIDTH_MAX, widthSettingWords } from './width'
 import { allStages, DONE_ID, doneOf, RESERVED_IDS, stageIds, zeroStage } from './workflow'
 
 export type Command =
@@ -26,6 +27,8 @@ export type Command =
   | { kind: 'workflow-reload' }
   | { kind: 'auto'; isOn: boolean | null }
   | { kind: 'bubbles'; isOn: boolean | null }
+  | { kind: 'width'; width: WidthSetting | null }
+  | { kind: 'width-usage' }
   | { kind: 'log'; count: number }
   | { kind: 'time' }
   | { kind: 'help' }
@@ -38,7 +41,7 @@ export function usage(w: Workflow): string {
   const stages = [...w.track.map((s, i) => `${i + 1} ${s.id}`), DONE_ID, ...w.side.map(s => (s === zero ? `0 ${s.id}` : s.id))]
 
   return [
-    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work] [seconds] | demo waiting [scene] | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | log [n] | time | help]',
+    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work] [seconds] | demo waiting [scene] | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | width [<n> | full] | log [n] | time | help]',
     '  /stage                  show the current stage and the recent moves',
     `  /stage 5, /stage plan   move to a stage${zero ? ` (0 or ? for ${zero.label})` : ''}`,
     '  /stage next, /stage back',
@@ -52,6 +55,7 @@ export function usage(w: Workflow): string {
     '  /stage workflow [init | reload]  show the workflow; write the default to .claude/stage-toons.json; read the file again',
     "  /stage auto [on | off]  show the workflow's rules for moving the stage by itself; turn them on or off",
     "  /stage bubbles [on | off]  whether Clawd's pop-ups show: what Claude is doing over his head, and what he says",
+    `  /stage width [<n> | full]  how wide the cartoons may grow under the bar (${DEFAULT_WIDTH} columns by default, ${WIDTH_MAX} at most)`,
     `  /stage log [n]          the last n moves (${LOG_DEFAULT}; up to ${HISTORY_MAX}) with how long each stage lasted`,
     '  /stage time             time per feature and per stage, wall-clock and Claude working',
     '  /stage help             this list',
@@ -73,6 +77,12 @@ export function parseCommand(w: Workflow, args: string): Command {
     if (sub === '') return { kind: word, isOn: null }
 
     return sub === 'on' || sub === 'off' ? { kind: word, isOn: sub === 'on' } : { kind: 'usage' }
+  }
+  if (word === 'width') {
+    if (tail === '') return { kind: 'width', width: null }
+    const width = parseWidth(tail.toLowerCase())
+
+    return width === null ? { kind: 'width-usage' } : { kind: 'width', width }
   }
   if (word === 'log') {
     if (tail === '') return { kind: 'log', count: LOG_DEFAULT }
@@ -180,6 +190,7 @@ export function settingsWords(settings: WorkflowSettings | undefined): string | 
   if (settings?.auto !== undefined) parts.push(`automatic moves ${settings.auto ? 'on' : 'off'}`)
   if (settings?.hide !== undefined) parts.push(`the bar ${settings.hide ? 'hidden' : 'shown'}`)
   if (settings?.bubbles !== undefined) parts.push(`Clawd's pop-ups ${settings.bubbles ? 'on' : 'off'}`)
+  if (settings?.width !== undefined) parts.push(widthSettingWords(settings.width))
 
   return parts.length === 0 ? null : parts.length === 1 ? parts[0]! : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`
 }
