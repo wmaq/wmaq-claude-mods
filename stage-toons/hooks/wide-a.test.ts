@@ -148,9 +148,11 @@ test('recycling: past the second bin, sorting bins to the edge, 14 columns apart
   }
   // The core's bin and the second stay grey, the second 14 columns on.
   expect([36, 50].map(x => at(b, x, 13))).toEqual([C.gray, C.gray])
-  // Still bins all through the loop, the same at 120 columns as at 200.
+  // Still bins all through the loop, the same at 120 columns as at 200, whole ones only:
+  // the bin at 120 would show only its lid's end, so it is left out.
   const mid = draw('recycling', 5.9, MID)
-  for (let x = 57; x < 120; x++) for (let y = 7; y < 14; y++) expect(at(mid, x, y)).toBe(at(b, x, y))
+  for (let x = 57; x < 113; x++) for (let y = 7; y < 14; y++) expect(at(mid, x, y)).toBe(at(b, x, y))
+  for (let x = 113; x < 120; x++) for (let y = 0; y < 14; y++) expect(at(mid, x, y)).toBe(EMPTY)
 })
 
 test('road-trip: the road winds to the edge, flags standing past the core from the start; still through the fade', () => {

@@ -102,7 +102,9 @@ export const recycling: Scene = {
     }
     drawBin(b, BIN.x)
     if (hasSecondBin) drawBin(b, SECOND_BIN_X)
-    // From the lid's left end, so a bin whose lid alone reaches the area shows it.
-    tileOn(b, SECOND_BIN_X + BIN_EVERY - 1, BIN_EVERY, (x, k) => drawSortingBin(b, x + 1, SORTING_BINS[k % SORTING_BINS.length]!))
+    // Only whole bins, lid and all: a sliver of one at the edge reads as a stray pixel.
+    tileOn(b, SECOND_BIN_X + BIN_EVERY, BIN_EVERY, (x, k) => {
+      if (x + BIN.w + 1 <= rightOf(b)) drawSortingBin(b, x, SORTING_BINS[k % SORTING_BINS.length]!)
+    })
   },
 }
