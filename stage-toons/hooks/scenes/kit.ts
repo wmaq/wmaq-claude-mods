@@ -1,9 +1,10 @@
 // What the scenes share: a palette for props (never Clawd's orange or
 // Fable's violet, so the two Clawds stand out), timing helpers, and small
 // sprites. In a sprite, '.' is transparent and each other letter is a
-// palette color.
+// palette color. A scene draws in the core's coordinates; rightOf(b) and
+// topOf(b) are the area's edges, for a set that runs on to them.
 
-import { type PixelBuffer, type Point, setPixel } from '../pixels'
+import { fillRect, type PixelBuffer, type Point, rightOf, setPixel, topOf } from '../pixels'
 import type { Sprite } from '../scene'
 
 export const C = {
@@ -71,12 +72,26 @@ export const BOX: Sprite = {
   frames: [['ddddddddd', 'dbbbbbbbd', 'dbbbbbbbd', 'dbbbbbbbd', 'dbbbbbbbd', 'dbbbbbbbd', 'ddddddddd']],
 }
 
+// A plank run on to the area's right edge: the wood top from column from,
+// and a woodDark leg legH tall under it at legAt and every step columns
+// after it. A scene keeps its own core plank and legs and continues them
+// with this from its right leg.
+export function plankOn(b: PixelBuffer, from: number, y: number, legH: number, legAt: number, step: number): void {
+  const edge = rightOf(b)
+  if (from < edge) fillRect(b, from, y, edge - from, 1, C.wood)
+  for (let x = legAt; x < edge; x += step) fillRect(b, x, y + 1, 1, legH, C.woodDark)
+}
+
 // A starfield in up to three depths, drifting right to left at different
-// speeds (parallax), each a fixed scatter wrapping round the area's 48
-// columns: far stars dim and slow, near stars white, fast and twinkling.
-// time is unwrapped (a background's), so the stars never jump back.
+// speeds (parallax): far stars dim and slow, near stars white, fast and
+// twinkling. Each depth is a fixed 48 x 14 scatter, tiled across the
+// area's width and up into its headroom (each tile above shifted by half a
+// tile, so the tiles' columns don't line up); every star wraps round the
+// area's own width. time is unwrapped (a background's), so the stars never
+// jump back. On a 48 x 14 area it is the one scatter, as it was.
 export type StarLayer = 'far' | 'middle' | 'near'
-const AREA_W = 48
+const TILE_W = 48
+const TILE_H = 14
 export const STAR_LAYERS: Record<StarLayer, { color: number; speed: number; stars: readonly Point[] }> = {
   far: {
     color: C.darkGray,
@@ -123,13 +138,21 @@ export const STAR_LAYERS: Record<StarLayer, { color: number; speed: number; star
 }
 
 export function drawStarfield(b: PixelBuffer, time: number, layers: readonly StarLayer[]): void {
+  // In the buffer's own columns: the area's left edge is column 0.
+  const left = rightOf(b) - b.w
   for (const layer of layers) {
     const { color, speed, stars } = STAR_LAYERS[layer]
-    stars.forEach((s, i) => {
-      // Near stars twinkle: half of them show at a time, trading every 0.25 s.
-      if (layer === 'near' && (every(time, 0.25) + i) % 2 === 1) return
-      const x = Math.floor((((s.x - time * speed) % AREA_W) + AREA_W) % AREA_W)
-      setPixel(b, x, s.y, color)
-    })
+    for (let row = 0; -row * TILE_H + TILE_H > topOf(b); row++) {
+      for (let tile = row % 2 === 0 ? 0 : -1; tile * TILE_W < b.w; tile++) {
+        stars.forEach((s, i) => {
+          const from = s.x + tile * TILE_W + (row % 2) * (TILE_W / 2)
+          if (from < 0 || from >= b.w) return
+          // Near stars twinkle: half of them show at a time, trading every 0.25 s.
+          if (layer === 'near' && (every(time, 0.25) + i + tile + row) % 2 === 1) return
+          const x = Math.floor((((from - time * speed) % b.w) + b.w) % b.w)
+          setPixel(b, left + x, s.y - row * TILE_H, color)
+        })
+      }
+    }
   }
 }
