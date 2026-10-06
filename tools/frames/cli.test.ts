@@ -110,3 +110,9 @@ test('turn draws the area through a turn, 500 ms apart unless told, and takes no
   assert.throws(() => main(['turn', 'dice']), /unexpected "dice" for turn/)
   assert.throws(() => main(['turn', '--working']), /unknown option --working for turn/)
 })
+
+test('scene takes --mode, --phase, --what and --say', () => {
+  const out = join(dir, 'layer.png')
+  main(['scene', 'workbench', '--phase', 'git', '--what', 'git push', '--say', 'Pushed!', '--mode', 'thinking', '--count', '1', '--out', out])
+  assert.deepEqual([...readFileSync(out).subarray(0, 4)], SIGNATURE)
+})

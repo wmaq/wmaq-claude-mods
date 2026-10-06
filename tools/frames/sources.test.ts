@@ -117,3 +117,15 @@ test("a scene sampled across a fading scene's loop point shows the seam's dissol
   assert.ok(seam!.px.some((v, i) => v !== after!.px[i]))
   assert.deepEqual(after!.px, alone[0]!.px)
 })
+
+test('a scene with --phase, --what, --say and --mode draws the layer over it, held for the sheet', () => {
+  const plain = sceneFrames('workbench', {}, [500, 4000])
+  const badge = sceneFrames('workbench', { phase: 'test', what: 'npm test' }, [500, 4000])
+  for (const [i, frame] of badge.entries()) assert.notDeepEqual(frame.px, plain[i]!.px)
+  const line = sceneFrames('workbench', { say: 'All green!' }, [500, 4000])
+  assert.ok(has(line[1]!, hex('#F2EAD8')))
+  const thinking = sceneFrames('workbench', { mode: 'thinking' }, [500])
+  assert.notDeepEqual(thinking[0]!.px, plain[0]!.px)
+  assert.throws(() => sceneFrames('workbench', { phase: 'dancing' }, [0]), /unknown phase "dancing"; known: search, read/)
+  assert.throws(() => sceneFrames('workbench', { mode: 'sleeping' as never }, [0]), /unknown mode "sleeping"/)
+})

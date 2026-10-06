@@ -19,15 +19,15 @@ const icon = (palette: Record<string, number>, rows: string[]): Sprite => ({ pal
 
 // Each phase's icon, 5 x 4 pixels, in the scene kit's colours.
 export const BADGES: Record<Phase, Sprite> = {
-  search: icon({ g: C.gray, b: C.glass, w: C.wood }, ['.gg..', 'gbbg.', '.gg..', '...ww']),
+  search: icon({ g: C.gray, b: C.glass, w: C.wood }, ['.gg..', 'gbbg.', '.ggw.', '...ww']),
   read: icon({ w: C.paper, l: C.paperShade, d: C.woodDark }, ['ww.ww', 'wldlw', 'wwdww', '.ddd.']),
   edit: icon({ y: C.gold, r: C.red, g: C.gray }, ['...yr', '..yy.', '.yy..', 'g....']),
   test: icon({ g: C.glass, l: C.liquid }, ['.g.g.', '.glg.', '.glg.', '..g..']),
   build: icon({ d: C.gray, w: C.wood }, ['dddd.', 'dddd.', '.w...', '.w...']),
-  git: icon({ G: C.green, l: C.gray }, ['G...G', 'l..l.', 'll...', 'G....']),
+  git: icon({ G: C.green, l: C.gray }, ['G...G', 'l...l', '.l.l.', '..G..']),
   run: icon({ g: C.green }, ['g....', '.g...', 'g....', '..ggg']),
   web: icon({ b: C.blue, g: C.green }, ['.bgb.', 'bggbb', 'bbbgb', '.bbb.']),
-  agents: icon({ g: C.gray, d: C.ink }, ['.ggg.', 'gdgdg', '.ggg.', '.g.g.']),
+  agents: icon({ b: C.blue, d: C.ink }, ['.bbb.', 'bdbdb', 'bbbbb', 'b.b.b']),
 }
 
 // The thought puffs: a dot, a small puff, a cloud, one more each PUFFS_S,

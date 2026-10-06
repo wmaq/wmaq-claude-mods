@@ -12,12 +12,14 @@ import { createDirector, react, withAuditing } from '../../stage-toons/hooks/dir
 import { areaCells } from '../../stage-toons/hooks/frames'
 import { CELEBRATE, DOZE_MS, IDLE_IDS, routineOf, SHOW_OFF_PREFIX } from '../../stage-toons/hooks/idle'
 import { createMod, type Mod } from '../../stage-toons/hooks/mod'
+import { type Phase, PHASES } from '../../stage-toons/hooks/phase'
 import { hex } from '../../stage-toons/hooks/pixels'
 import { FALLBACK_SCENE, STAGE_W } from '../../stage-toons/hooks/scene'
 import { SCENES } from '../../stage-toons/hooks/scenes'
 import { applyMove, freshProgress } from '../../stage-toons/hooks/stages'
 import { TOON_ROWS } from '../../stage-toons/hooks/toon'
 import { DEFAULT_WORKFLOW, stageIds, stageOf } from '../../stage-toons/hooks/workflow'
+import { said, toolStarted, withMode } from '../../stage-toons/hooks/work'
 import { type Canvas, createCanvas, drawCells, drawText, type TextStyle } from './grid'
 
 // Failures the mod would log go nowhere: the picture shows the stand-in.
@@ -41,7 +43,18 @@ function cellsCanvas(cells: string, columns: number, rows: number): Canvas {
   return c
 }
 
-export type SceneOptions = { reaction?: 'advance' | 'failure'; auditing?: boolean; width?: number }
+// mode, phase (with what) and say put the activity layer over the scene,
+// from time 0 and held for the sheet.
+export type SceneOptions = {
+  reaction?: 'advance' | 'failure'
+  auditing?: boolean
+  width?: number
+  mode?: 'thinking' | 'responding'
+  phase?: string
+  what?: string
+  say?: string
+}
+export const MODES: readonly string[] = ['thinking', 'responding']
 
 // A mod whose area plays this scene while Claude works, the scene coming on
 // at time 0 (a reaction or Fable's walk-in from 0 too).
@@ -58,9 +71,17 @@ function workingMod(id: string, auditing: boolean, reaction?: 'advance' | 'failu
 // The area while Claude works, as its paint loop composes it (areaCells).
 export function sceneFrames(id: string, opts: SceneOptions, times: readonly number[]): Canvas[] {
   known('scene', id, SCENE_IDS)
+  if (opts.mode !== undefined) known('mode', opts.mode, MODES)
+  if (opts.phase !== undefined) known('phase', opts.phase, PHASES)
   const width = opts.width ?? STAGE_W
+  const mod = workingMod(id, opts.auditing ?? false, opts.reaction)
+  if (opts.mode !== undefined) mod.activity = withMode(mod.activity, opts.mode as 'thinking' | 'responding')
+  if (opts.phase !== undefined) mod.activity = toolStarted(mod.activity, 'tu-sheet', opts.phase as Phase, opts.what ?? '')
+  const say = opts.say
+  // A line is said again before each frame, so it holds.
+  const before = say === undefined ? undefined : (t: number) => (mod.activity = said(mod.activity, say, t))
 
-  return areaFrames(workingMod(id, opts.auditing ?? false, opts.reaction), width, times).map(cells => cellsCanvas(cells, width, TOON_ROWS))
+  return areaFrames(mod, width, times, before).map(cells => cellsCanvas(cells, width, TOON_ROWS))
 }
 
 // The idle Clawd in the band's area, the idle period starting at time 0;
@@ -91,10 +112,15 @@ function waitingMod(agents: readonly string[]): Mod {
 // The area's frames over time, on one mod in time order, the area first
 // drawn at time 0: the helpers sit down as it first sees them, and a
 // working scene comes on then.
-function areaFrames(mod: Mod, columns: number, times: readonly number[]): string[] {
+function areaFrames(mod: Mod, columns: number, times: readonly number[], before?: (t: number) => void): string[] {
+  before?.(0)
   areaCells(mod, columns, 0, quiet)
 
-  return [...times].map(t => areaCells(mod, columns, t, quiet) ?? '')
+  return [...times].map(t => {
+    before?.(t)
+
+    return areaCells(mod, columns, t, quiet) ?? ''
+  })
 }
 
 export function waitingFrames(agents: readonly string[], times: readonly number[], columns = STAGE_W): Canvas[] {

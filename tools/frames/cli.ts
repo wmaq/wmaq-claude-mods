@@ -19,6 +19,7 @@ import { bandFrames, idleFrames, sceneFrames, turnFrames, waitingFrames } from '
 
 const USAGE = `usage: npx -y tsx tools/frames/cli.ts <what> [options]
   scene <id> [--reaction advance|failure] [--auditing] [--width N]
+        [--mode thinking|responding] [--phase <phase>] [--what text] [--say line]
   idle <routine> [--doze]
   waiting --agents fable,sonnet,... [--columns N]
   band --stage <id> [--feature F] [--message M] [--columns N] [--max-rows N]
@@ -33,7 +34,7 @@ const FLAGS = new Set(['auditing', 'doze', 'working'])
 // an error, so a mistyped option is not drawn with its default.
 const COMMON = ['from', 'every', 'count', 'columns-per-row', 'scale', 'out']
 const OPTIONS: Record<string, readonly string[]> = {
-  scene: ['reaction', 'auditing', 'width'],
+  scene: ['reaction', 'auditing', 'width', 'mode', 'phase', 'what', 'say'],
   idle: ['doze'],
   waiting: ['agents', 'columns'],
   band: ['stage', 'feature', 'message', 'columns', 'max-rows', 'agents', 'auditing', 'working', 'scene', 'workflow', 'idle'],
@@ -112,7 +113,19 @@ function render(args: Args, times: readonly number[]): { frames: Canvas[]; name:
     case 'scene': {
       const reaction = opts.get('reaction')
       if (reaction !== undefined && reaction !== 'advance' && reaction !== 'failure') throw new Error(`--reaction is advance or failure, not "${reaction}"`)
-      const frames = sceneFrames(need(), { reaction, auditing: opts.has('auditing'), width: opts.has('width') ? numberOpt(opts, 'width', 0, 1) : undefined }, times)
+      const frames = sceneFrames(
+        need(),
+        {
+          reaction,
+          auditing: opts.has('auditing'),
+          width: opts.has('width') ? numberOpt(opts, 'width', 0, 1) : undefined,
+          mode: opts.get('mode') as 'thinking' | 'responding' | undefined,
+          phase: opts.get('phase'),
+          what: opts.get('what'),
+          say: opts.get('say'),
+        },
+        times,
+      )
 
       return { frames, name: `frames-scene-${id}.png` }
     }
