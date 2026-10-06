@@ -1,9 +1,9 @@
 // Terminal: Clawd sits typing at a computer while lines of code scroll up
-// its screen.
+// its screen. On a wider area the desk runs on to the edge.
 
-import { fillRect, setPixel } from '../pixels'
+import { fillRect, rightOf, setPixel } from '../pixels'
 import { CLAWD_TOP, type Scene } from '../scene'
-import { blinking, C, every, still } from './kit'
+import { blinking, C, every, plankOn, still } from './kit'
 
 const LINE_EVERY = 0.4
 const LENGTHS = [8, 5, 10, 3, 7, 9, 4, 6, 10, 2, 8, 5]
@@ -22,6 +22,9 @@ export const terminal: Scene = {
     fillRect(b, 18, 12, 26, 1, C.wood)
     fillRect(b, 19, 13, 1, 1, C.woodDark)
     fillRect(b, 42, 13, 1, 1, C.woodDark)
+    // The desk ends at 43 on 48 columns; on a wider area it runs on from 44,
+    // a leg every 23 columns after its right leg (42).
+    if (rightOf(b) > 48) plankOn(b, 44, 12, 1, 42 + 23, 23)
   },
   actors: [
     {

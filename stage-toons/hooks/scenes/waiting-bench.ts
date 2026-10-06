@@ -1,7 +1,8 @@
 // Waiting bench: Clawd sits on a bench while a clock ticks, and now and
-// then turns and waves at you.
+// then turns and waves at you. On a wider area the bench runs on to the
+// edge.
 
-import { fillRect, setPixel } from '../pixels'
+import { fillRect, rightOf, setPixel } from '../pixels'
 import type { Scene } from '../scene'
 import { blinking, C, every, still } from './kit'
 
@@ -23,6 +24,12 @@ export const waitingBench: Scene = {
     fillRect(b, 6, 11, 22, 1, C.wood)
     fillRect(b, 8, 12, 1, 2, C.woodDark)
     fillRect(b, 25, 12, 1, 2, C.woodDark)
+    // It ends at 27 on 48 columns; on a wider area it runs on from 28, a leg
+    // every 17 columns after its right one (25), as far apart as its own.
+    const edge = rightOf(b)
+    if (edge <= 48) return
+    fillRect(b, 28, 11, edge - 28, 1, C.wood)
+    for (let x = 25 + 17; x < edge; x += 17) fillRect(b, x, 12, 1, 2, C.woodDark)
   },
   actors: [
     {
