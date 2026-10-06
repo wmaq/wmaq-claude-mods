@@ -3,8 +3,9 @@ import { expect, test } from 'claude-code/testing'
 import { EMPTY_ROSTER, ended, type Roster, spawned } from '../agents'
 import { CLAWD_ORANGE, EYE_DARK, FABLE_VIOLET } from '../clawd'
 import type { PixelBuffer } from '../pixels'
+import { STAGE_H } from '../scene'
 import { C } from '../scenes/kit'
-import { AREA_H, CUP, HELPER_COLORS, SPARK, waitingFrame } from '.'
+import { CUP, HELPER_COLORS, SPARK, waitingFrame } from '.'
 import { AREA_W, EMPTY_LOG, seat, type SeatLog } from './seats'
 
 const T = 100_000
@@ -21,7 +22,7 @@ function seated(...models: string[]): SeatLog {
 
 test('the frame is the area: 48 x 14 pixels', () => {
   const b = waitingFrame(seated('sonnet'), T + 5000)
-  expect([b.w, b.h]).toEqual([AREA_W, AREA_H])
+  expect([b.w, b.h]).toEqual([AREA_W, STAGE_H])
 })
 
 test('Clawd walks aside from his idle spot in a second, then stands at the left edge with his cup', () => {

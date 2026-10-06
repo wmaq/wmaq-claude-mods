@@ -95,7 +95,7 @@ export function idleFrames(routine: string, doze: boolean, times: readonly numbe
   mod.idle = routine
   mod.idleSince = 0
 
-  return times.map(t => cellsCanvas(areaCells(mod, columns, doze ? DOZE_MS + t : t, quiet) ?? '', columns, TOON_ROWS))
+  return times.map(t => cellsCanvas(areaCells(mod, { columns, rows: TOON_ROWS }, doze ? DOZE_MS + t : t, quiet) ?? '', columns, TOON_ROWS))
 }
 
 // A mod whose band's area is on screen while Claude waits on these agents,
@@ -120,12 +120,12 @@ function waitingMod(agents: readonly string[], scene: WaitingSceneId = FALLBACK_
 // working scene comes on then.
 function areaFrames(mod: Mod, columns: number, times: readonly number[], before?: (t: number) => void): string[] {
   before?.(0)
-  areaCells(mod, columns, 0, quiet)
+  areaCells(mod, { columns, rows: TOON_ROWS }, 0, quiet)
 
   return [...times].map(t => {
     before?.(t)
 
-    return areaCells(mod, columns, t, quiet) ?? ''
+    return areaCells(mod, { columns, rows: TOON_ROWS }, t, quiet) ?? ''
   })
 }
 
@@ -220,7 +220,7 @@ export function bandFrames(opts: BandOptions, times: readonly number[]): Canvas[
       const mod = createMod()
       mod.idleSince = 0
       if (opts.idle !== undefined) mod.idle = opts.idle
-      area = times.map(t => areaCells(mod, areaWidth, t, quiet) ?? '')
+      area = times.map(t => areaCells(mod, { columns: areaWidth, rows: TOON_ROWS }, t, quiet) ?? '')
     }
   }
 
@@ -259,7 +259,7 @@ export function turnFrames(opts: TurnOptions, times: readonly number[]): Canvas[
     mod.isBandWorking = t >= start && t < end
     if (t >= end && mod.idleSince < end) mod.idleSince = end
 
-    return areaCells(mod, columns, t, quiet) ?? ''
+    return areaCells(mod, { columns, rows: TOON_ROWS }, t, quiet) ?? ''
   }
   // The turn's edges are drawn when they come, sampled or not, so each
   // dissolve starts on time.

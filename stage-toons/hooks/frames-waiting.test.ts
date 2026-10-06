@@ -4,6 +4,7 @@ import { EMPTY_ROSTER, ended, type Roster, spawned } from './agents'
 import { areaCells } from './frames'
 import { createMod, type Mod, PAST_MS } from './mod'
 import { getPixel } from './pixels'
+import { STAGE_SIZE } from './scene'
 import { HELPER_COLORS, WAITING_SCENES, type WaitingSceneId } from './waiting'
 
 // The waiting scenes in the area: which one a waiting period is dealt, the
@@ -23,7 +24,7 @@ function liveMod(scene?: WaitingSceneId): Mod {
 }
 // Frames every 100 ms from `from` to `to`.
 function run(mod: Mod, from: number, to: number, log: (text: string) => void = quiet) {
-  for (let at = from; at <= to; at += 100) areaCells(mod, 48, at, log)
+  for (let at = from; at <= to; at += 100) areaCells(mod, STAGE_SIZE, at, log)
 }
 const withAgents = (...models: string[]): Roster => models.reduce<Roster>((r, m, i) => spawned(r, `a${i + 1}`, m, START), EMPTY_ROSTER)
 
@@ -55,7 +56,7 @@ test("a helper that left stays in the conveyor's log for a while: the boxes it m
   expect(mod.seats.entries.map(e => e.agentId)).toEqual(['a1', 'a2', 'a3'])
   expect(mod.waiting.past.map(e => e.agentId)).toEqual(['a4'])
   // Box 2 passed seat 3 at 4 s; at 5.7 s it is at column 27, its seat-3 mark at 27 + 4.
-  expect(getPixel(mod.shown!.draw(START + 5700, 48), 31, 10)).toBe(HELPER_COLORS.haiku)
+  expect(getPixel(mod.shown!.draw(START + 5700, STAGE_SIZE), 31, 10)).toBe(HELPER_COLORS.haiku)
   run(mod, START + 5800, START + 5700 + PAST_MS)
   expect(mod.waiting.past).toEqual([])
 })
@@ -106,7 +107,7 @@ test('a waiting scene that throws is cut to the laptops, not dissolved from', ()
       },
     }
     throws = true
-    areaCells(mod, 48, START + 3100, quiet)
+    areaCells(mod, STAGE_SIZE, START + 3100, quiet)
     expect(mod.shown?.name).toBe(`waiting:${START}:laptops`)
     expect(mod.fade).toBeNull()
   } finally {

@@ -9,6 +9,7 @@ import { createDirector, react, withAuditing } from './director'
 import { areaCells } from './frames'
 import { CELEBRATE, DOZE_MS, IDLE_IDS, SHOW_OFF_DEMO } from './idle'
 import { createMod, type Mod } from './mod'
+import { STAGE_SIZE } from './scene'
 import { SCENES } from './scenes'
 import { WAITING_SCENE_IDS, type WaitingSceneId } from './waiting/deal'
 
@@ -28,9 +29,9 @@ export function fnv1a(text: string): string {
 // The area's frames on one mod, in time order, drawn at time 0 first.
 function sample(mod: Mod, times: readonly number[]): string {
   mod.band.requestId = 'r1'
-  areaCells(mod, 48, 0, quiet)
+  areaCells(mod, STAGE_SIZE, 0, quiet)
 
-  return times.map(t => areaCells(mod, 48, t, quiet) ?? '').join('|')
+  return times.map(t => areaCells(mod, STAGE_SIZE, t, quiet) ?? '').join('|')
 }
 
 const times = (count: number, every: number, from = 0): number[] => Array.from({ length: count }, (_, i) => from + i * every)

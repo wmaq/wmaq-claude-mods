@@ -1,11 +1,12 @@
 // The waiting toon: while Claude waits on agents, Clawd stands aside with a
 // cup and watches a row of helpers, one per agent at work, each in its
-// model's colour, at one of the waiting scenes (WAITING_SCENES). 48 x 14
-// pixels, drawn from the seat log, the scene and the time alone.
+// model's colour, at one of the waiting scenes (WAITING_SCENES). Drawn on
+// the area (its 48 x 14 core at the bottom left, the scene's set running
+// on to the right edge) from the seat log, the scene and the time alone.
 
 import { drawClawd, EYE_DARK, MONOCLE } from '../clawd'
-import { createBuffer, fillRect, type PixelBuffer, setPixel } from '../pixels'
-import { CLAWD_TOP, drawSprite } from '../scene'
+import { fillRect, type PixelBuffer, setPixel } from '../pixels'
+import { type AreaSize, areaBuffer, CLAWD_TOP, drawSprite, STAGE_SIZE } from '../scene'
 import { C, every } from '../scenes/kit'
 import { BUILDING } from './building'
 import { CONVEYOR } from './conveyor'
@@ -13,13 +14,12 @@ import type { WaitingSceneId } from './deal'
 import { HELPER_COLORS, type WaitingCtx, type WaitingScene } from './draw'
 import { LAPTOPS } from './laptops'
 import { ROWING } from './rowing'
-import { AREA_W, clawdWalking, clawdX, type Helper, helperAt, type SeatLog } from './seats'
+import { clawdWalking, clawdX, type Helper, helperAt, type SeatLog } from './seats'
 
 export { FALLBACK_WAITING, isWaitingScene, WAITING_SCENE_IDS, type WaitingSceneId } from './deal'
 export { HELPER_COLORS } from './draw'
 export { LAPTOP, LAPTOP_LIGHT, SPARK } from './laptops'
 
-export const AREA_H = 14
 // The repeating motions' periods all divide this many seconds.
 export const WAITING_BEAT = 6
 export const CUP = C.white
@@ -87,8 +87,8 @@ function drawCup(b: PixelBuffer, x: number, isRaised: boolean, t: number) {
 
 // The frame: the scene under the helpers, the seated and hopping helpers
 // as the scene draws them, the scene over them, Clawd, then the walkers.
-export function waitingFrame(log: SeatLog, now: number, scene: WaitingSceneId = 'laptops'): PixelBuffer {
-  const b = createBuffer(AREA_W, AREA_H)
+export function waitingFrame(log: SeatLog, now: number, scene: WaitingSceneId = 'laptops', size: AreaSize = STAGE_SIZE): PixelBuffer {
+  const b = areaBuffer(size)
   const t = log.since === null ? 0 : (now - log.since) / 1000
   const helpers = log.entries.flatMap(e => {
     const h = helperAt(e, now)

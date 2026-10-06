@@ -6,7 +6,7 @@
 import type { IdleId } from '../../types'
 import { pickOne } from '../pick'
 import { createBuffer, type PixelBuffer } from '../pixels'
-import { STAGE_H, STAGE_W } from '../scene'
+import { type AreaSize, areaBuffer, STAGE_SIZE } from '../scene'
 import { CELEBRATE, celebrate } from './celebrate'
 import { classic } from './classic'
 import { coffee } from './coffee'
@@ -92,14 +92,21 @@ export function routineFrame(routine: IdleId, idleMs: number, broken: Set<IdleId
   }
 }
 
-// The routine's background on the whole area (48 x 14) idleMs into an idle
-// period, or null: a routine with none, an unknown or broken one. A
-// background that throws breaks its routine like its drawing would.
-export function idleBackground(routine: IdleId, idleMs: number, broken: Set<IdleId> = new Set(), onBreak?: (id: IdleId, error: unknown) => void): PixelBuffer | null {
+// The routine's background on the whole area idleMs into an idle period,
+// drawn in the core's coordinates (its origin at the area's bottom left),
+// or null: a routine with none, an unknown or broken one. A background
+// that throws breaks its routine like its drawing would.
+export function idleBackground(
+  routine: IdleId,
+  idleMs: number,
+  broken: Set<IdleId> = new Set(),
+  onBreak?: (id: IdleId, error: unknown) => void,
+  size: AreaSize = STAGE_SIZE,
+): PixelBuffer | null {
   if (broken.has(routine)) return null
   const background = routineOf(routine)?.background
   if (background === undefined) return null
-  const b = createBuffer(STAGE_W, STAGE_H)
+  const b = areaBuffer(size)
   try {
     background(b, idleMs / 1000)
   } catch (error) {

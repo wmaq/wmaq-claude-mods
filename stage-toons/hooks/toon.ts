@@ -3,9 +3,9 @@
 // standing scene for the rest of the session.
 
 import type { Shot } from './director'
-import { createBuffer, type PixelBuffer } from './pixels'
+import type { PixelBuffer } from './pixels'
 import type { Point } from './pixels'
-import { crop, cropStart, FALLBACK_SCENE, focusAt, heroAt, type Mood, overlay, type ReactionId, type ReactionSpec, renderSeamed, type Scene, type SceneId, STAGE_H, STAGE_W } from './scene'
+import { type AreaSize, areaBuffer, areaShape, crop, cropStart, FALLBACK_SCENE, focusAt, heroAt, type Mood, overlay, type ReactionId, type ReactionSpec, renderSeamed, type Scene, type SceneId, STAGE_H } from './scene'
 
 export const TOON_ROWS = STAGE_H / 2
 
@@ -23,35 +23,36 @@ const sceneIn = (cast: Cast, id: SceneId): Scene => (cast.broken.has(id) ? undef
 // while it lasts.
 const focusOf = (shot: Shot, scene: Scene): number => (shot.reaction ? scene.focusX : focusAt(scene, shot.time))
 
-// Where the hero's head is in a raster of this width: its centre column and
-// top row.
-export function heroOnScreen(shot: Shot, width: number, cast: Cast): Point {
+// Where the hero's head is on an area of this size: its centre column and
+// top row, the core's origin added and the crop's start taken off.
+export function heroOnScreen(shot: Shot, size: AreaSize, cast: Cast): Point {
   const scene = sceneIn(cast, shot.base)
   const head = heroAt(scene, shot.time)
+  const { w, ox, oy } = areaShape(size, scene.coreX)
 
-  return { x: head.x - cropStart(STAGE_W, focusOf(shot, scene), width), y: head.y }
+  return { x: head.x + ox - cropStart(w, focusOf(shot, scene), size.columns), y: head.y + oy }
 }
 
-export function composeFrame(shot: Shot, width: number, cast: Cast): PixelBuffer {
+export function composeFrame(shot: Shot, size: AreaSize, cast: Cast): PixelBuffer {
   const time = shot.time
   const sceneOf = (id: SceneId) => sceneIn(cast, id)
   const full = (id: SceneId, mood: Mood): PixelBuffer => {
     try {
-      return renderSeamed(sceneOf(id), time, mood)
+      return renderSeamed(sceneOf(id), time, mood, size)
     } catch (error) {
       if (!cast.broken.has(id)) {
         cast.broken.add(id)
         cast.onBreak(id, error)
       }
 
-      return renderSeamed(cast.scenes[FALLBACK_SCENE]!, time, mood)
+      return renderSeamed(cast.scenes[FALLBACK_SCENE]!, time, mood, size)
     }
   }
   const reaction = shot.reaction ? cast.reactions[shot.reaction.id] : null
   const reactionT = shot.reaction?.t ?? 0
   let frame = full(shot.base, reaction?.mood?.(reactionT) ?? shot.mood ?? null)
   if (reaction) {
-    const layer = createBuffer(STAGE_W, STAGE_H)
+    const layer = areaBuffer(size, sceneOf(shot.base).coreX)
     try {
       reaction.draw(layer, reactionT, heroAt(sceneOf(shot.base), time))
     } catch {
@@ -60,5 +61,5 @@ export function composeFrame(shot: Shot, width: number, cast: Cast): PixelBuffer
     frame = overlay(frame, layer)
   }
 
-  return crop(frame, focusOf(shot, sceneOf(shot.base)), width)
+  return crop(frame, focusOf(shot, sceneOf(shot.base)), size.columns)
 }

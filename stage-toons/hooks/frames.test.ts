@@ -6,7 +6,7 @@ import { areaCells, castOf, layerAbove } from './frames'
 import { DOZE_MS } from './idle'
 import { createMod, frameMs, isDeepAsleep, type Mod } from './mod'
 import { encodeCells, getPixel, glyphAt, type PixelBuffer } from './pixels'
-import { dissolve, FADE_MS } from './scene'
+import { dissolve, FADE_MS, STAGE_SIZE } from './scene'
 import { C } from './scenes/kit'
 import { HELPER_COLORS } from './waiting'
 import { createActivity, said, toolStarted, withMode } from './work'
@@ -23,7 +23,7 @@ function cellsAt(at: number, prepare: (mod: Mod) => void = () => undefined) {
   prepare(mod)
   mod.band.requestId = 'r1'
 
-  return areaCells(mod, 48, at, quiet)
+  return areaCells(mod, STAGE_SIZE, at, quiet)
 }
 
 test('the idle Clawd: the same state at the same time gives the same frame', () => {
@@ -90,12 +90,12 @@ function liveMod(): Mod {
 
   return mod
 }
-const frame = (mod: Mod, at: number) => areaCells(mod, 48, at, quiet)
+const frame = (mod: Mod, at: number) => areaCells(mod, STAGE_SIZE, at, quiet)
 // What the picture on show, and the one dissolving out, draw at a moment:
 // each as it was at the last frame (its director, its seats), so call them
 // right after the frame they check.
-const shownCells = (mod: Mod, at: number) => encodeCells(mod.shown!.draw(at, 48))
-const fromCells = (mod: Mod, at: number) => encodeCells(mod.fade!.from.draw(at, 48))
+const shownCells = (mod: Mod, at: number) => encodeCells(mod.shown!.draw(at, STAGE_SIZE))
+const fromCells = (mod: Mod, at: number) => encodeCells(mod.fade!.from.draw(at, STAGE_SIZE))
 const has = (b: PixelBuffer, color: number) => [...b.px].includes(color)
 
 test('each picture has a name that changes when the picture does', () => {
@@ -137,8 +137,8 @@ test("the first frame after a load is a cut; idle to the scene dissolves over FA
     expect(cells).not.toBe(fromCells(mod, at + ms))
   }
   // A resize mid-dissolve draws both pictures at the new width.
-  const narrow = areaCells(mod, 40, at + 450, quiet)
-  expect(narrow).toBe(encodeCells(dissolve(mod.fade!.from.draw(at + 450, 40), mod.shown!.draw(at + 450, 40), 450 / FADE_MS, at)))
+  const narrow = areaCells(mod, { columns: 40, rows: 7 }, at + 450, quiet)
+  expect(narrow).toBe(encodeCells(dissolve(mod.fade!.from.draw(at + 450, { columns: 40, rows: 7 }), mod.shown!.draw(at + 450, { columns: 40, rows: 7 }), 450 / FADE_MS, at)))
   expect(frame(mod, at + FADE_MS)).toBe(shownCells(mod, at + FADE_MS))
   expect(mod.fade).toBeNull()
 })
@@ -195,10 +195,10 @@ test('the outgoing picture is as it was in its last frame: a helper who came lat
   frame(mod, START + 100)
   mod.roster = spawned(mod.roster, 'a2', 'claude-sonnet-5-5', START + 1000)
   for (let at = START + 1000; at <= START + 6000; at += 500) frame(mod, at)
-  expect(has(mod.shown!.draw(START + 6000, 48), HELPER_COLORS.sonnet)).toBe(true)
+  expect(has(mod.shown!.draw(START + 6000, STAGE_SIZE), HELPER_COLORS.sonnet)).toBe(true)
   mod.isBandWorking = true
   frame(mod, START + 6100)
-  expect(has(mod.fade!.from.draw(START + 6200, 48), HELPER_COLORS.sonnet)).toBe(true)
+  expect(has(mod.fade!.from.draw(START + 6200, STAGE_SIZE), HELPER_COLORS.sonnet)).toBe(true)
 
   const working = liveMod()
   working.isBandWorking = true
@@ -208,7 +208,7 @@ test('the outgoing picture is as it was in its last frame: a helper who came lat
   working.isBandWorking = false
   working.idleSince = START + 2600
   frame(working, START + 2600)
-  expect(has(working.fade!.from.draw(START + 2700, 48), C.red)).toBe(true)
+  expect(has(working.fade!.from.draw(START + 2700, STAGE_SIZE), C.red)).toBe(true)
 })
 
 test('a dissolve repaints at twelve frames a second and keeps the area awake', () => {
@@ -252,13 +252,13 @@ test("the layer shows over the stage's scene while Claude works: a tool's badge 
   mod.isBandWorking = true
   mod.activity = toolStarted(createActivity(), 'tu-1', 'test', 'npm test')
   frame(mod, START + 1000)
-  const now = mod.shown!.draw(START + 1000, 48)
+  const now = mod.shown!.draw(START + 1000, STAGE_SIZE)
   expect(rowText(now, 1)).toBe('npm test')
   expect(has(now, C.liquid)).toBe(true)
   mod.activity = said(mod.activity, 'All green!', START + 1100)
   frame(mod, START + 1200)
-  expect(rowText(mod.shown!.draw(START + 1200, 48), 0)).toBe('All green!')
-  expect(rowText(mod.shown!.draw(START + 1200, 48), 1)).toBe('')
+  expect(rowText(mod.shown!.draw(START + 1200, STAGE_SIZE), 0)).toBe('All green!')
+  expect(rowText(mod.shown!.draw(START + 1200, STAGE_SIZE), 1)).toBe('')
 })
 
 test("a head a little high keeps the bubble alone: stamp's crate; higher, nothing, and no eyes up", () => {
@@ -268,7 +268,7 @@ test("a head a little high keeps the bubble alone: stamp's crate; higher, nothin
   stamp.director = createDirector('stamp', false)
   stamp.activity = busy
   frame(stamp, START + 1000)
-  const b = stamp.shown!.draw(START + 1000, 48)
+  const b = stamp.shown!.draw(START + 1000, STAGE_SIZE)
   expect(rowText(b, 0)).toBe('Saved it.')
   expect(rowText(b, 1)).toBe('')
   expect(has(b, C.gold)).toBe(false)
@@ -334,7 +334,7 @@ test('no layer over the idle Clawd, the waiting toon or a scene demo', () => {
   demo.demo = { kind: 'scenes', at: START, seconds: 2, scenes: ['dice'] }
   frame(demo, START + 500)
   for (const mod of [idle, demo]) {
-    const b = mod.shown!.draw(START + 500, 48)
+    const b = mod.shown!.draw(START + 500, STAGE_SIZE)
     expect([rowText(b, 0), rowText(b, 1)]).toEqual(['', ''])
   }
 })
@@ -349,7 +349,7 @@ test("the outgoing scene keeps its bubble through the dissolve at a turn's end",
   mod.activity = createActivity()
   mod.idleSince = START + 1700
   frame(mod, START + 1700)
-  expect(rowText(mod.fade!.from.draw(START + 1800, 48), 0)).toBe('All green!')
+  expect(rowText(mod.fade!.from.draw(START + 1800, STAGE_SIZE), 0)).toBe('All green!')
   const cells = frame(mod, START + 1800)
   expect(cells).not.toBe(shownCells(mod, START + 1800))
 })
@@ -360,9 +360,9 @@ test("the layer hides while Clawd's head is high up: the ladder scene's climb", 
   mod.director = createDirector('ladder', false)
   mod.activity = toolStarted(createActivity(), 'tu-1', 'read', 'a.ts')
   frame(mod, START + 1000)
-  expect(rowText(mod.shown!.draw(START + 1000, 48), 1)).toBe('a.ts')
+  expect(rowText(mod.shown!.draw(START + 1000, STAGE_SIZE), 1)).toBe('a.ts')
   frame(mod, START + 1000 + 6500)
-  expect(rowText(mod.shown!.draw(START + 1000 + 6500, 48), 1)).toBe('')
+  expect(rowText(mod.shown!.draw(START + 1000 + 6500, STAGE_SIZE), 1)).toBe('')
 })
 
 test('the work demo is one picture: the scene plays on under each step, the layer changes', () => {
@@ -370,13 +370,13 @@ test('the work demo is one picture: the scene plays on under each step, the laye
   mod.demo = { kind: 'work', at: START, seconds: 3, scene: 'dice' }
   frame(mod, START + 4 * 3000 + 100)
   expect(mod.shown?.name).toBe(`demo:${START}:work`)
-  expect(rowText(mod.shown!.draw(START + 4 * 3000 + 100, 48), 1)).toBe('npm test')
+  expect(rowText(mod.shown!.draw(START + 4 * 3000 + 100, STAGE_SIZE), 1)).toBe('npm test')
   frame(mod, START + 5 * 3000 + 100)
   expect(mod.shown?.name).toBe(`demo:${START}:work`)
   expect(mod.fade).toBe(null)
-  expect(rowText(mod.shown!.draw(START + 5 * 3000 + 100, 48), 1)).toBe('npm run')
+  expect(rowText(mod.shown!.draw(START + 5 * 3000 + 100, STAGE_SIZE), 1)).toBe('npm run')
   // Off, the pop-ups still show in the demo, which asks for them.
   mod.isBubbles = false
-  expect(rowText(mod.shown!.draw(START + 5 * 3000 + 200, 48), 1)).toBe('npm run')
+  expect(rowText(mod.shown!.draw(START + 5 * 3000 + 200, STAGE_SIZE), 1)).toBe('npm run')
   expect(frame(mod, START + 14 * 3000)).toBe(null)
 })

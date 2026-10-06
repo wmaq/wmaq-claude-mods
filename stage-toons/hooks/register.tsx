@@ -456,7 +456,7 @@ function portsOf($: EngineInterface, mod: Mod): Ports {
 
       return id === null || id === LOAD_ID
     },
-    cells: (site, now) => areaCells(mod, site.columns, now, log),
+    cells: (site, now) => areaCells(mod, { columns: site.columns, rows: site.rows }, now, log),
   }
 }
 
@@ -1108,7 +1108,7 @@ export const register: Register = on => {
     // Shown again: an agent may have ended, or started, while the area was
     // away (a paint loop still running from before polls on its own time).
     if (!wasShown) void checkAgents($, mod)
-    const cells = areaCells(mod, band.columns, now, debugLog($)) ?? ''
+    const cells = areaCells(mod, { columns: band.columns, rows: band.rows }, now, debugLog($)) ?? ''
     // The Raster mounts showing these.
     band.lastCells = cells
     band.blittedAt = now

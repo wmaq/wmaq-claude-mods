@@ -1,11 +1,12 @@
 import { expect, test } from 'claude-code/testing'
 
-import { cropLeft, IDLE_TOP, placeIdle } from './area'
+import { cropLeft, idleTop, placeIdle } from './area'
 import { idleFrame } from './idle'
 import { createBuffer, EMPTY, getPixel, setPixel } from './pixels'
 
 test('the idle box sits at the bottom-left of the 48 x 14 area', () => {
-  expect(IDLE_TOP).toBe(6)
+  expect(idleTop(7)).toBe(6)
+  expect(idleTop(9)).toBe(10)
   const box = createBuffer(26, 8)
   setPixel(box, 0, 0, 1)
   setPixel(box, 25, 7, 2)
@@ -18,7 +19,7 @@ test('the idle box sits at the bottom-left of the 48 x 14 area', () => {
 
 test('the area is cut from the left, so the idle Clawd stays whole from 27 columns', () => {
   const area = placeIdle(idleFrame('classic', 500))
-  const cut = cropLeft(area, 27)
+  const cut = cropLeft(area, { columns: 27, rows: 7 })
   expect(cut.w).toBe(27)
   for (let y = 0; y < 14; y++) for (let x = 0; x < 27; x++) expect(getPixel(cut, x, y)).toBe(getPixel(area, x, y))
 })

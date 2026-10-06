@@ -1,8 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 
 import { CLAWD_ORANGE, EYE_DARK } from './clawd'
-import { createBuffer, drawText, EMPTY, fillRect, getPixel, glyphAt, setPixel } from './pixels'
-import { CLAWD_TOP, cellThreshold, crop, cropStart, dissolve, drawSprite, FADE_MS, heroAt, LOOP_LAST_S, overlay, renderFull, renderScene, renderSeamed, type Scene, type Sprite, STAGE_H, STAGE_W } from './scene'
+import { createBuffer, drawText, EMPTY, fillRect, getPixel, glyphAt, rightOf, setPixel, topOf } from './pixels'
+import { areaBuffer, CLAWD_TOP, cellThreshold, crop, cropStart, dissolve, drawSprite, FADE_MS, heroAt, LOOP_LAST_S, overlay, renderFull, renderScene, renderSeamed, type Scene, type Sprite, STAGE_H, STAGE_W } from './scene'
 
 const dot: Sprite = { palette: { x: 0x111111, y: 0x222222 }, frames: [['x.'], ['.y']] }
 
@@ -56,15 +56,51 @@ test('the hero jumps and flinches on cue', () => {
   expect(heroAt(scene, 0)).toEqual({ x: 27, y: CLAWD_TOP })
 })
 
-test('cropping keeps the focus in view and centres the scene in a wider raster', () => {
+test('cropping keeps the focus in view; a wider raster gets the picture at its left', () => {
   const full = createBuffer(STAGE_W, STAGE_H)
   setPixel(full, 40, 0, 1)
   setPixel(full, 0, 0, 2)
   const narrow = crop(full, 40, 24)
   expect(narrow.w).toBe(24)
   expect(getPixel(narrow, 16, 0)).toBe(1)
-  expect(getPixel(crop(full, 24, 50), 1, 0)).toBe(2)
+  expect(getPixel(crop(full, 24, 50), 0, 0)).toBe(2)
   expect([...crop(full, 24, 48).px]).toEqual([...full.px])
+  // A picture as wide as the raster comes back without its origin.
+  const tall = createBuffer(STAGE_W, 18, 0, 4)
+  expect([tall.oy, crop(tall, 24, 48).oy]).toEqual([4, undefined])
+})
+
+test('an area buffer is at least the core wide and the area tall, the core at its bottom, coreX in where it fits', () => {
+  const at = (columns: number, rows: number, coreX = 0) => {
+    const b = areaBuffer({ columns, rows }, coreX)
+
+    return [b.w, b.h, b.ox ?? 0, b.oy ?? 0]
+  }
+  expect(at(48, 7)).toEqual([48, 14, 0, 0])
+  expect(at(30, 7)).toEqual([48, 14, 0, 0])
+  expect(at(120, 9)).toEqual([120, 18, 0, 4])
+  expect(at(120, 9, 20)).toEqual([120, 18, 20, 4])
+  expect(at(60, 8, 20)).toEqual([60, 16, 12, 2])
+  expect(at(40, 7, 20)).toEqual([48, 14, 0, 0])
+})
+
+test('on a wider, taller area the core sits at coreX and the bottom, and the set may draw out to the edges', () => {
+  const edges: Scene = {
+    ...scene,
+    coreX: 10,
+    backdrop: b => {
+      setPixel(b, 0, 0, 0x333333)
+      setPixel(b, rightOf(b) - 1, topOf(b), 0x555555)
+    },
+  }
+  const a = renderFull(edges, 0.5, null, 0.5, { columns: 100, rows: 9 })
+  expect([a.w, a.h, a.ox, a.oy]).toEqual([100, 18, 10, 4])
+  expect(getPixel(a, 10, 4)).toBe(0x333333)
+  expect(getPixel(a, 15, 9)).toBe(0x111111)
+  expect(getPixel(a, 99, 0)).toBe(0x555555)
+  const shown = renderScene(edges, 0.5, 100, null, 9)
+  expect([shown.w, shown.h, shown.ox]).toEqual([100, 18, undefined])
+  expect([...shown.px]).toEqual([...a.px])
 })
 
 test('overlay combines frames', () => {
@@ -247,9 +283,10 @@ test("thinking, the hero's eyes turn up; the rest of the scene's look stays", ()
   expect(getPixel(think, 22, CLAWD_TOP)).toBe(CLAWD_ORANGE)
 })
 
-test('cropStart is where crop cuts: around the focus, clamped, or centring a wider raster', () => {
+test('cropStart is where crop cuts: around the focus, clamped, or 0 for a raster at least as wide', () => {
   expect(cropStart(48, 24, 30)).toBe(9)
   expect(cropStart(48, 2, 30)).toBe(0)
   expect(cropStart(48, 47, 30)).toBe(18)
-  expect(cropStart(48, 24, 52)).toBe(-2)
+  expect(cropStart(48, 24, 52)).toBe(0)
+  expect(cropStart(48, 24, 48)).toBe(0)
 })

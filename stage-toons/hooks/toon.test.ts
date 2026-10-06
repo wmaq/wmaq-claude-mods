@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { fillRect, getPixel } from './pixels'
-import { CLAWD_TOP, renderScene, type Scene, type SceneId, STAGE_H, STAGE_W } from './scene'
+import { CLAWD_TOP, renderScene, type Scene, type SceneId, STAGE_H, STAGE_SIZE, STAGE_W } from './scene'
 import { REACTIONS, SCENES } from './scenes'
 import { C } from './scenes/kit'
 import { type Cast, composeFrame, heroOnScreen, TOON_ROWS } from './toon'
@@ -24,7 +24,7 @@ const castWith = (scenes: Record<SceneId, Scene>, breaks: string[] = []): Cast =
 })
 
 test('a frame is the base scene cropped to the raster', () => {
-  const frame = composeFrame({ base: 'spec', time: 0, reaction: null }, 30, castWith({ spec: solid('spec', 7) }))
+  const frame = composeFrame({ base: 'spec', time: 0, reaction: null }, { columns: 30, rows: 7 }, castWith({ spec: solid('spec', 7) }))
   expect(frame.w).toBe(30)
   expect(TOON_ROWS).toBe(7)
   expect(frame.h).toBe(TOON_ROWS * 2)
@@ -35,14 +35,14 @@ test("a frame is the scene at the shot's time, its own clock", () => {
   // Column 0 lit for the loop's first half second.
   const blink: Scene = { id: 'spec', loop: 1, focusX: 24, actors: [], backdrop: (b, t) => fillRect(b, 0, 0, 1, 1, t < 0.5 ? 3 : 4) }
   const cast = castWith({ spec: blink })
-  expect(getPixel(composeFrame({ base: 'spec', time: 0.25, reaction: null }, 48, cast), 0, 0)).toBe(3)
-  expect(getPixel(composeFrame({ base: 'spec', time: 2.75, reaction: null }, 48, cast), 0, 0)).toBe(4)
+  expect(getPixel(composeFrame({ base: 'spec', time: 0.25, reaction: null }, STAGE_SIZE, cast), 0, 0)).toBe(3)
+  expect(getPixel(composeFrame({ base: 'spec', time: 2.75, reaction: null }, STAGE_SIZE, cast), 0, 0)).toBe(4)
 })
 
 test("a scene that fades at its loop point dissolves its last moment into the new loop's start", () => {
   const fading: Scene = { id: 'spec', loop: 1, focusX: 24, actors: [], fadesAtLoop: true, backdrop: (b, t) => fillRect(b, 0, 0, STAGE_W, STAGE_H, t < 0.5 ? 1 : 2) }
   const cast = castWith({ spec: fading })
-  const colours = (time: number) => new Set(composeFrame({ base: 'spec', time, reaction: null }, 48, cast).px)
+  const colours = (time: number) => new Set(composeFrame({ base: 'spec', time, reaction: null }, STAGE_SIZE, cast).px)
   expect([...colours(1.2)].sort()).toEqual([1, 2])
   expect([...colours(1.6)]).toEqual([2])
   // Its first loop starts clean.
@@ -50,15 +50,15 @@ test("a scene that fades at its loop point dissolves its last moment into the ne
 })
 
 test('a reaction draws over the base scene', () => {
-  const frame = composeFrame({ base: 'spec', time: 0, reaction: { id: 'failure', t: 0.7 } }, 48, castWith({ spec: solid('spec', 7) }))
+  const frame = composeFrame({ base: 'spec', time: 0, reaction: { id: 'failure', t: 0.7 } }, STAGE_SIZE, castWith({ spec: solid('spec', 7) }))
   expect([...frame.px].some(c => c === C.red)).toBe(true)
 })
 
 test('a scene that throws is replaced by idle and reported once', () => {
   const breaks: string[] = []
   const cast = castWith({ plan: exploding }, breaks)
-  const frame = composeFrame({ base: 'plan', time: 0, reaction: null }, 48, cast)
-  composeFrame({ base: 'plan', time: 0.1, reaction: null }, 48, cast)
+  const frame = composeFrame({ base: 'plan', time: 0, reaction: null }, STAGE_SIZE, cast)
+  composeFrame({ base: 'plan', time: 0.1, reaction: null }, STAGE_SIZE, cast)
   expect(breaks).toEqual(['plan'])
   expect([...frame.px]).toEqual([...renderScene(SCENES.standing!, 0, 48).px])
 })
@@ -76,7 +76,7 @@ test("a scene's camera crops where it points, and holds on the scene's focus whi
     },
   }
   const cast = castWith({ spec: striped })
-  const left = (reaction: { id: 'failure'; t: number } | null) => getPixel(composeFrame({ base: 'spec', time: 0, reaction }, 24, cast), 0, STAGE_H - 1)
+  const left = (reaction: { id: 'failure'; t: number } | null) => getPixel(composeFrame({ base: 'spec', time: 0, reaction }, { columns: 24, rows: 7 }, cast), 0, STAGE_H - 1)
   expect(left(null)).toBe(24 + 1)
   expect(left({ id: 'failure', t: 0.7 })).toBe(0 + 1)
 })
@@ -84,17 +84,17 @@ test("a scene's camera crops where it points, and holds on the scene's focus whi
 test("a shot's mood shows on the hero when no reaction gives one; a reaction's wins", () => {
   const cast = castWith({})
   const shot = { base: 'workbench', time: 1, reaction: null }
-  const plain = composeFrame(shot, 48, cast)
-  const think = composeFrame({ ...shot, mood: 'think' as const }, 48, cast)
+  const plain = composeFrame(shot, STAGE_SIZE, cast)
+  const think = composeFrame({ ...shot, mood: 'think' as const }, STAGE_SIZE, cast)
   expect([...think.px]).not.toEqual([...plain.px])
   const failing = { ...shot, reaction: { id: 'failure' as const, t: 0.1 } }
-  expect([...composeFrame({ ...failing, mood: 'think' as const }, 48, cast).px]).toEqual([...composeFrame(failing, 48, cast).px])
+  expect([...composeFrame({ ...failing, mood: 'think' as const }, STAGE_SIZE, cast).px]).toEqual([...composeFrame(failing, STAGE_SIZE, cast).px])
 })
 
 test("the hero's head on screen: its stage column less where the raster starts, by the camera a reaction holds", () => {
   const cast = castWith({})
   // Workbench's hero stands at column 5, its focus at 26.
-  expect(heroOnScreen({ base: 'workbench', time: 0, reaction: null }, 48, cast)).toEqual({ x: 12, y: CLAWD_TOP })
-  expect(heroOnScreen({ base: 'workbench', time: 0, reaction: null }, 30, cast)).toEqual({ x: 12 - 11, y: CLAWD_TOP })
-  expect(heroOnScreen({ base: 'workbench', time: 0, reaction: { id: 'advance', t: 0 } }, 30, cast).x).toBe(1)
+  expect(heroOnScreen({ base: 'workbench', time: 0, reaction: null }, STAGE_SIZE, cast)).toEqual({ x: 12, y: CLAWD_TOP })
+  expect(heroOnScreen({ base: 'workbench', time: 0, reaction: null }, { columns: 30, rows: 7 }, cast)).toEqual({ x: 12 - 11, y: CLAWD_TOP })
+  expect(heroOnScreen({ base: 'workbench', time: 0, reaction: { id: 'advance', t: 0 } }, { columns: 30, rows: 7 }, cast).x).toBe(1)
 })

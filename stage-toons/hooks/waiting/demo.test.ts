@@ -2,7 +2,8 @@ import { expect, test } from 'claude-code/testing'
 
 import { CLAWD_ORANGE } from '../clawd'
 import type { PixelBuffer } from '../pixels'
-import { AREA_H, HELPER_COLORS, waitingFrame } from '.'
+import { STAGE_H } from '../scene'
+import { HELPER_COLORS, waitingFrame } from '.'
 import { WAITING_DEMO_MS, waitingDemoAt } from './demo'
 import { AREA_W, CLAWD_HOME, clawdX, freesAt } from './seats'
 
@@ -14,7 +15,7 @@ test('every frame of the demo stays inside the area with Clawd in it, and the de
     const at = waitingDemoAt(T, T + ms)
     if ('log' in at) {
       const b = waitingFrame(at.log, T + ms)
-      expect(b.px.length).toBe(AREA_W * AREA_H)
+      expect(b.px.length).toBe(AREA_W * STAGE_H)
       expect(count(b, CLAWD_ORANGE)).toBeGreaterThan(30)
     }
   }

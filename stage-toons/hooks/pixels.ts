@@ -2,6 +2,12 @@
 // blocks), packed the way a Raster's cells are: little-endian u32 triplets
 // [codePoint, foreground, background], base64. A buffer may also carry
 // text: a character in a cell, drawn over the cell's upper pixel.
+//
+// A buffer may have an origin (ox, oy): where a picture's 48 x 14 core has
+// its (0, 0) on a wider or taller area. setPixel and fillRect (and so every
+// sprite and Clawd) take the core's coordinates and add it; getPixel, the
+// text helpers and everything that works on the whole grid use the
+// buffer's own.
 
 export const EMPTY = -1
 export const TERMINAL_DEFAULT = 0x01000000
@@ -10,15 +16,22 @@ export type Point = { x: number; y: number }
 // Per terminal cell (a column, two pixel rows), a character's code point
 // (0: none) and its colour.
 export type TextLayer = { cp: Int32Array; fg: Int32Array }
-export type PixelBuffer = { w: number; h: number; px: Int32Array; text?: TextLayer }
+export type PixelBuffer = { w: number; h: number; px: Int32Array; text?: TextLayer; ox?: number; oy?: number }
 
 export const hex = (s: string): number => parseInt(s.replace('#', ''), 16)
 
-export const createBuffer = (w: number, h: number): PixelBuffer => ({ w, h, px: new Int32Array(w * h).fill(EMPTY) })
+export const createBuffer = (w: number, h: number, ox = 0, oy = 0): PixelBuffer =>
+  ox === 0 && oy === 0 ? { w, h, px: new Int32Array(w * h).fill(EMPTY) } : { w, h, px: new Int32Array(w * h).fill(EMPTY), ox, oy }
+
+// The area's edges in the core's coordinates: the first column past its
+// right edge (48 on a bare stage), and its top row (0 on a bare stage,
+// above the core's top on a taller area).
+export const rightOf = (b: PixelBuffer): number => b.w - (b.ox ?? 0)
+export const topOf = (b: PixelBuffer): number => 0 - (b.oy ?? 0)
 
 export function setPixel(b: PixelBuffer, x: number, y: number, color: number): void {
-  const xi = Math.round(x)
-  const yi = Math.round(y)
+  const xi = Math.round(x) + (b.ox ?? 0)
+  const yi = Math.round(y) + (b.oy ?? 0)
   if (color === EMPTY || xi < 0 || yi < 0 || xi >= b.w || yi >= b.h) return
   b.px[yi * b.w + xi] = color
 }

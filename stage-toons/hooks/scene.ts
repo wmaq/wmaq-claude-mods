@@ -1,5 +1,8 @@
 // Scenes: props, sprites and Clawds moved by time on a 48x14 pixel stage,
-// rendered whole and then cropped to the raster's width.
+// the core, drawn on an area of the band's size: on a wider area the core
+// sits at its left (or at the scene's coreX) and the set runs on to the
+// right edge; on a taller one the extra rows are headroom above the core;
+// on a narrower one the core is cropped to the raster's width.
 
 import { type ClawdLook, drawClawd } from './clawd'
 import { createBuffer, EMPTY, type PixelBuffer, type Point, setPixel, type TextLayer } from './pixels'
@@ -7,6 +10,26 @@ import type { LibraryScene } from './scenes'
 
 export const STAGE_W = 48
 export const STAGE_H = 14
+// The area's size in terminal cells: its columns, and its rows (two pixels
+// each). The fewest rows is 7, the core's; the most, 9 (AREA_ROWS in
+// band.ts).
+export type AreaSize = { columns: number; rows: number }
+export const STAGE_SIZE: AreaSize = { columns: STAGE_W, rows: STAGE_H / 2 }
+
+// A picture on an area of this size: at least the core's width, the
+// area's height, the core at the bottom, coreX columns in where the area is
+// wide enough (else as far in as it fits).
+export function areaShape(size: AreaSize, coreX = 0): { w: number; h: number; ox: number; oy: number } {
+  const h = size.rows * 2
+
+  return { w: Math.max(STAGE_W, size.columns), h, ox: size.columns > STAGE_W ? Math.max(0, Math.min(coreX, size.columns - STAGE_W)) : 0, oy: h - STAGE_H }
+}
+
+export function areaBuffer(size: AreaSize, coreX = 0): PixelBuffer {
+  const { w, h, ox, oy } = areaShape(size, coreX)
+
+  return createBuffer(w, h, ox, oy)
+}
 // Clawd's top row when it stands on the stage's bottom row.
 export const CLAWD_TOP = 6
 
@@ -36,7 +59,10 @@ export type Actor =
 
 // A looping scene: t runs from 0 to loop seconds. focusX is the column kept
 // in view when the raster is narrower than the stage; focus, when given,
-// moves it with the action instead (a camera that pans). A frame paints the
+// moves it with the action instead (a camera that pans). coreX, when given,
+// is where the core starts on a wider area (0, the left, when not).
+// Everything is drawn in the core's coordinates: rightOf(b) and topOf(b)
+// say where the area's edges are, for a set that runs on to them. A frame paints the
 // background, the backdrop, the actors by depth (equal depths in the order
 // written), then the front. The background is given the scene's time
 // unwrapped (seconds since it came on), so it can drift with no jump at the
@@ -48,6 +74,7 @@ export type Scene = {
   loop: number
   focusX: number
   focus?: (t: number) => number
+  coreX?: number
   background?: Paint
   backdrop?: Paint
   actors: Actor[]
@@ -90,10 +117,11 @@ const byDepth = (actors: readonly Actor[], t: number): Actor[] =>
     .map(e => e.actor)
 
 // backgroundTime: the background's time, when it is not the scene's (a held
-// last moment over a background that drifts on).
-export function renderFull(scene: Scene, time: number, mood: Mood = null, backgroundTime = time): PixelBuffer {
+// last moment over a background that drifts on). The whole area, at least
+// the core's width (areaBuffer).
+export function renderFull(scene: Scene, time: number, mood: Mood = null, backgroundTime = time, size: AreaSize = STAGE_SIZE): PixelBuffer {
   const t = loopTime(scene, time)
-  const b = createBuffer(STAGE_W, STAGE_H)
+  const b = areaBuffer(size, scene.coreX)
   scene.background?.(b, backgroundTime)
   scene.backdrop?.(b, t)
   for (const actor of byDepth(scene.actors, t)) {
@@ -129,14 +157,18 @@ export function heroAt(scene: Scene, time: number): Point {
   return { x: Math.round(p.x) + 7, y: Math.round(p.y) }
 }
 
-// The stage's column a raster of this width starts at, cut around focusX
-// (negative: the stage centred in a wider raster).
+// The picture's column a raster of this width starts at, cut around focusX
+// (0 when the raster is as wide as the picture: pictures are drawn at
+// least as wide as the area).
 export const cropStart = (fullWidth: number, focusX: number, width: number): number =>
-  width >= fullWidth ? -Math.floor((width - fullWidth) / 2) : Math.max(0, Math.min(fullWidth - width, Math.round(focusX - width / 2)))
+  width >= fullWidth ? 0 : Math.max(0, Math.min(fullWidth - width, Math.round(focusX - width / 2)))
 
-// The stage cut to the raster's width around focusX, or centred in a wider
-// raster.
+// The picture cut to the raster's width around focusX; when it is that
+// wide already, the picture itself without its origin (what is drawn over
+// the area after this, the activity layer, takes the area's own
+// coordinates).
 export function crop(full: PixelBuffer, focusX: number, width: number): PixelBuffer {
+  if (width === full.w) return full.text ? { w: full.w, h: full.h, px: full.px, text: full.text } : { w: full.w, h: full.h, px: full.px }
   const out = createBuffer(width, full.h)
   const left = cropStart(full.w, focusX, width)
   for (let y = 0; y < full.h; y++) {
@@ -206,14 +238,14 @@ export function dissolve(from: PixelBuffer, to: PixelBuffer, progress: number, s
 // The whole stage at a moment, with a fading scene's dissolve at its loop
 // point: in its second loop and after, for FADE_MS, its last moment, held,
 // breaks up into the new loop (the background drifting on in both).
-export function renderSeamed(scene: Scene, time: number, mood: Mood = null): PixelBuffer {
-  const now = renderFull(scene, time, mood)
+export function renderSeamed(scene: Scene, time: number, mood: Mood = null, size: AreaSize = STAGE_SIZE): PixelBuffer {
+  const now = renderFull(scene, time, mood, time, size)
   const into = loopTime(scene, time)
   if (!scene.fadesAtLoop || time < scene.loop || into >= FADE_MS / 1000) return now
-  const held = renderFull(scene, time - into - LOOP_LAST_S, mood, time)
+  const held = renderFull(scene, time - into - LOOP_LAST_S, mood, time, size)
 
   return dissolve(held, now, into / (FADE_MS / 1000), Math.floor(time / scene.loop))
 }
 
-export const renderScene = (scene: Scene, time: number, width: number, mood: Mood = null): PixelBuffer =>
-  crop(renderSeamed(scene, time, mood), focusAt(scene, time), width)
+export const renderScene = (scene: Scene, time: number, width: number, mood: Mood = null, rows = STAGE_SIZE.rows): PixelBuffer =>
+  crop(renderSeamed(scene, time, mood, { columns: width, rows }), focusAt(scene, time), width)

@@ -11,7 +11,7 @@ import { drawLayer } from './layer'
 import { DOZE_MS, dozeFrame, idleBackground, routineFrame } from './idle'
 import { isFading, type Mod, type Picture, reseat } from './mod'
 import { encodeCells, type PixelBuffer } from './pixels'
-import { dissolve, FADE_MS } from './scene'
+import { type AreaSize, dissolve, FADE_MS } from './scene'
 import { REACTIONS, SCENES } from './scenes'
 import { type Cast, composeFrame, heroOnScreen } from './toon'
 import { FALLBACK_WAITING, waitingFrame, type WaitingSceneId } from './waiting'
@@ -40,11 +40,11 @@ export function layerAbove(layer: Layer, y: number): Layer | null {
 // and bubble above the hero's head, and his eyes up while Claude thinks.
 // The layer is as it was worked out for its frame: an outgoing picture
 // keeps it through its dissolve.
-export function sceneWithLayer(shot: Shot, columns: number, cast: Cast, layer: Layer | null): PixelBuffer {
-  if (layer === null) return composeFrame(shot, columns, cast)
-  const head = heroOnScreen(shot, columns, cast)
+export function sceneWithLayer(shot: Shot, size: AreaSize, cast: Cast, layer: Layer | null): PixelBuffer {
+  if (layer === null) return composeFrame(shot, size, cast)
+  const head = heroOnScreen(shot, size, cast)
   const shown = layerAbove(layer, head.y)
-  const frame = composeFrame(shown?.badge === 'thinking' ? { ...shot, mood: 'think' } : shot, columns, cast)
+  const frame = composeFrame(shown?.badge === 'thinking' ? { ...shot, mood: 'think' } : shot, size, cast)
   if (shown) drawLayer(frame, shown, head.x, head.y > BUBBLE_CLEAR_Y)
 
   return frame
@@ -79,18 +79,18 @@ function routinePicture(mod: Mod, name: string, routine: IdleId, since: number, 
 
   return {
     name,
-    draw: (now, columns) => {
+    draw: (now, size) => {
       const box = routineFrame(routine, now - since, mod.brokenIdle, onBreak)
 
-      return cropLeft(placeIdle(box, idleBackground(routine, now - since, mod.brokenIdle, onBreak)), columns)
+      return cropLeft(placeIdle(box, idleBackground(routine, now - since, mod.brokenIdle, onBreak, size), size), size)
     },
   }
 }
 
 // The doze of an idle period started at `since` (its idle time, from 0).
-const dozePicture = (name: string, since: number): Picture => ({ name, draw: (now, columns) => cropLeft(placeIdle(dozeFrame(now - since)), columns) })
+const dozePicture = (name: string, since: number): Picture => ({ name, draw: (now, size) => cropLeft(placeIdle(dozeFrame(now - since), null, size), size) })
 
-const waitingPicture = (name: string, log: SeatLog, scene: WaitingSceneId): Picture => ({ name, draw: (now, columns) => cropLeft(waitingFrame(log, now, scene), columns) })
+const waitingPicture = (name: string, log: SeatLog, scene: WaitingSceneId): Picture => ({ name, draw: (now, size) => cropLeft(waitingFrame(log, now, scene, size), size) })
 
 // What the area shows now, or null once the demo it plays is over: a demo,
 // else the stage's scene while Claude works, else the waiting toon while a
@@ -105,7 +105,7 @@ function pictureOf(mod: Mod, now: number, log: Log): Picture | null {
     const start = now - frame.sceneMs
     const cast = castOf(mod, log)
 
-    return { name: `demo:${demo.at}:${frame.index}`, draw: (t, columns) => composeFrame({ ...frame.shot, time: (t - start) / 1000 }, columns, cast) }
+    return { name: `demo:${demo.at}:${frame.index}`, draw: (t, size) => composeFrame({ ...frame.shot, time: (t - start) / 1000 }, size, cast) }
   }
   if (demo?.kind === 'idle') {
     const f = idleDemoAt(demo, now)
@@ -122,10 +122,10 @@ function pictureOf(mod: Mod, now: number, log: Log): Picture | null {
 
     return {
       name: `demo:${demo.at}:work`,
-      draw: (t, columns) => {
+      draw: (t, size) => {
         const f = workDemoAt(demo, t)
 
-        return sceneWithLayer(heldShot(f.director, t), columns, cast, layerAt(f.activity, f.director, t))
+        return sceneWithLayer(heldShot(f.director, t), size, cast, layerAt(f.activity, f.director, t))
       },
     }
   }
@@ -147,7 +147,7 @@ function pictureOf(mod: Mod, now: number, log: Log): Picture | null {
     const { activity, layer } = layerFor(mod.activity, d, mod.isBubbles, now)
     mod.activity = activity
 
-    return { name: `scene:${d.base}:${d.baseAt}`, draw: (t, columns) => sceneWithLayer(heldShot(d, t), columns, cast, layer) }
+    return { name: `scene:${d.base}:${d.baseAt}`, draw: (t, size) => sceneWithLayer(heldShot(d, t), size, cast, layer) }
   }
   if (mod.seats.since !== null && !mod.isWaitingBroken) {
     // With the helpers that left still in it, for the conveyor's marks.
@@ -160,12 +160,12 @@ function pictureOf(mod: Mod, now: number, log: Log): Picture | null {
   return routinePicture(mod, `idle:${mod.idle}:${mod.idleSince}`, mod.idle, mod.idleSince, log)
 }
 
-// The area's next frame, cut to its width, or null once the demo it plays
-// is over. The seat log moves on first, whichever plays. When the picture
+// The area's next frame, at its size, or null once the demo it plays is
+// over. The seat log moves on first, whichever plays. When the picture
 // changes, the old one (as it was in its last frame, on its own clock)
 // dissolves into the new over FADE_MS; a change while a dissolve runs keeps
 // dissolving the same old picture.
-export function areaCells(mod: Mod, columns: number, now: number, log: Log): string | null {
+export function areaCells(mod: Mod, size: AreaSize, now: number, log: Log): string | null {
   reseat(mod, now)
   let picture = pictureOf(mod, now, log)
   // The demo is over: what was shown stays, to dissolve from next frame.
@@ -177,7 +177,7 @@ export function areaCells(mod: Mod, columns: number, now: number, log: Log): str
   let isCut = false
   for (;;) {
     try {
-      current = picture.draw(now, columns)
+      current = picture.draw(now, size)
       break
     } catch (error) {
       if (!picture.name.startsWith('waiting:')) throw error
@@ -201,7 +201,7 @@ export function areaCells(mod: Mod, columns: number, now: number, log: Log): str
   if (mod.fade === null) return encodeCells(current)
   let from: PixelBuffer
   try {
-    from = mod.fade.from.draw(now, columns)
+    from = mod.fade.from.draw(now, size)
   } catch {
     // Its failure was reported while it showed.
     mod.fade = null

@@ -1,8 +1,21 @@
 import { expect, test } from 'claude-code/testing'
 
-import { base64, base64Loop, clearCell, createBuffer, drawText, EMPTY, encodeCells, fillRect, getPixel, glyphAt, hex, setPixel, TERMINAL_DEFAULT, toWords } from './pixels'
+import { base64, base64Loop, clearCell, createBuffer, drawText, EMPTY, encodeCells, fillRect, getPixel, glyphAt, hex, rightOf, setPixel, TERMINAL_DEFAULT, topOf, toWords } from './pixels'
 
 const decode = (cells: string) => new Uint32Array(Uint8Array.from(atob(cells), c => c.charCodeAt(0)).buffer)
+
+test("a buffer's origin: setPixel and fillRect take the core's coordinates, getPixel the buffer's own", () => {
+  const b = createBuffer(80, 18, 10, 4)
+  setPixel(b, 0, 0, 1)
+  fillRect(b, -10, -4, 1, 1, 2)
+  setPixel(b, 70, 0, 3)
+  expect(getPixel(b, 10, 4)).toBe(1)
+  expect(getPixel(b, 0, 0)).toBe(2)
+  expect([...b.px].filter(c => c === 3)).toHaveLength(0)
+  expect([rightOf(b), topOf(b)]).toEqual([70, -4])
+  const plain = createBuffer(48, 14)
+  expect([rightOf(plain), topOf(plain), 'ox' in plain, 'oy' in plain]).toEqual([48, 0, false, false])
+})
 
 test('two pixels share a cell as half blocks', () => {
   const b = createBuffer(2, 2)

@@ -12,7 +12,7 @@ import { type Cost, type EntryKey, NO_COST } from './history'
 import { DEEP_SLEEP_MS, DOZE_MS } from './idle'
 import type { PixelBuffer } from './pixels'
 import { storeKey } from './progress'
-import { FADE_MS, type SceneId, STAGE_W } from './scene'
+import { type AreaSize, FADE_MS, type SceneId, STAGE_W } from './scene'
 import { type Cast, TOON_ROWS } from './toon'
 import { dealWaiting, FALLBACK_WAITING, NEW_DEAL, type WaitingDeal, type WaitingSceneId } from './waiting/deal'
 import { EMPTY_LOG, freesAt, seat, type SeatEntry, type SeatLog } from './waiting/seats'
@@ -45,9 +45,9 @@ export type Site = {
 }
 
 // What the area shows, by name, and how to draw it at any later time and
-// width, on its own clock (frames.ts): the name changes exactly when the
+// size, on its own clock (frames.ts): the name changes exactly when the
 // picture changes to another one.
-export type Picture = { name: string; draw: (now: number, columns: number) => PixelBuffer }
+export type Picture = { name: string; draw: (now: number, size: AreaSize) => PixelBuffer }
 
 // Whether the area is dissolving from one picture into the next.
 export const isFading = (mod: Mod, now: number): boolean => mod.fade !== null && now - mod.fade.at < FADE_MS
