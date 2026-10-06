@@ -1,5 +1,8 @@
 // 0.11.0's pictures at 48 x 7, as golden.ts hashes them (generated on
-// 0.11.0 before phase 4e changed anything).
+// 0.11.0 before phase 4e changed anything), but for three changed on
+// purpose after the person's test: writing-desk's stack stands on the
+// desk, waiting-bench's clock has a rim and ticks, and nyan flies on a
+// navy sky.
 
 export const GOLDEN: Record<string, string> = {
   'scene:road-trip': 'bfa6cb07',
@@ -10,10 +13,10 @@ export const GOLDEN: Record<string, string> = {
   'scene:light-bulbs:failure': '66b15f51',
   'scene:light-bulbs:advance': '79e2cc37',
   'scene:light-bulbs:auditing': '80de29d3',
-  'scene:writing-desk': 'b7975fe3',
-  'scene:writing-desk:failure': '631d33f9',
-  'scene:writing-desk:advance': 'bfc9765c',
-  'scene:writing-desk:auditing': '6f917f3c',
+  'scene:writing-desk': 'cc3e767f',
+  'scene:writing-desk:failure': '9e3f39e1',
+  'scene:writing-desk:advance': '0b52324c',
+  'scene:writing-desk:auditing': 'f89a96c8',
   'scene:proofread-page': '3833eaf9',
   'scene:proofread-page:failure': '1d02d255',
   'scene:proofread-page:advance': '21cff352',
@@ -90,10 +93,10 @@ export const GOLDEN: Record<string, string> = {
   'scene:control-panel:failure': '6b1caaa6',
   'scene:control-panel:advance': '7e6acb4e',
   'scene:control-panel:auditing': 'dd8ce9b4',
-  'scene:waiting-bench': '9e573594',
-  'scene:waiting-bench:failure': '34364cd1',
-  'scene:waiting-bench:advance': '2c4de6f6',
-  'scene:waiting-bench:auditing': '28ad8255',
+  'scene:waiting-bench': '8fec7e37',
+  'scene:waiting-bench:failure': 'aa9f700f',
+  'scene:waiting-bench:advance': '75cd9df3',
+  'scene:waiting-bench:auditing': '7b334829',
   'scene:dishes': 'ec920a15',
   'scene:dishes:failure': '7a5d0821',
   'scene:dishes:advance': '9391204e',
@@ -159,7 +162,7 @@ export const GOLDEN: Record<string, string> = {
   'scene:fireworks:advance': 'a6675a61',
   'scene:fireworks:auditing': '1e255640',
   'idle:classic': 'df056e17',
-  'idle:nyan': 'b07ceeda',
+  'idle:nyan': 'e667fd6d',
   'idle:coffee': '2463edfd',
   'idle:reading': 'ddd69581',
   'idle:yo-yo': 'd3f1c930',

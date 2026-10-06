@@ -131,7 +131,7 @@ test('stepping-stones: ground to the edge under a snowy mountain range, the tall
 test('stepping-stones: the range stands where it is at any width, still; only the flag flutters', () => {
   const left = (b: PixelBuffer) => wings(b).filter(p => Number(p.split(',')[0]) < 90)
   expect(left(draw('stepping-stones', 1, 200))).toEqual(left(draw('stepping-stones', 1, 120)))
-  const rock = (t: number) => wings(draw('stepping-stones', t, 120)).filter(p => ![C.red, C.woodDark].includes(Number(p.split(',')[2])) || Number(p.split(',')[1]) >= 12)
+  const rock = (t: number) => wings(draw('stepping-stones', t, 120)).filter(p => !([C.red, C.woodDark] as number[]).includes(Number(p.split(',')[2])) || Number(p.split(',')[1]) >= 12)
   for (const t of moments(scene('stepping-stones'))) expect(rock(t)).toEqual(rock(0))
   const flag = (t: number) => wings(draw('stepping-stones', t, 120)).filter(p => Number(p.split(',')[2]) === C.red)
   expect(flag(0.1)).not.toEqual(flag(0.6))
