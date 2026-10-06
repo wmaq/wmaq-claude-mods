@@ -2,10 +2,11 @@ import { expect, test } from 'claude-code/testing'
 
 import { EMPTY_ROSTER, ended, type Roster, spawned } from '../agents'
 import { CLAWD_ORANGE } from '../clawd'
-import type { PixelBuffer } from '../pixels'
+import { getPixel, type PixelBuffer } from '../pixels'
 import { C, FLAG } from '../scenes/kit'
 import { CUP, HELPER_COLORS, WAITING_SCENE_IDS, waitingFrame } from '.'
 import { COURSE_S, WALL, wallAt } from './building'
+import { BOX_GAP, boxesAt, boxX, marksOf } from './conveyor'
 import { waitingDemoAt } from './demo'
 import { bobAt, OAR, SPLASH, strokeAt, WATER } from './rowing'
 import { EMPTY_LOG, seat, seatedAt, type SeatLog } from './seats'
@@ -97,4 +98,40 @@ test('rowing: water and the boat, the oars stroking together, a splash at the en
   // The boat's gunwale a row higher while it bobs.
   const gunwale = (b: PixelBuffer) => Math.min(...where(b, C.woodDark).filter(p => p.x === 46).map(p => p.y))
   expect([gunwale(at(6.2)), gunwale(at(6.7))]).toEqual([10, 11])
+})
+
+test('conveyor: boxes move left 8 pixels a second, one every 12, and vanish at the belt\'s end', () => {
+  expect(boxX(0, 0)).toBe(48)
+  expect(boxX(0, 1)).toBe(40)
+  expect(boxX(1, 1) - boxX(0, 1)).toBe(BOX_GAP)
+  expect(boxesAt(0).map(b => b.x)).toEqual([24, 36])
+  expect(boxesAt(1).map(b => b.x)).toEqual([16, 28, 40])
+  expect(boxesAt(1.2).map(b => b.x)).toEqual([27, 39])
+})
+
+test("conveyor: a box carries the mark of each seat's helper at work as it passed, in its place on the box, gold at first", () => {
+  const log = seated(['sonnet', 'opus', 'fable'])
+  // Box 1 passes seat 2 (x 32) at 3.5 s of the period, seat 1 (x 24) at 4.5 s, seat 0 at 5.5 s.
+  expect(marksOf(log, 1, T + 3400)).toEqual([])
+  expect(marksOf(log, 1, T + 3550)).toEqual([{ seat: 2, kind: 'fable', isNew: true }])
+  expect(marksOf(log, 1, T + 5000)).toEqual([
+    { seat: 1, kind: 'opus', isNew: false },
+    { seat: 2, kind: 'fable', isNew: false },
+  ])
+  const b = waitingFrame(log, T + 5000, 'conveyor')
+  const box = boxX(1, 5)
+  expect(box).toBe(20)
+  expect(getPixel(b, box + 1, 10)).toBe(C.paper)
+  expect(getPixel(b, box + 2, 10)).toBe(HELPER_COLORS.opus)
+  expect(getPixel(b, box + 3, 10)).toBe(HELPER_COLORS.fable)
+  expect(getPixel(waitingFrame(log, T + 3550, 'conveyor'), boxX(1, 3.55) + 3, 10)).toBe(C.gold)
+  // A box that passed before the helpers sat carries no mark.
+  expect(marksOf(log, -2, T + 5000)).toEqual([])
+})
+
+test("conveyor: a helper that left keeps its marks on the boxes it marked while the log still has its entry", () => {
+  const roster = spawned(spawned(EMPTY_ROSTER, 'a0', 'sonnet', 0), 'a1', 'opus', 0)
+  const log = seated(['sonnet', 'opus'], T + 5000)
+  const left = seat(log, ended(roster, 'a1', T + 5000), T + 5000, true).log
+  expect(marksOf(left, 1, T + 5600).map(m => m.seat)).toEqual([0, 1])
 })

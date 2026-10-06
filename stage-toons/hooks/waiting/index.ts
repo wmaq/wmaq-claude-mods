@@ -8,6 +8,7 @@ import { createBuffer, fillRect, type PixelBuffer, setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite } from '../scene'
 import { C, every } from '../scenes/kit'
 import { BUILDING } from './building'
+import { CONVEYOR } from './conveyor'
 import type { WaitingSceneId } from './deal'
 import { HELPER_COLORS, type WaitingCtx, type WaitingScene } from './draw'
 import { LAPTOPS } from './laptops'
@@ -28,6 +29,7 @@ export const WAITING_SCENES: Record<WaitingSceneId, WaitingScene> = {
   laptops: LAPTOPS,
   building: BUILDING,
   rowing: ROWING,
+  conveyor: CONVEYOR,
 }
 
 // A walking helper's top row: it stands on the bottom row.
