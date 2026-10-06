@@ -62,7 +62,9 @@ test('the area dissolves from the idle Clawd into the scene when Claude starts, 
   await ui.redraw(WORKING)
   await $.tool.call({ tool: 'Bash', tool_use_id: 'tu-bash', input: { command: 'false' } } as never)
   await clock.advance(700)
-  expect(colorInRows(lastArea(world), [0, 1], C.red)).toBe(true)
+  // Past column 14: the idle routine may be Nyan, whose rainbow's red
+  // stripe flies in these rows left of it.
+  expect(colorInRows(lastArea(world), [0, 1], C.red, 14)).toBe(true)
   const scene = lastArea(world)?.cells
   // Claude stops while the red mark still shows: the scene, mark and all,
   // dissolves into the idle Clawd over half a second, at twelve frames a
@@ -71,12 +73,12 @@ test('the area dissolves from the idle Clawd into the scene when Claude starts, 
   await ui.redraw(bandProps(100))
   const cells = String((await ui.find({ key: 'area' }))?.props.cells ?? '')
   expect(cells).not.toBe('')
-  expect(colorInRows({ key: 'area', cells, columns: 99, rows: 9 }, [0, 1], C.red)).toBe(true)
+  expect(colorInRows({ key: 'area', cells, columns: 99, rows: 9 }, [0, 1], C.red, 14)).toBe(true)
   const before = blitsOf(world, 'area').length
   await clock.advance(600)
   expect(blitsOf(world, 'area').length - before).toBeGreaterThanOrEqual(5)
   expect(lastArea(world)?.cells).not.toBe(scene)
-  expect(colorInRows(lastArea(world), [0, 1], C.red)).toBe(false)
+  expect(colorInRows(lastArea(world), [0, 1], C.red, 14)).toBe(false)
 })
 
 test('a turn starts its scene from the beginning even while the area was away, and the area comes back dissolving from what it last showed', async ($, on) => {

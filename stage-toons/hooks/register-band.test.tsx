@@ -16,6 +16,8 @@ const text = (answer: unknown) => (answer as { text?: string }).text ?? ''
 const ALL_ROWS = [0, 1, 2, 3, 4, 5, 6]
 
 test('while Claude waits, the band shows the idle Clawd in the area below the bar', async ($, on) => {
+  // Classic, as an earlier load picked it: Nyan flies all over the area.
+  on('state.get', ($, e, next) => (e.key === 'idle' ? { value: { value: 'classic', version: 1 } } : next(e)))
   const { world, clock } = engine(on)
   await $.session.start(START)
   const ui = await mountBand($)
@@ -28,8 +30,7 @@ test('while Claude waits, the band shows the idle Clawd in the area below the ba
   expect(blitsOf(world, 'area').length).toBeLessThanOrEqual(8)
   const sent = blitsOf(world, 'area').map(b => b.cells)
   expect(sent.every((cells, i) => i === 0 || cells !== sent[i - 1])).toBe(true)
-  // His box sits at the bottom-left: no Clawd on the area's top three rows
-  // (Nyan's stars, if Nyan was picked, may be there).
+  // His box sits at the bottom-left: no Clawd on the area's top three rows.
   expect(colorInRows(blitsOf(world, 'area').at(-1), [0, 1, 2], 0xd97757)).toBe(false)
   expect(colorInRows(blitsOf(world, 'area').at(-1), [4, 5, 6], 0xd97757)).toBe(true)
 })

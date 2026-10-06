@@ -6,10 +6,17 @@ import { GENERIC_PROP, PROPS, propOf } from './idle/props'
 import { DEFAULT_WORKFLOW } from './workflow'
 import { createBuffer, EMPTY, type PixelBuffer } from './pixels'
 import { C } from './scenes/kit'
+import { placeIdle } from './area'
+import { NYAN_SKY } from './idle/nyan'
+import { type AreaSize, STAGE_SIZE } from './scene'
 
 const at = (seconds: number, routine = 'classic') => idleFrame(routine, seconds * 1000)
 const where = (b: PixelBuffer, color: number) => [...b.px].flatMap((c, i) => (c === color ? [{ x: i % b.w, y: Math.floor(i / b.w) }] : []))
 const eyeRows = (b: PixelBuffer) => [...new Set(where(b, EYE_DARK).map(p => p.y))].sort()
+// The routine on an area, as the band shows it: the box over its background
+// (Nyan flies in his, above the box). Rows in the area's own.
+const picture = (seconds: number, routine = 'classic', size: AreaSize = STAGE_SIZE) =>
+  placeIdle(idleFrame(routine, seconds * 1000), idleBackground(routine, seconds * 1000, undefined, undefined, size), size)
 
 test('the idle frame is 26 columns by 4 rows, 8 pixels tall', () => {
   expect([IDLE_COLS, IDLE_ROWS, CLAWD_X]).toEqual([26, 4, 12])
@@ -20,7 +27,7 @@ test('the idle frame is 26 columns by 4 rows, 8 pixels tall', () => {
 test('every routine keeps Clawd at the right edge, whole, at every moment', () => {
   for (const id of IDLE_IDS) {
     for (let t = 0; t < 59.9; t += 0.1) {
-      const orange = where(at(t, id), CLAWD_ORANGE)
+      const orange = where(picture(t, id), CLAWD_ORANGE)
       expect(orange.length).toBeGreaterThan(40)
       expect(Math.min(...orange.map(p => p.x))).toBeGreaterThanOrEqual(CLAWD_X - 1)
     }
@@ -49,38 +56,82 @@ test('classic: Clawd taps a foot now and then, and loops every 8 seconds', () =>
   expect([...at(8.5).px]).toEqual([...at(0.5).px])
 })
 
-test('nyan: a six-stripe rainbow behind Clawd, its wave stepping', () => {
-  const b = at(0.1, 'nyan')
-  for (const stripe of [C.red, C.orange, C.gold, C.green, C.blue, C.violet]) {
+const STRIPES: number[] = [C.red, C.orange, C.gold, C.green, C.blue, C.violet]
+const WIDE: AreaSize = { columns: 120, rows: 9 }
+// Nyan's top row on an area, in the area's rows.
+const nyanTopAt = (t: number, size: AreaSize = WIDE) => Math.min(...where(picture(t, 'nyan', size), CLAWD_ORANGE).map(p => p.y))
+// The row of the rainbow's red stripe in a column.
+const redRow = (b: PixelBuffer, x: number) => where(b, C.red).find(p => p.x === x)?.y
+
+test('nyan: Clawd flies on a navy sky over the whole area, a six-stripe rainbow behind him; the box draws nothing', () => {
+  const b = picture(0.1, 'nyan', WIDE)
+  expect([...b.px].every(c => c !== EMPTY)).toBe(true)
+  const counts = new Map<number, number>()
+  for (const c of b.px) counts.set(c, (counts.get(c) ?? 0) + 1)
+  expect([...counts.entries()].sort((p, q) => q[1] - p[1])[0]![0]).toBe(NYAN_SKY)
+  for (const stripe of STRIPES) {
     const px = where(b, stripe)
+    // One pixel of each stripe a column, from the left edge to behind him,
     expect(px.filter(p => p.x < CLAWD_X)).toHaveLength(CLAWD_X)
-    // It runs on under Clawd's sprite box, where his body covers it.
+    // and on under his sprite box, where his body covers it.
     expect(px.every(p => p.x < CLAWD_X + 2)).toBe(true)
   }
   // No gap: on the body's rows, the pixel left of Clawd's first orange is rainbow.
-  const stripes: number[] = [C.red, C.orange, C.gold, C.green, C.blue, C.violet]
-  for (let y = 1; y <= 5; y++) {
+  const top = nyanTopAt(0.1)
+  for (let y = top + 1; y <= top + 5; y++) {
     const first = Math.min(...where(b, CLAWD_ORANGE).filter(p => p.y === y).map(p => p.x))
-    expect(stripes).toContain(b.px[y * b.w + first - 1])
+    expect(STRIPES).toContain(b.px[y * b.w + first - 1])
   }
-  expect([...at(0.1, 'nyan').px]).not.toEqual([...at(0.35, 'nyan').px])
-  // The stars are the background's now: none in the box.
-  for (let t = 0; t < 4; t += 0.05) expect(where(at(t, 'nyan'), C.white)).toHaveLength(0)
+  // He is all in the background: the box is empty.
+  for (let t = 0; t < 4; t += 0.05) expect([...at(t, 'nyan').px].every(c => c === EMPTY)).toBe(true)
+})
+
+test('nyan bobs smoothly up and down through the area: 2 pixels each way at 7 rows, 3 at 8 and 9; whole, and back at the loop', () => {
+  for (const [rows, reach] of [
+    [7, 2],
+    [8, 3],
+    [9, 3],
+  ] as const) {
+    const size = { columns: 48, rows }
+    const tops = Array.from({ length: 80 }, (_, i) => nyanTopAt(i * 0.05, size))
+    expect(Math.max(...tops) - Math.min(...tops)).toBe(2 * reach)
+    // Whole on the area, his 8 rows between its top and bottom.
+    expect(Math.min(...tops)).toBeGreaterThanOrEqual(0)
+    expect(Math.max(...tops) + 8).toBeLessThanOrEqual(rows * 2)
+    // Smooth: a pixel at a time.
+    for (let i = 1; i < tops.length; i++) expect(Math.abs(tops[i]! - tops[i - 1]!)).toBeLessThanOrEqual(1)
+    expect(nyanTopAt(4.3, size)).toBe(nyanTopAt(0.3, size))
+  }
+})
+
+test("nyan's rainbow follows him in a wave: each block of 3 columns is where his body was 0.12 s earlier per block", () => {
+  let wavy = 0
+  for (let t = 1; t < 5; t += 0.1) {
+    const b = picture(t, 'nyan', WIDE)
+    // A column of each block, from the one under his body back.
+    const rows = [11, 8, 5, 2].map(x => redRow(b, x)!)
+    rows.forEach((y, k) => expect(y).toBe(nyanTopAt(t - k * 0.12) + 1))
+    if (new Set(rows).size > 1) wavy++
+  }
+  expect(wavy).toBeGreaterThan(20)
 })
 
 test("nyan's background: a starfield over the whole area, in three depths, no jump at the loop point", () => {
   const bg = (seconds: number) => idleBackground('nyan', seconds * 1000)!
   const b = bg(1)
   expect([b.w, b.h]).toEqual([48, 14])
-  for (const color of [C.darkGray, C.paperShade]) expect(where(b, color).length).toBeGreaterThan(5)
+  const wide = picture(1, 'nyan', WIDE)
+  for (const color of [C.darkGray, C.paperShade]) expect(where(wide, color).length).toBeGreaterThan(10)
   expect([1, 1.25].some(t => where(bg(t), C.white).length > 0)).toBe(true)
   // Stars beyond the idle box's 26 columns and above its rows.
   expect(where(b, C.darkGray).some(p => p.x >= 26 || p.y < 6)).toBe(true)
   // Unwrapped: 4 s (the loop) on, the far stars have moved 8 columns left.
-  const far = (t: number) => JSON.stringify(where(bg(t), C.darkGray).map(p => ({ x: p.x, y: p.y })).sort((p, q) => p.y - q.y || p.x - q.x))
-  expect(far(5)).not.toBe(far(1))
-  const shifted = where(bg(1), C.darkGray).map(p => ({ x: (p.x - 8 + 48) % 48, y: p.y })).sort((p, q) => p.y - q.y || p.x - q.x)
-  expect(far(5)).toBe(JSON.stringify(shifted))
+  // Compared right of Clawd and his rainbow, where none hides behind him.
+  const sorted = (ps: { x: number; y: number }[]) => JSON.stringify(ps.sort((p, q) => p.y - q.y || p.x - q.x))
+  const far = (t: number) => where(bg(t), C.darkGray).map(p => ({ x: p.x, y: p.y }))
+  expect(sorted(far(5))).not.toBe(sorted(far(1)))
+  const shifted = far(1).filter(p => p.x >= 34).map(p => ({ x: p.x - 8, y: p.y }))
+  expect(sorted(far(5).filter(p => p.x >= 26 && p.x < 40))).toBe(sorted(shifted))
 })
 
 test('only a routine with a background has one; one that throws breaks its routine', () => {
@@ -112,8 +163,10 @@ test('the routines: classic and Nyan from step 1, coffee, reading and yo-yo from
 test('every routine but classic draws something left of Clawd at every moment', () => {
   for (const id of IDLE_IDS.filter(id => id !== 'classic')) {
     for (let t = 0; t < ROUTINES[id]!.loop; t += 0.05) {
+      // Nyan's rainbow is in his background, on the area.
       const b = at(t, id)
-      expect([...b.px].some((c, i) => c !== EMPTY && i % b.w <= 10)).toBe(true)
+      const drawsLeft = id === 'nyan' ? where(picture(t, id), C.red).some(p => p.x <= 10) : [...b.px].some((c, i) => c !== EMPTY && i % b.w <= 10)
+      expect(drawsLeft).toBe(true)
     }
   }
   // Classic draws nothing there.

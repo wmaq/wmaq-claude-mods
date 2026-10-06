@@ -279,14 +279,14 @@ export const decode = (cells: string) => new Uint32Array(Uint8Array.from(atob(ce
 // Whether a color shows, as foreground or background, in the given cell
 // rows of a blitted frame's core: its bottom 7 rows, row 0 the core's top
 // (the area's own top row on a 7-row area; a negative row is in the
-// headroom above).
-export function colorInRows(blit: Blit | undefined, coreRows: number[], color: number): boolean {
+// headroom above); from the column fromX on (0, the whole row, when not given).
+export function colorInRows(blit: Blit | undefined, coreRows: number[], color: number, fromX = 0): boolean {
   if (!blit) return false
   const words = decode(blit.cells)
   const rows = coreRows.map(row => row + blit.rows - 7)
 
   return rows.some(row => {
-    for (let x = 0; x < blit.columns; x++) {
+    for (let x = fromX; x < blit.columns; x++) {
       const i = (row * blit.columns + x) * 3
       if (words[i + 1] === color || words[i + 2] === color) return true
     }
