@@ -16,7 +16,7 @@ export type Cast = {
   onBreak: (id: SceneId, error: unknown) => void
 }
 
-const sceneIn = (cast: Cast, id: SceneId): Scene => (cast.broken.has(id) ? undefined : cast.scenes[id]) ?? cast.scenes[FALLBACK_SCENE]!
+export const sceneIn = (cast: Cast, id: SceneId): Scene => (cast.broken.has(id) ? undefined : cast.scenes[id]) ?? cast.scenes[FALLBACK_SCENE]!
 
 // The column a shot's camera keeps in view: a reaction plays around the
 // hero, so a camera that panned away holds still on the scene's own focus

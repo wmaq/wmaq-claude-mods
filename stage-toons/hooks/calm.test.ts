@@ -103,9 +103,9 @@ test("Fable in calm mode: the stage's still until her walk-in ends, then fable-a
   })
   run(mod, START, START + 1000)
   mod.director = withAuditing(mod.director, true, START + 1000)
-  const walking = run(mod, START + 1100, START + 2900)
+  const walking = run(mod, START + 1100, START + 2000)
+  expect(run(mod, START + 2100, START + 2900)).toBe(walking)
   expect(mod.shown?.name).toBe(`scene:gift:${START}:calm`)
-  expect(run(mod, START + 1100, START + 1500)).toBe(walking)
   run(mod, START + 3000, START + 3100)
   expect(mod.shown?.name).toBe(`scene:fable-audit:${START + 3000}:calm`)
   expect(mod.fade).not.toBeNull()
@@ -138,13 +138,16 @@ test('a demo moves in calm mode', () => {
   const demos: Mod['demo'][] = [
     { kind: 'scenes', at: START, seconds: 10, scenes: ['bricklaying'] },
     { kind: 'waiting', at: START, scene: 'laptops', columns: 120 },
+    { kind: 'idle', at: START, seconds: 10 },
+    { kind: 'work', at: START, seconds: 3, scene: 'dice' },
   ]
   for (const demo of demos) {
     const mod = calmMod(m => {
       m.demo = demo
     })
-    const a = run(mod, START, START + 1000)
-    expect(run(mod, START + 1100, START + 1300)).not.toBe(a)
+    const frames = new Set<string>()
+    for (let at = START; at <= START + 3000; at += 100) frames.add(areaCells(mod, SIZE, at, quiet)!)
+    expect(frames.size > 1 ? 'moves' : demo!.kind).toBe('moves')
   }
 })
 

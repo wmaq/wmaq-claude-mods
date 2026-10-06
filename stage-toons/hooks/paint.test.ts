@@ -131,6 +131,19 @@ test('the area stops on its still picture once deep asleep, without asking for a
   expect(counts().invalidations).toBe(0)
 })
 
+test('in calm mode the area stops on the doze\'s still from DOZE_MS, the deep sleep not awaited', async () => {
+  const mod = createMod()
+  mod.isCalm = true
+  mod.idleSince = START - DOZE_MS
+  const site = mounted(mod, true)
+  const { ports, blits, counts } = fake(mod)
+  animate(ports, mod, site)
+  await finished(site)
+  expect(blits.length).toBe(1)
+  expect(site.isAsleep).toBe(true)
+  expect(counts().invalidations).toBe(0)
+})
+
 test('a band that gave up asks for one redraw and forgets its Raster', async () => {
   const mod = createMod()
   awake(mod)

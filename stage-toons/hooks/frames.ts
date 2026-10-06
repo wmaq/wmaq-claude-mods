@@ -11,9 +11,9 @@ import { drawLayer } from './layer'
 import { DEEP_SLEEP_MS, DOZE_MS, dozeFrame, idleBackground, routineFrame, routineStill } from './idle'
 import { isFading, type Mod, type Picture, reseat } from './mod'
 import { encodeCells, type PixelBuffer } from './pixels'
-import { type AreaSize, dissolve, FADE_MS, FALLBACK_SCENE, stillOf } from './scene'
+import { type AreaSize, dissolve, FADE_MS, stillOf } from './scene'
 import { REACTIONS, SCENES } from './scenes'
-import { type Cast, composeFrame, heroOnScreen } from './toon'
+import { type Cast, composeFrame, heroOnScreen, sceneIn } from './toon'
 import { FALLBACK_WAITING, waitingFrame, type WaitingSceneId } from './waiting'
 import { calmView } from './waiting/calm'
 import { waitingDemoAt } from './waiting/demo'
@@ -60,9 +60,10 @@ export function layerFor(activity: Activity, director: Director, isBubbles: bool
 }
 
 // The shot calm mode holds a director's scene at: the scene's still, with
-// no reaction (no jump, no flinch; its line still shows in the layer).
+// no reaction (no jump, no flinch; its line still shows in the layer). A
+// broken scene holds the fallback's still, as the fallback is drawn.
 export function calmShot(d: Director, cast: Cast): Shot {
-  const scene = cast.scenes[d.base] ?? cast.scenes[FALLBACK_SCENE]!
+  const scene = sceneIn(cast, d.base)
 
   return { base: d.base, time: stillOf(scene), reaction: null }
 }
