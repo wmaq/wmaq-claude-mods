@@ -67,6 +67,7 @@ function dieAt(i: number, t: number) {
 export const dice: Scene = {
   id: 'dice',
   loop: LOOP,
+  still: 1.5,
   focusX: 24,
   backdrop: track,
   actors: [

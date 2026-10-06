@@ -47,6 +47,7 @@ function presents(b: PixelBuffer) {
 export const gift: Scene = {
   id: 'gift',
   loop: 6,
+  still: 3,
   fadesAtLoop: true,
   focusX: 24,
   backdrop: presents,

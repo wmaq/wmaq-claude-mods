@@ -53,6 +53,7 @@ function shelf(b: PixelBuffer) {
 export const sweeping: Scene = {
   id: 'sweeping',
   loop: 8,
+  still: 5,
   fadesAtLoop: true,
   focusX: 24,
   backdrop: shelf,

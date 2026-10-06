@@ -27,6 +27,7 @@ const WING_Y = [2, 0, 4, 1, 5, 3, 1]
 export const stargazing: Scene = {
   id: 'stargazing',
   loop: LOOP,
+  still: 3,
   focusX: 24,
   background: (b, time) => drawStarfield(b, time, ['far']),
   actors: [

@@ -25,6 +25,7 @@ function drawSteam(b: PixelBuffer, t: number) {
 export const coffee: IdleRoutine = {
   id: 'coffee',
   loop: LOOP,
+  still: 1,
   draw: (b, t) => {
     const isSipping = t >= SIP_FROM && t < SIP_TO
     if (isSipping) drawSprite(b, MUG, 0, 8, 1)

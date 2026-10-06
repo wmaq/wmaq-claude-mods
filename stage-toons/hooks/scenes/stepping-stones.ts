@@ -93,6 +93,7 @@ function drawRange(b: PixelBuffer, range: Range, goal: { x: number; h: number } 
 export const steppingStones: Scene = {
   id: 'stepping-stones',
   loop: LOOP,
+  still: 3.75,
   focusX: 24,
   backdrop: (b, t) => {
     fillRect(b, 2, 3, 11, 10, C.paper)

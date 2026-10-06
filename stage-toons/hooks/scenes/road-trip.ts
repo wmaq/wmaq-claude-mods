@@ -19,6 +19,7 @@ const walkX = (t: number) => (t < OUT ? lerp(2, 26, t / OUT) : lerp(26, 2, (t - 
 export const roadTrip: Scene = {
   id: 'road-trip',
   loop: 8,
+  still: 1,
   fadesAtLoop: true,
   focusX: 24,
   backdrop: b => {

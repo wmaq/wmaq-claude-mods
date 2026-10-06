@@ -25,6 +25,7 @@ const FALLS = [4, 4, 4, 4, 3, 3, 3, 2, 2, 2, 2, 3]
 export const celebrate: IdleRoutine = {
   id: CELEBRATE,
   loop: LOOP,
+  still: 1,
   draw: (b, t) => {
     const isUp = t % HOP < HOP * 0.4
     for (let x = 0; x < CLAWD_X; x++) {

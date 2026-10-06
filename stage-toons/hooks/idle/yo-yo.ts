@@ -28,6 +28,7 @@ function yoyoAt(t: number) {
 export const yoYo: IdleRoutine = {
   id: 'yo-yo',
   loop: LOOP,
+  still: 2,
   draw: (b, t) => {
     const at = yoyoAt(t)
     line(b, HAND.x, HAND.y, at.x + 1, at.y, C.gray)

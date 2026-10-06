@@ -22,6 +22,7 @@ const isPoking = (t: number) => t >= 1.5 && t < 4 && every(t, 0.3) % 2 === 1
 export const mysteryBox: Scene = {
   id: 'mystery-box',
   loop: 5,
+  still: 0,
   focusX: 24,
   backdrop: b => {
     tileOn(b, 52, STACK_EVERY, x => {

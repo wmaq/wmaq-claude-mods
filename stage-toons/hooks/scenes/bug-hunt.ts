@@ -59,6 +59,7 @@ const clawdAt = (t: number): number => Math.round(bugAt(t - 0.4)) - 16
 export const bugHunt: Scene = {
   id: 'bug-hunt',
   loop: LOOP,
+  still: 0,
   focusX: 24,
   backdrop: wings,
   actors: [

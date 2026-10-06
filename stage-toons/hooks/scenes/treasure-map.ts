@@ -66,6 +66,7 @@ function drawX(b: PixelBuffer, x: number, y: number) {
 export const treasureMap: Scene = {
   id: 'treasure-map',
   loop: LOOP,
+  still: 5.2,
   focusX: 28,
   backdrop: drawSea,
   actors: [

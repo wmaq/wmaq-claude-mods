@@ -66,6 +66,7 @@ function drawWall(b: PixelBuffer) {
 export const crashTest: Scene = {
   id: 'crash-test',
   loop: LOOP,
+  still: 3.25,
   focusX: ON_CLAWD,
   focus,
   backdrop: b => drawWall(b),

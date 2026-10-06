@@ -54,6 +54,7 @@ function wings(b: PixelBuffer) {
 export const blueprint: Scene = {
   id: 'blueprint',
   loop: LOOP,
+  still: 4.25,
   fadesAtLoop: true,
   focusX: 28,
   backdrop: b => {

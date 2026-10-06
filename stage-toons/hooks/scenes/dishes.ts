@@ -56,6 +56,7 @@ const isRestocking = (t: number) => t >= WASHED_AT
 export const dishes: Scene = {
   id: 'dishes',
   loop: LOOP,
+  still: 2.3,
   focusX: 26,
   backdrop: b => {
     fillRect(b, 22, 9, 14, 5, C.gray)

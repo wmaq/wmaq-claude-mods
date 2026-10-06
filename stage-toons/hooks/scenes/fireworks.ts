@@ -80,6 +80,7 @@ function drawRocket(b: PixelBuffer, r: Rocket, t: number) {
 export const fireworks: Scene = {
   id: 'fireworks',
   loop: LOOP,
+  still: 1.8,
   focusX: 20,
   background: (b, time) => drawStarfield(b, time, ['far']),
   actors: [

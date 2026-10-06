@@ -13,4 +13,4 @@ function awakeLook(t: number): Partial<ClawdLook> {
   return { pose: isTapping ? 'walk' : 'stand', stride: 1, isBlinking: blinking(t), look, arms: { left: 'down', right: 'down' } }
 }
 
-export const classic: IdleRoutine = { id: 'classic', loop: 8, draw: (b, t) => drawClawd(b, CLAWD_X, 0, awakeLook(t)) }
+export const classic: IdleRoutine = { id: 'classic', loop: 8, still: 2, draw: (b, t) => drawClawd(b, CLAWD_X, 0, awakeLook(t)) }

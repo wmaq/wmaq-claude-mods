@@ -39,6 +39,7 @@ const length = (t: number) => Math.round(t < ROLL_UP_AT ? lerp(2, LONGEST, t / W
 export const scroll: Scene = {
   id: 'scroll',
   loop: LOOP,
+  still: 5.1,
   focusX: 20,
   backdrop: drawRack,
   actors: [

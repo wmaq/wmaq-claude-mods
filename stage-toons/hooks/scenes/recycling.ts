@@ -68,6 +68,7 @@ function drawSortingBin(b: PixelBuffer, x: number, bin: SortingBin) {
 export const recycling: Scene = {
   id: 'recycling',
   loop: LOOP,
+  still: 2.1,
   focusX: 28,
   actors: [
     {

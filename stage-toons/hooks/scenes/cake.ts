@@ -70,6 +70,7 @@ const isWaving = (t: number) => t >= WALK_FOR + SET_FOR + 0.4 && t < PICK_AT - 0
 export const cake: Scene = {
   id: 'cake',
   loop: LOOP,
+  still: 6,
   focusX: 23,
   backdrop: b => {
     fillRect(b, TABLE.x, TABLE.y, TABLE.w, 1, C.wood)

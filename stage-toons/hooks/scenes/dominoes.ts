@@ -53,6 +53,7 @@ function drawDomino(b: PixelBuffer, x: number, fall: number) {
 export const dominoes: Scene = {
   id: 'dominoes',
   loop: LOOP,
+  still: 4.8,
   fadesAtLoop: true,
   focusX: 28,
   backdrop: b => {

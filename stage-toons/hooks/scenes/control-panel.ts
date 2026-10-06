@@ -39,6 +39,7 @@ function bank(b: PixelBuffer, t: number) {
 export const controlPanel: Scene = {
   id: 'control-panel',
   loop: LOOP,
+  still: 0.9,
   focusX: 26,
   backdrop: (b, t) => {
     fillRect(b, 24, 4, 17, 9, C.darkGray)

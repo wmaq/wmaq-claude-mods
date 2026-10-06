@@ -54,6 +54,7 @@ const isDown = (t: number) => t % PER_PAGE >= DOWN_FROM && t % PER_PAGE < DOWN_T
 export const stamp: Scene = {
   id: 'stamp',
   loop: LOOP,
+  still: 2.25,
   focusX: 24,
   backdrop: (b, t) => {
     // The crate under Clawd, and the desk beside it.

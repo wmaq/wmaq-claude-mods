@@ -93,6 +93,7 @@ const isSwung = (t: number) => t >= SWING_AT && t < LIFTED_AT
 export const bugNet: Scene = {
   id: 'bug-net',
   loop: LOOP,
+  still: 0,
   focusX: 26,
   backdrop: meadow,
   actors: [

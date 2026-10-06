@@ -30,6 +30,7 @@ const isNodding = (t: number) => t % 3 >= 2 && t % 3 < 2.8
 export const fableAudit: Scene = {
   id: 'fable-audit',
   loop: 6,
+  still: 2.1,
   focusX: 24,
   backdrop: reports,
   actors: [

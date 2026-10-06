@@ -26,6 +26,7 @@ export function showOff(stage: StageId): IdleRoutine {
   return {
     id: showOffId(stage),
     loop: LOOP,
+    still: 2,
     draw: (b, t) => {
       const isRaised = t >= 1.5 && t < 3
       const isTurning = t >= 3 && t < 4.5

@@ -95,6 +95,7 @@ function drawRobot(b: PixelBuffer, t: number) {
 export const workbench: Scene = {
   id: 'workbench',
   loop: LOOP,
+  still: 4.8,
   focusX: 26,
   backdrop: b => {
     fillRect(b, 19, BENCH_Y, 29, 1, C.wood)

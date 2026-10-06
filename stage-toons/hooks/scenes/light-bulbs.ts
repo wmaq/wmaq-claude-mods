@@ -76,6 +76,7 @@ function drawSymbols(b: PixelBuffer, t: number) {
 export const lightBulbs: Scene = {
   id: 'light-bulbs',
   loop: LOOP,
+  still: 0.25,
   focusX: 24,
   backdrop: drawSymbols,
   actors: [

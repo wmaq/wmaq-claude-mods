@@ -72,6 +72,7 @@ function drawDisplay(b: PixelBuffer, time: number) {
 export const waitingBench: Scene = {
   id: 'waiting-bench',
   loop: LOOP,
+  still: 2,
   focusX: 24,
   // The display counts on the scene's unwrapped time.
   background: drawDisplay,

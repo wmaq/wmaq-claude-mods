@@ -92,6 +92,15 @@ export function routineFrame(routine: IdleId, idleMs: number, broken: Set<IdleId
   }
 }
 
+// The moment calm mode holds a routine at, in seconds: its still, else half
+// its loop; classic's for an unknown or broken one (what routineFrame
+// draws in its place).
+export function routineStill(routine: IdleId, broken: Set<IdleId> = new Set()): number {
+  const r = (broken.has(routine) ? undefined : routineOf(routine)) ?? ROUTINES[FALLBACK_ROUTINE]!
+
+  return r.still ?? r.loop / 2
+}
+
 // The routine's background on the whole area idleMs into an idle period,
 // drawn in the core's coordinates (its origin at the area's bottom left),
 // or null: a routine with none, an unknown or broken one. A background

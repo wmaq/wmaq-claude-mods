@@ -32,6 +32,7 @@ function wings(b: PixelBuffer) {
 export const clipboard: Scene = {
   id: 'clipboard',
   loop: LOOP,
+  still: 2,
   fadesAtLoop: true,
   focusX: 24,
   backdrop: wings,

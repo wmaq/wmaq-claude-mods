@@ -30,6 +30,7 @@ function desk(b: PixelBuffer) {
 export const writingDesk: Scene = {
   id: 'writing-desk',
   loop: 6,
+  still: 4.4,
   fadesAtLoop: true,
   focusX: 24,
   actors: [

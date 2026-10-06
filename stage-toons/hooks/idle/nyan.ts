@@ -55,6 +55,7 @@ function drawNyan(b: PixelBuffer, time: number) {
 export const nyan: IdleRoutine = {
   id: 'nyan',
   loop: LOOP,
+  still: 0.5,
   // In the box: nothing; he is drawn with his sky.
   draw: () => undefined,
   background: drawNyan,

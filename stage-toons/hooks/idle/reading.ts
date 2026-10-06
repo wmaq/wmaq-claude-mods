@@ -20,6 +20,7 @@ const BOOK: Sprite = {
 export const reading: IdleRoutine = {
   id: 'reading',
   loop: LOOP,
+  still: 1,
   draw: (b, t) => {
     drawSprite(b, BOOK, 0, 0, 2)
     fillRect(b, 5, 2, 1, 4, C.woodDark)

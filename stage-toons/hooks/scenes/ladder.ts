@@ -68,6 +68,7 @@ function look(t: number): Partial<ClawdLook> {
 export const ladder: Scene = {
   id: 'ladder',
   loop: LOOP,
+  still: 2.5,
   focusX: 28,
   backdrop: (b, t) => {
     storeroom(b)

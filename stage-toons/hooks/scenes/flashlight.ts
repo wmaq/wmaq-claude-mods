@@ -32,6 +32,7 @@ const isLit = (t: number) => {
 export const flashlight: Scene = {
   id: 'flashlight',
   loop: LOOP,
+  still: 1.9,
   focusX: 28,
   backdrop: (b, t) => {
     const slope = slopeAt(t)

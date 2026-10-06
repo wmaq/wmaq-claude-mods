@@ -22,6 +22,7 @@ function tubesOn(b: PixelBuffer): number[] {
 export const testTubes: Scene = {
   id: 'test-tubes',
   loop: 6,
+  still: 3.6,
   focusX: 24,
   backdrop: (b, t) => {
     // Each bubbles a little after the one before it; a bubble's cycle is

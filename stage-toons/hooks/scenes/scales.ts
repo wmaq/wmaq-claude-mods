@@ -79,6 +79,7 @@ function shelf(b: PixelBuffer) {
 export const scales: Scene = {
   id: 'scales',
   loop: LOOP,
+  still: 3.75,
   focusX: 24,
   backdrop: b => {
     fillRect(b, PIVOT.x, PIVOT.y + 1, 1, 7, C.woodDark)

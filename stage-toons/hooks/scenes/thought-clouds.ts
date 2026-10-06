@@ -77,6 +77,7 @@ function drawSky(b: PixelBuffer, time: number) {
 export const thoughtClouds: Scene = {
   id: 'thought-clouds',
   loop: LOOP,
+  still: 4.5,
   focusX: CENTRE,
   background: drawSky,
   actors: [

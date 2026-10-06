@@ -68,10 +68,13 @@ export type Actor =
 // unwrapped (seconds since it came on), so it can drift with no jump at the
 // loop point; the rest are given the loop's time. A scene that restarts a
 // build-up at its loop point fades at it (fadesAtLoop): its last moment,
-// held, dissolves into the new loop's start.
+// held, dissolves into the new loop's start. still, in seconds into the
+// loop, is the moment calm mode holds: the one that shows what the scene
+// is about, Clawd's eyes open and his head low enough for the pop-ups.
 export type Scene = {
   id: SceneId
   loop: number
+  still?: number
   focusX: number
   focus?: (t: number) => number
   coreX?: number
@@ -104,6 +107,9 @@ export function drawSprite(b: PixelBuffer, sprite: Sprite, frame: number, x: num
     }
   })
 }
+
+// The moment calm mode holds a scene at: its still, else half its loop.
+export const stillOf = (scene: Scene): number => scene.still ?? scene.loop / 2
 
 export const loopTime = (scene: Scene, time: number): number => ((time % scene.loop) + scene.loop) % scene.loop
 

@@ -68,6 +68,7 @@ function caught(t: number) {
 export const fishing: Scene = {
   id: 'fishing',
   loop: LOOP,
+  still: 6,
   focusX: 24,
   backdrop: (b, t) => {
     fillRect(b, 0, 9, 21, 1, C.wood)

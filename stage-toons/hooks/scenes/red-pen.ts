@@ -24,6 +24,7 @@ const PINNED_EVERY = 12
 export const redPen: Scene = {
   id: 'red-pen',
   loop: LOOP,
+  still: 2.1,
   focusX: 26,
   backdrop: b => {
     fillRect(b, 24, 2, 13, 11, C.paper)

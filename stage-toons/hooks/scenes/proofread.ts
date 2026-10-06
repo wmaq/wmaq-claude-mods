@@ -30,6 +30,7 @@ function waiting(id: 'proofread-page' | 'proofread-checklist', doc: Sprite): Sce
   return {
     id,
     loop: 4,
+    still: 2.1,
     focusX: 24,
     backdrop: deskWithStacks,
     actors: [

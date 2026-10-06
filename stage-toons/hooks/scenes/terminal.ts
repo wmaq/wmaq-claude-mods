@@ -67,6 +67,7 @@ function deskProps(b: PixelBuffer, t: number) {
 export const terminal: Scene = {
   id: 'terminal',
   loop: LOOP,
+  still: 0,
   focusX: 26,
   backdrop: b => {
     fillRect(b, 25, 1, 16, 10, C.darkGray)

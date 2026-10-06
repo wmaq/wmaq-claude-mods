@@ -28,6 +28,7 @@ const isStriking = (t: number) => t < BUILT_AT && every(t, 0.25) % 2 === 1
 export const bricklaying: Scene = {
   id: 'bricklaying',
   loop: LOOP,
+  still: 7.5,
   focusX: 24,
   actors: [
     {

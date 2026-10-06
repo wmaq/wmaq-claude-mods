@@ -36,6 +36,7 @@ const SECOND_NOTES = [
 export const stickyNotes: Scene = {
   id: 'sticky-notes',
   loop: LOOP,
+  still: 4.2,
   fadesAtLoop: true,
   focusX: 30,
   backdrop: b => {
