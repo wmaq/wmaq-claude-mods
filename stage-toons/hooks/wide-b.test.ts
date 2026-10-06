@@ -149,6 +149,25 @@ test('the workbench: legs every 26 columns, and the robot walks into the crate a
   expect(wings(draw('workbench', 6.5))).toBe(wings(b))
 })
 
+test('the workbench: past the crate a pegboard of tools and four finished robots, every 52 columns to the edge', () => {
+  const b = draw('workbench', 0, WIDE)
+  for (const x of [60, 112, 164]) {
+    // The board on the wall, rows 2 to 8, clear of the bench (row 10).
+    expect([at(b, x, 2), at(b, x + 18, 8)]).toEqual([C.woodDark, C.woodDark])
+    expect(at(b, x, 9)).toBe(EMPTY)
+    // The hammer's head, the wrench's jaw, the screwdriver's handle, the saw's handle.
+    expect([at(b, x + 1, 3), at(b, x + 5, 3), at(b, x + 10, 6), at(b, x + 16, 3)]).toEqual([C.gray, C.gray, C.red, C.wood])
+    // Four robots awake on the bench (as many as fit): antenna, blue eye, feet on row 9.
+    for (let i = 0; i < 4; i++) {
+      const r = x + 23 + i * 7
+      if (r + 5 > 200) continue
+      expect([at(b, r + 2, 3), at(b, r + 2, 6), at(b, r + 1, 9), at(b, r + 3, 9)]).toEqual([C.red, C.blue, C.darkGray, C.darkGray])
+    }
+  }
+  // Still, all through the loop.
+  for (const t of [1, 3.5, 5, 6.9]) expect(wings(draw('workbench', t, WIDE), undefined, 58)).toBe(wings(b, undefined, 58))
+})
+
 test('the dominoes: the row stands from the start and the chain ends by 6.7 s, at any width', () => {
   const start = draw('dominoes', 0, WIDE)
   for (let x = 45; x < 200; x += 3) expect(at(start, x, 9)).toBe(C.paper)

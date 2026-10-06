@@ -1,11 +1,14 @@
 // Workbench: Clawd builds a little robot on his bench, legs up to antenna;
 // it blinks awake, hops, and walks off along the bench. On a wider area the
 // bench runs on to the edge, and the robot walks into a crate of finished
-// robots standing on it just past the core.
+// robots standing on it just past the core; past the crate a pegboard of
+// tools hangs on the wall over the bench, then finished robots stand in a
+// row, the two repeating to the edge.
 
-import { fillRect, type PixelBuffer } from '../pixels'
+import { fillRect, type PixelBuffer, setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, C, every, lerp, plankOn, still } from './kit'
+import { tileOn } from './wings'
 
 const LOOP = 7
 const BENCH_Y = 10
@@ -30,6 +33,43 @@ const CRATE_X = 48
 const CRATE: Sprite = {
   palette: { a: C.red, g: C.gray, e: C.blue, d: C.woodDark, w: C.wood },
   frames: [['..a....a..', '.ggg..ggg.', '.geg..geg.', 'dddddddddd', 'dwwwwwwwwd', 'dddddddddd', 'dwwwwwwwwd']],
+}
+
+// The wings past the crate, every SHOP_EVERY columns (two of the bench's
+// legs) from SHOP_X: a pegboard on the wall, rows 2 to 8, a tool hanging
+// on it in each of its four places (a hammer, a wrench, a screwdriver and
+// a saw), then four finished robots standing on the bench, still.
+const SHOP_X = 60
+const SHOP_EVERY = 52
+const BOARD_W = 19
+const BOARD_Y = 2
+const BOARD_H = 7
+const ROBOTS_X = 23
+const ROBOT_EVERY = 7
+const ROBOTS = 4
+// The tools, drawn over the board from its top-left.
+const TOOLS: Sprite = {
+  palette: { g: C.gray, w: C.wood, r: C.red },
+  frames: [
+    [
+      '...................',
+      '.ggg.g.g..g.....www',
+      '..w..ggg..g..gggw.w',
+      '..w...g...g.ggggww.',
+      '..w...g...r.g.g.g..',
+      '..w...g...r........',
+      '...................',
+    ],
+  ],
+}
+
+function workshop(b: PixelBuffer) {
+  tileOn(b, SHOP_X, SHOP_EVERY, x => {
+    fillRect(b, x, BOARD_Y, BOARD_W, BOARD_H, C.woodDark)
+    for (let hx = x + 1; hx < x + BOARD_W; hx += 2) for (let hy = BOARD_Y + 1; hy < BOARD_Y + BOARD_H; hy += 2) setPixel(b, hx, hy, C.ink)
+    drawSprite(b, TOOLS, 0, x, BOARD_Y)
+    for (let i = 0; i < ROBOTS; i++) drawSprite(b, AWAKE, 0, x + ROBOTS_X + i * ROBOT_EVERY, BENCH_Y - 7)
+  })
 }
 
 function robotAt(t: number) {
@@ -62,6 +102,7 @@ export const workbench: Scene = {
     fillRect(b, 46, BENCH_Y + 1, 1, 3, C.woodDark)
     // Past the core it runs on, a leg every 26 columns after the right one.
     plankOn(b, 48, BENCH_Y, 3, 46 + 26, 26)
+    workshop(b)
   },
   actors: [
     {
