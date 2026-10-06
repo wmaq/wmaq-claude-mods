@@ -136,9 +136,10 @@ test("the first frame after a load is a cut; idle to the scene dissolves over FA
     expect(cells).not.toBe(shownCells(mod, at + ms))
     expect(cells).not.toBe(fromCells(mod, at + ms))
   }
-  // A resize mid-dissolve draws both pictures at the new width.
-  const narrow = areaCells(mod, { columns: 40, rows: 7 }, at + 450, quiet)
-  expect(narrow).toBe(encodeCells(dissolve(mod.fade!.from.draw(at + 450, { columns: 40, rows: 7 }), mod.shown!.draw(at + 450, { columns: 40, rows: 7 }), 450 / FADE_MS, at)))
+  // A resize mid-dissolve draws both pictures at the new width and height.
+  const resized = { columns: 40, rows: 9 }
+  const narrow = areaCells(mod, resized, at + 450, quiet)
+  expect(narrow).toBe(encodeCells(dissolve(mod.fade!.from.draw(at + 450, resized), mod.shown!.draw(at + 450, resized), 450 / FADE_MS, at)))
   expect(frame(mod, at + FADE_MS)).toBe(shownCells(mod, at + FADE_MS))
   expect(mod.fade).toBeNull()
 })

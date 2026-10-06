@@ -148,7 +148,7 @@ export function drawStarfield(b: PixelBuffer, time: number, layers: readonly Sta
           const from = s.x + tile * TILE_W + (row % 2) * (TILE_W / 2)
           if (from < 0 || from >= b.w) return
           // Near stars twinkle: half of them show at a time, trading every 0.25 s.
-          if (layer === 'near' && (every(time, 0.25) + i + tile + row) % 2 === 1) return
+          if (layer === 'near' && (((every(time, 0.25) + i + tile + row) % 2) + 2) % 2 === 1) return
           const x = Math.floor((((from - time * speed) % b.w) + b.w) % b.w)
           setPixel(b, left + x, s.y - row * TILE_H, color)
         })

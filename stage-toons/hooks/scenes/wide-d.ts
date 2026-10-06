@@ -7,12 +7,9 @@ import { fillRect, type PixelBuffer, rightOf, setPixel } from '../pixels'
 import { STAGE_W } from '../scene'
 import { C } from './kit'
 
-// Draws a set piece at column from and every period columns after it, the
-// k-th at from + k * period, while it starts inside the area; the last may
-// be cut by the edge.
-export function tileOn(b: PixelBuffer, from: number, period: number, draw: (x: number, k: number) => void): void {
-  for (let k = 0, x = from; x < rightOf(b); k++, x += period) draw(x, k)
-}
+// A set piece at a column and every step after it, while it starts inside
+// the area (wide-c's).
+export { tileOn } from './wide-c'
 
 // Water from column from to the edge, rows y and y + 1, its light ripples
 // every RIPPLE_EVERY columns, the lower row's half a period on from the

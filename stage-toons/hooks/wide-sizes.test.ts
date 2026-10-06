@@ -28,6 +28,8 @@ function drawsAtEverySize(name: string, make: () => Mod, moments: readonly numbe
     const size: AreaSize = { columns, rows }
     const mod = make()
     mod.band.requestId = 'r1'
+    mod.band.columns = columns
+    mod.band.rows = rows
     const broke: string[] = []
     for (const t of moments) {
       areaCells(mod, size, t, line => broke.push(line))
@@ -35,6 +37,7 @@ function drawsAtEverySize(name: string, make: () => Mod, moments: readonly numbe
       expect(`${name} at ${columns}x${rows}: ${frame.w}x${frame.h}`).toBe(`${name} at ${columns}x${rows}: ${columns}x${rows * 2}`)
     }
     expect(broke).toEqual([])
+    if (name.startsWith('waiting:')) expect(`${name} at ${columns}x${rows}: ${mod.seats.seats} seats`).toBe(`${name} at ${columns}x${rows}: ${columns >= 80 ? 8 : 4} seats`)
   }
 }
 
@@ -77,6 +80,13 @@ for (const columns of WIDTHS) {
     }
   })
 }
+
+test("a frame's cells: about 17 KB at 120 columns by 9 rows, about 74 KB at 512", () => {
+  const mod = working('dice')
+  mod.band.requestId = 'r1'
+  expect(areaCells(mod, { columns: 120, rows: 9 }, 0, () => undefined)!.length).toBe(120 * 9 * 16)
+  expect(areaCells(mod, { columns: 512, rows: 9 }, 100, () => undefined)!.length).toBe(512 * 9 * 16)
+})
 
 test("the layer lands on Clawd's head at 120 columns: the badge is drawn where it is at 48", () => {
   const layer: Layer = { badge: 'thinking', what: '', bubble: null, t: 0 }
