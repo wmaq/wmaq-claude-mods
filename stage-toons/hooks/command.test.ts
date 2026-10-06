@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { autoText, moveFor, parseCommand, showText, unknownText, usage, workflowSummary } from './command'
+import { autoText, bubblesText, moveFor, parseCommand, settingsWords, showText, unknownText, usage, workflowSummary } from './command'
 import { applyMove, freshProgress } from './stages'
 import { DEFAULT_WORKFLOW } from './workflow'
 
@@ -115,6 +115,18 @@ test('/stage auto, log and time parse', () => {
   expect(usage(W)).toContain('/stage auto [on | off]')
   expect(usage(W)).toContain('/stage log [n]')
   expect(usage(W)).toContain('/stage time')
+})
+
+test("/stage bubbles parses, answers whether Clawd's pop-ups show, and names the file's setting", () => {
+  expect(parseCommand(W, 'bubbles')).toEqual({ kind: 'bubbles', isOn: null })
+  expect(parseCommand(W, 'Bubbles OFF')).toEqual({ kind: 'bubbles', isOn: false })
+  expect(parseCommand(W, 'bubbles on')).toEqual({ kind: 'bubbles', isOn: true })
+  expect(parseCommand(W, 'bubbles maybe')).toEqual({ kind: 'usage' })
+  expect(usage(W)).toContain('/stage bubbles [on | off]')
+  expect(bubblesText(true)).toBe("Clawd's pop-ups are on: what Claude is doing over his head, and what he says. /stage bubbles off turns them off.")
+  expect(bubblesText(false, false)).toBe("Clawd's pop-ups are off. /stage bubbles on turns them on. This project's workflow file starts them off.")
+  expect(settingsWords({ bubbles: false })).toBe("Clawd's pop-ups off")
+  expect(settingsWords({ auto: false, hide: true, bubbles: true })).toBe("automatic moves off, the bar hidden and Clawd's pop-ups on")
 })
 
 test('/stage auto lists the rules by the stage they move to; a workflow without rules says how to add them', () => {

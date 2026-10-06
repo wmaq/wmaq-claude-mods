@@ -97,6 +97,36 @@ test('a reload that changes the stages applies the settings too; one with errors
   expect(await bandText($)).toBe('(engine)')
 })
 
+test("/stage bubbles off turns Clawd's pop-ups off and saves it for every project; a file's bubbles: false starts a session so", async ($, on) => {
+  const { world } = engine(on)
+  await $.session.start(START)
+  expect(text(await runStage($, 'bubbles'))).toContain("Clawd's pop-ups are on")
+  expect(text(await runStage($, 'bubbles off'))).toBe("Clawd's pop-ups are off. /stage bubbles on turns them on.")
+  expect(world.store.bubbles).toBe(false)
+  world.files[FILE] = fileWith({ bubbles: true })
+  expect(text(await runStage($, 'workflow reload'))).toBe("workflow unchanged (now from .claude/stage-toons.json); applied its settings: Clawd's pop-ups on.")
+  expect(text(await runStage($, 'bubbles'))).toContain("This project's workflow file starts them on.")
+})
+
+test("a file's bubbles: false starts the session with the pop-ups off, though the person's own setting is on", async ($, on) => {
+  const { world } = engine(on, { store: { bubbles: true } })
+  world.files[FILE] = fileWith({ bubbles: false })
+  await $.session.start(START)
+  expect(text(await runStage($, 'bubbles'))).toBe("Clawd's pop-ups are off. /stage bubbles on turns them on. This project's workflow file starts them off.")
+})
+
+test("a hot reload keeps the session's own bubbles, whatever the store says", async ($, on) => {
+  on('state.get', ($, e, next) => {
+    if (e.key === 'workflow') return { value: { value: { workflow: DEFAULT_WORKFLOW, source: 'default' }, version: 1 } }
+    if (e.key === 'bubbles') return { value: { value: false, version: 1 } }
+
+    return next(e)
+  })
+  engine(on, { store: { bubbles: true } })
+  await $.session.start(START)
+  expect(text(await runStage($, 'bubbles'))).toContain("Clawd's pop-ups are off")
+})
+
 test('the first session shows the welcome toast once the store has it; the next one shows none', async ($, on) => {
   const { world } = engine(on, { store: { welcomed: undefined } })
   await $.session.start(START)

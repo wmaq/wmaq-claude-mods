@@ -14,7 +14,7 @@ import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { ended, reconcileRoster, rememberKind, spawned } from './agents'
 import { autoMatch, hasRules, type Heard, isWindowsPath, relativePath, type Signal, typedSkill, viaOf } from './auto'
 import { areaColumns, BAR_TONES, bandLayout, bandMode, type BandSite } from './band'
-import { autoText, hideText, moveFor, parseCommand, settingsText, settingsWords, showText, unknownText, usage, WORKFLOW_FILE, workflowSummary } from './command'
+import { autoText, bubblesText, hideText, moveFor, parseCommand, settingsText, settingsWords, showText, unknownText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { demoAt, demoFor, demoLine, demoStep, idleDemoAt, idleDemoLine, startDemo, WAITING_DEMO_LINE } from './demo'
 import { createDirector, react, restarted, withAuditing, withScene } from './director'
 import { areaCells, type Log } from './frames'
@@ -38,6 +38,7 @@ import { DEFAULT_WORKFLOW, parseWorkflow, sameWorkflow, stageIds, stageList, sta
 
 const HIDDEN_KEY = 'hidden'
 const AUTO_KEY = 'auto'
+const BUBBLES_KEY = 'bubbles'
 const PRUNED_KEY = 'pruned-at'
 // Set once the first session's welcome toast was given.
 const WELCOMED_KEY = 'welcomed'
@@ -81,6 +82,8 @@ const kindsAtom = atom({ plugin: 'stage-toons', key: 'agentKinds' } as const, {}
 const usdAtom = atom({ plugin: 'stage-toons', key: 'usdCredited' } as const, null)
 // Claude's task list, as the bar counts it: kept across reloads.
 const tasksAtom = atom({ plugin: 'stage-toons', key: 'tasks' } as const, {})
+// Whether Clawd's pop-ups show, for this session, as autoAtom is.
+const bubblesAtom = atom({ plugin: 'stage-toons', key: 'bubbles' } as const, true)
 
 // A queued step of the mod's own (an automatic move, a turn's credit) that
 // must not fail the call or event it rides on: a failure goes to the debug log.
@@ -413,6 +416,18 @@ async function setAuto($: EngineInterface, mod: Mod, isOn: boolean) {
   }
 }
 
+// /stage bubbles on or off, kept for every project. The paint loop reads
+// it at its next frame.
+async function setBubbles($: EngineInterface, mod: Mod, isOn: boolean) {
+  mod.isBubbles = isOn
+  await update($, bubblesAtom, () => isOn)
+  try {
+    await $.store.set(BUBBLES_KEY, isOn)
+  } catch {
+    // Lasts for this session.
+  }
+}
+
 async function setAuditing($: EngineInterface, mod: Mod, isAuditing: boolean) {
   await update($, auditingAtom, () => isAuditing)
   mod.director = withAuditing(mod.director, isAuditing, await $.clock.now())
@@ -481,7 +496,7 @@ const sessionWorkflowOf = (file: FileWorkflow): SessionWorkflow =>
   file.kind === 'ok' ? { workflow: file.workflow, source: 'file', ...(file.settings ? { settings: file.settings } : {}) } : { workflow: DEFAULT_WORKFLOW, source: 'default' }
 
 // The project's starting state, at a fresh session start and at /stage
-// workflow reload: the file's auto and hide where it sets them, else the
+// workflow reload: the file's auto, hide and bubbles where it sets them, else the
 // person's own (the store's), else as the session has it. Nothing is
 // saved: the store keeps the person's own settings.
 async function applySettings($: EngineInterface, mod: Mod, settings: WorkflowSettings | undefined) {
@@ -504,10 +519,21 @@ async function applySettings($: EngineInterface, mod: Mod, settings: WorkflowSet
       // As this session had it.
     }
   }
+  let isBubbles = await read($, bubblesAtom)
+  if (settings?.bubbles !== undefined) isBubbles = settings.bubbles
+  else {
+    try {
+      isBubbles = (await $.store.get(BUBBLES_KEY)) !== false
+    } catch {
+      // As this session had it.
+    }
+  }
   mod.isAuto = isAuto
   mod.isHidden = isHidden
+  mod.isBubbles = isBubbles
   await update($, autoAtom, () => isAuto)
   await update($, hiddenAtom, () => isHidden)
+  await update($, bubblesAtom, () => isBubbles)
   if (isHidden !== wasHidden) $.ui.invalidate('ui.render')
 }
 
@@ -647,6 +673,7 @@ export const register: Register = on => {
     else {
       mod.isAuto = await read($, autoAtom)
       mod.isHidden = await read($, hiddenAtom)
+      mod.isBubbles = await read($, bubblesAtom)
     }
     mod.surface = e.surface
     mod.idleSince = now
@@ -670,8 +697,8 @@ export const register: Register = on => {
         await $.command.register({
           name: COMMAND,
           description:
-            "Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene, a stage's scenes, the idle routines or the waiting toon; /stage workflow shows or reloads the workflow; /stage auto, log and time: the automatic moves, the history, the time spent",
-          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo waiting | demo stop | workflow [init | reload] | auto [on | off] | log [n] | time]',
+            "Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene, a stage's scenes, the idle routines or the waiting toon; /stage workflow shows or reloads the workflow; /stage auto, bubbles, log and time: the automatic moves, Clawd's pop-ups, the history, the time spent",
+          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo waiting | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | log [n] | time]',
           immediate: true,
         })
       ).command
@@ -803,6 +830,11 @@ export const register: Register = on => {
       if (cmd.isOn !== null) await setAuto($, mod, cmd.isOn)
 
       return { text: autoText(mod.workflow, mod.isAuto, (await read($, workflowAtom))?.settings?.auto) }
+    }
+    if (cmd.kind === 'bubbles') {
+      if (cmd.isOn !== null) await setBubbles($, mod, cmd.isOn)
+
+      return { text: bubblesText(mod.isBubbles, (await read($, workflowAtom))?.settings?.bubbles) }
     }
     if (cmd.kind === 'help') return { text: usage(mod.workflow) }
     if (cmd.kind === 'usage') return { text: unknownText(mod.workflow, e.args) }

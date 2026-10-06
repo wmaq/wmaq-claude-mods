@@ -76,7 +76,7 @@ export function stageList(w: Workflow): string {
   return w.side.length > 0 ? `${track}; side: ${w.side.map(s => s.id).join(', ')}` : track
 }
 
-export const RESERVED_IDS = ['next', 'back', 'hide', 'demo', 'feature', 'message', 'workflow', 'auto', 'log', 'time', 'help', 'done'] as const
+export const RESERVED_IDS = ['next', 'back', 'hide', 'demo', 'feature', 'message', 'workflow', 'auto', 'bubbles', 'log', 'time', 'help', 'done'] as const
 export const TRACK_MAX = 15
 export const SIDE_MAX = 5
 
@@ -194,7 +194,7 @@ function stagesAt(value: unknown, name: 'track' | 'side', min: number, max: numb
 
 // The file's top-level fields: the stages, Done, and the settings for the
 // start.
-const TOP_FIELDS = ['track', 'side', 'done', 'auto', 'hide'] as const
+const TOP_FIELDS = ['track', 'side', 'done', 'auto', 'hide', 'bubbles'] as const
 const DONE_FIELDS = ['message', 'scenes', 'auto'] as const
 
 // The file's "done": what it sets of Done's message, scenes and rules, or
@@ -221,7 +221,7 @@ function doneAt(value: unknown, errors: string[], sceneNames: readonly string[])
 
   return { ...(message ? { message } : {}), ...(scenes ? { scenes } : {}), ...(auto && auto.length > 0 ? { auto } : {}) }
 }
-const SETTINGS = ['auto', 'hide'] as const
+const SETTINGS = ['auto', 'hide', 'bubbles'] as const
 
 // A workflow file's text: the workflow and the settings it gives (absent
 // when it gives none), or every mistake in it with where it is. sceneNames

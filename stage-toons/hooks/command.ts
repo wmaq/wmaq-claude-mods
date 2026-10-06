@@ -23,6 +23,7 @@ export type Command =
   | { kind: 'workflow-init' }
   | { kind: 'workflow-reload' }
   | { kind: 'auto'; isOn: boolean | null }
+  | { kind: 'bubbles'; isOn: boolean | null }
   | { kind: 'log'; count: number }
   | { kind: 'time' }
   | { kind: 'help' }
@@ -35,7 +36,7 @@ export function usage(w: Workflow): string {
   const stages = [...w.track.map((s, i) => `${i + 1} ${s.id}`), DONE_ID, ...w.side.map(s => (s === zero ? `0 ${s.id}` : s.id))]
 
   return [
-    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo waiting | demo stop | workflow [init | reload] | auto [on | off] | log [n] | time | help]',
+    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo waiting | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | log [n] | time | help]',
     '  /stage                  show the current stage and the recent moves',
     `  /stage 5, /stage plan   move to a stage${zero ? ` (0 or ? for ${zero.label})` : ''}`,
     '  /stage next, /stage back',
@@ -47,6 +48,7 @@ export function usage(w: Workflow): string {
     '  /stage demo waiting     play the toon shown while Claude waits on agents, about 25 s',
     '  /stage workflow [init | reload]  show the workflow; write the default to .claude/stage-toons.json; read the file again',
     "  /stage auto [on | off]  show the workflow's rules for moving the stage by itself; turn them on or off",
+    "  /stage bubbles [on | off]  whether Clawd's pop-ups show: what Claude is doing over his head, and what he says",
     `  /stage log [n]          the last n moves (${LOG_DEFAULT}; up to ${HISTORY_MAX}) with how long each stage lasted`,
     '  /stage time             time per feature and per stage, wall-clock and Claude working',
     '  /stage help             this list',
@@ -63,11 +65,11 @@ export function parseCommand(w: Workflow, args: string): Command {
   if (word === 'feature') return tail ? { kind: 'feature', name: tail } : { kind: 'usage' }
   if (word === 'message') return tail ? { kind: 'message', text: tail } : { kind: 'usage' }
   if (word === 'demo') return parseDemo(w, tail.toLowerCase())
-  if (word === 'auto') {
+  if (word === 'auto' || word === 'bubbles') {
     const sub = tail.toLowerCase()
-    if (sub === '') return { kind: 'auto', isOn: null }
+    if (sub === '') return { kind: word, isOn: null }
 
-    return sub === 'on' || sub === 'off' ? { kind: 'auto', isOn: sub === 'on' } : { kind: 'usage' }
+    return sub === 'on' || sub === 'off' ? { kind: word, isOn: sub === 'on' } : { kind: 'usage' }
   }
   if (word === 'log') {
     if (tail === '') return { kind: 'log', count: LOG_DEFAULT }
@@ -164,13 +166,14 @@ export function showText(w: Workflow, p: Progress, now: number): string {
 // What the project's workflow file starts the session with, or null when
 // it sets nothing.
 // What a workflow file's settings start, as words: 'automatic moves off and
-// the bar hidden'; null when it sets neither.
+// the bar hidden'; null when it sets none.
 export function settingsWords(settings: WorkflowSettings | undefined): string | null {
   const parts: string[] = []
   if (settings?.auto !== undefined) parts.push(`automatic moves ${settings.auto ? 'on' : 'off'}`)
   if (settings?.hide !== undefined) parts.push(`the bar ${settings.hide ? 'hidden' : 'shown'}`)
+  if (settings?.bubbles !== undefined) parts.push(`Clawd's pop-ups ${settings.bubbles ? 'on' : 'off'}`)
 
-  return parts.length === 0 ? null : parts.join(' and ')
+  return parts.length === 0 ? null : parts.length === 1 ? parts[0]! : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`
 }
 
 export function settingsText(settings: WorkflowSettings | undefined): string | null {
@@ -207,6 +210,16 @@ export function autoText(w: Workflow, isOn: boolean, fileAuto?: boolean): string
   const rows = stages.map(s => `  ${s.id}: ${s.auto!.map(ruleText).join('; ')}`)
 
   return [...head, 'Rules, by the stage they move the work to (only forward on the track, into Done, or into a side stage; from Done only a skill you type):', ...rows].join('\n')
+}
+
+// /stage bubbles' answer; fileBubbles, what the project's workflow file
+// starts the session with, if it says.
+export function bubblesText(isOn: boolean, fileBubbles?: boolean): string {
+  const state = isOn
+    ? "Clawd's pop-ups are on: what Claude is doing over his head, and what he says. /stage bubbles off turns them off."
+    : "Clawd's pop-ups are off. /stage bubbles on turns them on."
+
+  return fileBubbles === undefined ? state : `${state} This project's workflow file starts them ${fileBubbles ? 'on' : 'off'}.`
 }
 
 // /stage hide's answer; fileHide, what the project's workflow file starts

@@ -140,3 +140,15 @@ test('a list with work left stays at the next turn', async ($, on) => {
   await startTurn($)
   expect(await bandText($)).toContain('0 of 1 task')
 })
+
+test('with /stage bubbles off the layer shows nothing, while the failure still plays', async ($, on) => {
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  await mountBand($, 'terminal', WORKING)
+  await $.command.run({ command: 'stage', args: 'bubbles off' } as never)
+  await callTool($, 'Bash', { command: 'npm test' })
+  await clock.advance(400)
+  expect(colorInRows(lastArea(world), [0, 1], C.red)).toBe(true)
+  expect(rowText(lastArea(world), 0).trim()).toBe('')
+  expect(rowText(lastArea(world), 1).trim()).toBe('')
+})

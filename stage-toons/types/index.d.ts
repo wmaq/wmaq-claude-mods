@@ -49,9 +49,10 @@ export type DoneDef = { message?: string; scenes?: readonly string[]; auto?: rea
 export type Workflow = { track: readonly StageDef[]; side: readonly StageDef[]; done?: DoneDef }
 
 // What a project's workflow file sets for the session's start: whether
-// rules move the stage (auto) and whether the bar is hidden (hide). Each
-// left out where the file says nothing, and the person's own setting holds.
-export type WorkflowSettings = { auto?: boolean; hide?: boolean }
+// rules move the stage (auto), whether the bar is hidden (hide) and whether
+// Clawd's pop-ups show (bubbles). Each left out where the file says
+// nothing, and the person's own setting holds.
+export type WorkflowSettings = { auto?: boolean; hide?: boolean; bubbles?: boolean }
 
 // The session's workflow, where it came from, and the file's settings.
 // Settings is absent where an older version kept it, or the file sets none.
@@ -102,6 +103,9 @@ declare module 'claude-code' {
       // Claude's task list, as the main conversation's task tools left it:
       // kept across a reload, so the bar's count stays.
       tasks: TaskList
+      // Whether Clawd's pop-ups show (/stage bubbles): kept across a reload,
+      // as auto is.
+      bubbles: boolean
     }
   }
 }
