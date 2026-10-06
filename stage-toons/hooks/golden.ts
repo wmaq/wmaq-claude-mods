@@ -36,7 +36,7 @@ function sample(mod: Mod, times: readonly number[]): string {
 
 const times = (count: number, every: number, from = 0): number[] => Array.from({ length: count }, (_, i) => from + i * every)
 
-function working(scene: string): Mod {
+export function working(scene: string): Mod {
   const mod = createMod()
   mod.isBandWorking = true
   mod.idleSince = 0
@@ -45,7 +45,7 @@ function working(scene: string): Mod {
   return mod
 }
 
-function idle(routine: string): Mod {
+export function idle(routine: string): Mod {
   const mod = createMod()
   mod.idle = routine
   mod.idleSince = 0
@@ -53,7 +53,7 @@ function idle(routine: string): Mod {
   return mod
 }
 
-function waiting(scene: WaitingSceneId, agents: readonly string[]): Mod {
+export function waiting(scene: WaitingSceneId, agents: readonly string[]): Mod {
   const mod = createMod()
   mod.idleSince = 0
   mod.waiting = { ...mod.waiting, deal: { deck: [scene], last: undefined } }
