@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { base64, base64Loop, createBuffer, EMPTY, encodeCells, fillRect, getPixel, hex, setPixel, TERMINAL_DEFAULT, toWords } from './pixels'
+import { base64, base64Loop, clearCell, createBuffer, drawText, EMPTY, encodeCells, fillRect, getPixel, glyphAt, hex, setPixel, TERMINAL_DEFAULT, toWords } from './pixels'
 
 const decode = (cells: string) => new Uint32Array(Uint8Array.from(atob(cells), c => c.charCodeAt(0)).buffer)
 
@@ -54,4 +54,31 @@ test('the native encoder and the loop give the same text, for every length', () 
     expect(base64(bytes)).toBe(base64Loop(bytes))
     expect(base64Loop(bytes)).toBe(btoa(String.fromCharCode(...bytes)))
   }
+})
+
+test("a cell's character is drawn in its colour over the cell's upper pixel; its lower pixel is not drawn", () => {
+  const b = createBuffer(3, 2)
+  setPixel(b, 0, 0, 0xf2ead8)
+  setPixel(b, 0, 1, 0x123456)
+  drawText(b, 0, 0, 'Hi', 0x2a1610)
+  expect([...toWords(b)]).toEqual([0x48, 0x2a1610, 0xf2ead8, 0x69, 0x2a1610, TERMINAL_DEFAULT, 0x20, TERMINAL_DEFAULT, TERMINAL_DEFAULT])
+})
+
+test('text outside the buffer is dropped, and anything but printable ASCII is a question mark', () => {
+  const b = createBuffer(2, 4)
+  drawText(b, -1, 1, 'xé!', 0xffffff)
+  drawText(b, 0, 2, 'nope', 0xffffff)
+  expect(glyphAt(b, 0, 1)).toEqual({ cp: 0x3f, fg: 0xffffff })
+  expect(glyphAt(b, 1, 1)).toEqual({ cp: 0x21, fg: 0xffffff })
+  expect(glyphAt(b, 0, 0)).toBe(null)
+  expect(b.text?.cp.filter(cp => cp !== 0).length).toBe(2)
+})
+
+test("clearing a cell clears its two pixels and its character", () => {
+  const b = createBuffer(2, 2)
+  fillRect(b, 0, 0, 2, 2, 0xffffff)
+  drawText(b, 0, 0, 'a', 0x000000)
+  clearCell(b, 0, 0)
+  expect([getPixel(b, 0, 0), getPixel(b, 0, 1), getPixel(b, 1, 0)]).toEqual([EMPTY, EMPTY, 0xffffff])
+  expect(glyphAt(b, 0, 0)).toBe(null)
 })

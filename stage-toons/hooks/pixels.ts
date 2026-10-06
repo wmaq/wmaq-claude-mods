@@ -1,12 +1,16 @@
 // A grid of pixels, two to a terminal cell (the upper and lower half
 // blocks), packed the way a Raster's cells are: little-endian u32 triplets
-// [codePoint, foreground, background], base64.
+// [codePoint, foreground, background], base64. A buffer may also carry
+// text: a character in a cell, drawn over the cell's upper pixel.
 
 export const EMPTY = -1
 export const TERMINAL_DEFAULT = 0x01000000
 
 export type Point = { x: number; y: number }
-export type PixelBuffer = { w: number; h: number; px: Int32Array }
+// Per terminal cell (a column, two pixel rows), a character's code point
+// (0: none) and its colour.
+export type TextLayer = { cp: Int32Array; fg: Int32Array }
+export type PixelBuffer = { w: number; h: number; px: Int32Array; text?: TextLayer }
 
 export const hex = (s: string): number => parseInt(s.replace('#', ''), 16)
 
@@ -23,6 +27,48 @@ export function getPixel(b: PixelBuffer, x: number, y: number): number {
   if (x < 0 || y < 0 || x >= b.w || y >= b.h) return EMPTY
 
   return b.px[y * b.w + x] ?? EMPTY
+}
+
+// How many terminal rows a buffer takes.
+export const cellRows = (b: PixelBuffer): number => Math.ceil(b.h / 2)
+
+const textOf = (b: PixelBuffer): TextLayer => {
+  const n = b.w * cellRows(b)
+  b.text ??= { cp: new Int32Array(n), fg: new Int32Array(n) }
+
+  return b.text
+}
+
+// Writes text from a cell on, one character a cell, in a colour: each
+// character over the cell's upper pixel, which is its background (the
+// lower pixel is not drawn). Only printable ASCII: anything else is a ?.
+// Cells outside the buffer are dropped.
+export function drawText(b: PixelBuffer, col: number, row: number, text: string, color: number): void {
+  if (row < 0 || row >= cellRows(b)) return
+  const layer = textOf(b)
+  for (let i = 0; i < text.length; i++) {
+    const x = col + i
+    if (x < 0 || x >= b.w) continue
+    const code = text.charCodeAt(i)
+    layer.cp[row * b.w + x] = code >= 0x20 && code <= 0x7e ? code : 0x3f
+    layer.fg[row * b.w + x] = color
+  }
+}
+
+// The character in a cell, or null.
+export function glyphAt(b: PixelBuffer, col: number, row: number): { cp: number; fg: number } | null {
+  const i = row * b.w + col
+  const cp = b.text?.cp[i] ?? 0
+
+  return cp === 0 || col < 0 || col >= b.w ? null : { cp, fg: b.text!.fg[i]! }
+}
+
+// Clears a cell's two pixels and its character.
+export function clearCell(b: PixelBuffer, col: number, row: number): void {
+  if (col < 0 || col >= b.w || row < 0 || row >= cellRows(b)) return
+  b.px[row * 2 * b.w + col] = EMPTY
+  if (row * 2 + 1 < b.h) b.px[(row * 2 + 1) * b.w + col] = EMPTY
+  if (b.text) b.text.cp[row * b.w + col] = 0
 }
 
 export function fillRect(b: PixelBuffer, x: number, y: number, w: number, h: number, color: number): void {
@@ -42,7 +88,12 @@ export function toWords(b: PixelBuffer): Uint32Array {
       const bottom = getPixel(b, col, row * 2 + 1)
       // Written by index: a frame allocates no arrays per cell.
       const i = (row * b.w + col) * 3
-      if (top === EMPTY && bottom === EMPTY) {
+      const cp = b.text?.cp[row * b.w + col] ?? 0
+      if (cp !== 0) {
+        words[i] = cp
+        words[i + 1] = b.text!.fg[row * b.w + col]!
+        words[i + 2] = top === EMPTY ? TERMINAL_DEFAULT : top
+      } else if (top === EMPTY && bottom === EMPTY) {
         words[i] = SPACE
         words[i + 1] = TERMINAL_DEFAULT
         words[i + 2] = TERMINAL_DEFAULT

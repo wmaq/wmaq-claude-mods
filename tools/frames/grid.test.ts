@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { createBuffer, encodeCells, setPixel } from '../../stage-toons/hooks/pixels'
+import { createBuffer, drawText as drawCellText, encodeCells, setPixel } from '../../stage-toons/hooks/pixels'
 import { BACKGROUND, CELL_H, CELL_W, createCanvas, dimmed, drawCells, drawText, toRgba } from './grid'
 
 const at = (c: ReturnType<typeof createCanvas>, x: number, y: number) => c.px[y * c.width + x]
@@ -58,4 +58,20 @@ test('toRgba scales every pixel', () => {
   assert.equal(width, CELL_W * 2)
   assert.equal(height, CELL_H * 2)
   assert.deepEqual([...rgba.subarray(0, 4)], [1, 2, 3, 255])
+})
+
+test("a raster cell holding a character draws its glyph in its colour over the cell's background", () => {
+  const b = createBuffer(2, 2)
+  setPixel(b, 0, 0, 0x00ff00)
+  drawCellText(b, 0, 0, 'A', 0xff0000)
+  drawCellText(b, 1, 0, 'B', 0x0000ff)
+  const c = createCanvas(2, 1)
+  drawCells(c, 0, 0, encodeCells(b), 2, 1)
+  const first = new Set(c.px.filter((_, i) => i % c.width < CELL_W))
+  assert.ok(first.has(0xff0000))
+  assert.ok(first.has(0x00ff00))
+  assert.ok(!first.has(BACKGROUND))
+  const second = new Set(c.px.filter((_, i) => i % c.width >= CELL_W))
+  assert.ok(second.has(0x0000ff))
+  assert.ok(second.has(BACKGROUND))
 })

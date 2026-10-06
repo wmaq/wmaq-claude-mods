@@ -2,7 +2,7 @@
 // rendered whole and then cropped to the raster's width.
 
 import { type ClawdLook, drawClawd } from './clawd'
-import { createBuffer, EMPTY, type PixelBuffer, type Point, setPixel } from './pixels'
+import { createBuffer, EMPTY, type PixelBuffer, type Point, setPixel, type TextLayer } from './pixels'
 import type { LibraryScene } from './scenes'
 
 export const STAGE_W = 48
@@ -141,11 +141,25 @@ export function crop(full: PixelBuffer, focusX: number, width: number): PixelBuf
   return out
 }
 
+// top over base: its pixels where it has them, and its text. A cell where
+// top draws a pixel or a character loses base's character.
 export function overlay(base: PixelBuffer, top: PixelBuffer): PixelBuffer {
   const px = base.px.slice()
   for (let i = 0; i < px.length; i++) if (top.px[i] !== EMPTY) px[i] = top.px[i]!
+  if (!base.text && !top.text) return { w: base.w, h: base.h, px }
+  const n = base.w * Math.ceil(base.h / 2)
+  const text: TextLayer = { cp: base.text ? base.text.cp.slice() : new Int32Array(n), fg: base.text ? base.text.fg.slice() : new Int32Array(n) }
+  for (let c = 0; c < n; c++) {
+    const x = c % base.w
+    const y = Math.floor(c / base.w) * 2
+    const isCovered = top.px[y * base.w + x] !== EMPTY || (y + 1 < base.h && top.px[(y + 1) * base.w + x] !== EMPTY)
+    if ((top.text?.cp[c] ?? 0) !== 0) {
+      text.cp[c] = top.text!.cp[c]!
+      text.fg[c] = top.text!.fg[c]!
+    } else if (isCovered) text.cp[c] = 0
+  }
 
-  return { w: base.w, h: base.h, px }
+  return { w: base.w, h: base.h, px, text }
 }
 
 // Where a terminal cell (a column, two pixel rows) changes over in a
@@ -160,16 +174,25 @@ export function cellThreshold(x: number, row: number, seed: number): number {
 }
 
 // The old frame breaking up into the new one, cell by cell in a scattered
-// order: a cell shows the new frame's two pixels once its threshold is below
-// progress (0 to 1), so a cell that has changed stays changed. Both frames
-// have the same size.
+// order: a cell shows the new frame's two pixels, and its character, once
+// its threshold is below progress (0 to 1), so a cell that has changed
+// stays changed. Both frames have the same size.
 export function dissolve(from: PixelBuffer, to: PixelBuffer, progress: number, seed: number): PixelBuffer {
   const px = from.px.slice()
   for (let y = 0; y < to.h; y++) {
     for (let x = 0; x < to.w; x++) if (cellThreshold(x, Math.floor(y / 2), seed) < progress) px[y * to.w + x] = to.px[y * to.w + x]!
   }
+  if (!from.text && !to.text) return { w: from.w, h: from.h, px }
+  const n = to.w * Math.ceil(to.h / 2)
+  const text: TextLayer = { cp: new Int32Array(n), fg: new Int32Array(n) }
+  for (let c = 0; c < n; c++) {
+    const source = cellThreshold(c % to.w, Math.floor(c / to.w), seed) < progress ? to.text : from.text
+    if (!source) continue
+    text.cp[c] = source.cp[c]!
+    text.fg[c] = source.fg[c]!
+  }
 
-  return { w: from.w, h: from.h, px }
+  return { w: from.w, h: from.h, px, text }
 }
 
 // The whole stage at a moment, with a fading scene's dissolve at its loop

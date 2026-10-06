@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { CLAWD_ORANGE } from './clawd'
-import { createBuffer, EMPTY, fillRect, getPixel, setPixel } from './pixels'
+import { createBuffer, drawText, EMPTY, fillRect, getPixel, glyphAt, setPixel } from './pixels'
 import { CLAWD_TOP, cellThreshold, crop, dissolve, drawSprite, FADE_MS, heroAt, LOOP_LAST_S, overlay, renderFull, renderScene, renderSeamed, type Scene, type Sprite, STAGE_H, STAGE_W } from './scene'
 
 const dot: Sprite = { palette: { x: 0x111111, y: 0x222222 }, frames: [['x.'], ['.y']] }
@@ -208,4 +208,31 @@ test("the background paints first and is given the scene's time unwrapped", () =
   expect(getPixel(b, 0, 0)).toBe(0x0b0b0b)
   expect(getPixel(b, 1, 0)).toBe(0x0a0a0a)
   expect(getPixel(b, 22, CLAWD_TOP)).toBe(CLAWD_ORANGE)
+})
+
+test("a dissolve carries each cell's character with its pixels", () => {
+  const from = createBuffer(48, 14)
+  drawText(from, 0, 0, 'x'.repeat(48), 0x111111)
+  const to = createBuffer(48, 14)
+  drawText(to, 0, 6, 'y'.repeat(48), 0x222222)
+  const half = dissolve(from, to, 0.5, 9)
+  for (let x = 0; x < 48; x++) {
+    const isNew = cellThreshold(x, 0, 9) < 0.5
+    expect(glyphAt(half, x, 0)).toEqual(isNew ? null : { cp: 0x78, fg: 0x111111 })
+    expect(glyphAt(half, x, 6)).toEqual(cellThreshold(x, 6, 9) < 0.5 ? { cp: 0x79, fg: 0x222222 } : null)
+  }
+  expect(dissolve(createBuffer(4, 2), createBuffer(4, 2), 0.5, 1).text).toBe(undefined)
+})
+
+test("overlay keeps the base's characters where the top draws nothing, and the top's own", () => {
+  const base = createBuffer(3, 2)
+  drawText(base, 0, 0, 'abc', 0x111111)
+  const top = createBuffer(3, 2)
+  setPixel(top, 1, 1, 0xff0000)
+  drawText(top, 2, 0, 'z', 0x222222)
+  const out = overlay(base, top)
+  expect(glyphAt(out, 0, 0)).toEqual({ cp: 0x61, fg: 0x111111 })
+  expect(glyphAt(out, 1, 0)).toBe(null)
+  expect(glyphAt(out, 2, 0)).toEqual({ cp: 0x7a, fg: 0x222222 })
+  expect(glyphAt(base, 2, 0)).toEqual({ cp: 0x63, fg: 0x111111 })
 })

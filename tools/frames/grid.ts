@@ -81,7 +81,9 @@ export function decodeCells(cells: string): Uint32Array {
 }
 
 // Paints a Raster's cells from a cell on: a half block shows its two
-// colours, a space only its background; TERMINAL_DEFAULT is the theme's.
+// colours, a space only its background, any other character its glyph in
+// its foreground over its background; TERMINAL_DEFAULT is the theme's (the
+// theme's text colour for a character's foreground).
 export function drawCells(c: Canvas, col: number, row: number, cells: string, columns: number, rows: number) {
   const words = decodeCells(cells)
   const colour = (v: number) => (v === TERMINAL_DEFAULT ? BACKGROUND : v)
@@ -92,6 +94,11 @@ export function drawCells(c: Canvas, col: number, row: number, cells: string, co
       const cp = words[i]!
       const fg = colour(words[i + 1]!)
       const bg = colour(words[i + 2]!)
+      if (cp !== UPPER && cp !== LOWER && cp !== 0x20) {
+        fillRect(c, (col + k) * CELL_W, (row + r) * CELL_H, CELL_W, CELL_H, bg)
+        drawText(c, col + k, row + r, String.fromCodePoint(cp), { color: words[i + 1] === TERMINAL_DEFAULT ? FOREGROUND : fg })
+        continue
+      }
       const top = cp === UPPER ? fg : bg
       const bottom = cp === LOWER ? fg : bg
       const x = (col + k) * CELL_W
