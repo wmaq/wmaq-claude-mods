@@ -3,7 +3,7 @@
 // tested with stand-ins.
 
 import { demoStep } from './demo'
-import { AGENT_POLL_MS, endDemo, frameMs, isDeepAsleep, MAX_REFUSED, MAX_REFUSED_UNSEEN, type Mod, RESEND_MS, type Site } from './mod'
+import { AGENT_POLL_MS, endDemo, frameMs, isDeepAsleep, MAX_REFUSED, MAX_REFUSED_UNSEEN, type Mod, QUICK_MS, RESEND_MS, type Site } from './mod'
 
 export type Ports = {
   now: () => Promise<number>
@@ -92,7 +92,11 @@ export function animate(ports: Ports, mod: Mod, site: Site) {
           break
         }
         // A wake ends the sleep early; the sleep itself runs out unheeded.
-        await Promise.race([ports.sleep(frameMs(mod, now)), new Promise<void>(resolve => (site.wake = resolve))])
+        // In calm mode, while blits are refused or none has been taken yet,
+        // the loop keeps the quick rate: the refusal budget counts frames,
+        // and calm mode's slow rate would stretch it.
+        const ms = mod.isCalm && (refused > 0 || !site.isSeen) ? QUICK_MS : frameMs(mod, now)
+        await Promise.race([ports.sleep(ms), new Promise<void>(resolve => (site.wake = resolve))])
         site.wake = null
       }
       // Refused until it gave up, the band's Raster may be gone for good

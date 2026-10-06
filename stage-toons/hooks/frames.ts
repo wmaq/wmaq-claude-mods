@@ -8,13 +8,14 @@ import { cropLeft, placeIdle } from './area'
 import { demoAt, demoStep, idleDemoAt, workDemoAt } from './demo'
 import { type Director, heldShot, restarted, type Shot, tick } from './director'
 import { drawLayer } from './layer'
-import { DOZE_MS, dozeFrame, idleBackground, routineFrame } from './idle'
+import { DEEP_SLEEP_MS, DOZE_MS, dozeFrame, idleBackground, routineFrame, routineStill } from './idle'
 import { isFading, type Mod, type Picture, reseat } from './mod'
 import { encodeCells, type PixelBuffer } from './pixels'
-import { type AreaSize, dissolve, FADE_MS } from './scene'
+import { type AreaSize, dissolve, FADE_MS, FALLBACK_SCENE, stillOf } from './scene'
 import { REACTIONS, SCENES } from './scenes'
 import { type Cast, composeFrame, heroOnScreen } from './toon'
 import { FALLBACK_WAITING, waitingFrame, type WaitingSceneId } from './waiting'
+import { calmView } from './waiting/calm'
 import { waitingDemoAt } from './waiting/demo'
 import type { SeatLog } from './waiting/seats'
 import { type Activity, type Layer, layerAt, settleActivity } from './work'
@@ -51,11 +52,19 @@ export function sceneWithLayer(shot: Shot, size: AreaSize, cast: Cast, layer: La
 }
 
 // The layer for a frame of the stage's scene, with the activity settled;
-// none while /stage bubbles is off.
-export function layerFor(activity: Activity, director: Director, isBubbles: boolean, now: number): { activity: Activity; layer: Layer | null } {
+// none while /stage bubbles is off; held still in calm mode.
+export function layerFor(activity: Activity, director: Director, isBubbles: boolean, now: number, isCalm = false): { activity: Activity; layer: Layer | null } {
   const settled = settleActivity(activity, now)
 
-  return { activity: settled, layer: isBubbles ? layerAt(settled, director, now) : null }
+  return { activity: settled, layer: isBubbles ? layerAt(settled, director, now, isCalm) : null }
+}
+
+// The shot calm mode holds a director's scene at: the scene's still, with
+// no reaction (no jump, no flinch; its line still shows in the layer).
+export function calmShot(d: Director, cast: Cast): Shot {
+  const scene = cast.scenes[d.base] ?? cast.scenes[FALLBACK_SCENE]!
+
+  return { base: d.base, time: stillOf(scene), reaction: null }
 }
 
 // The mod's one Cast, built on the first frame. It keeps the first log it
@@ -74,21 +83,27 @@ export function castOf(mod: Mod, log: Log): Cast {
 
 // An idle routine started at `since`, on the area: its box over its
 // background. It plays on past DOZE_MS (the doze is a picture of its own).
-function routinePicture(mod: Mod, name: string, routine: IdleId, since: number, log: Log): Picture {
+// Calm, it holds the routine's still.
+function routinePicture(mod: Mod, name: string, routine: IdleId, since: number, log: Log, isCalm = false): Picture {
   const onBreak = (id: string, error: unknown) => log(`stage-toons: idle routine ${id} failed and was replaced by classic: ${String(error)}`)
+  const idleMs = (now: number) => (isCalm ? routineStill(routine, mod.brokenIdle) * 1000 : now - since)
 
   return {
-    name,
+    name: isCalm ? `${name}:calm` : name,
     draw: (now, size) => {
-      const box = routineFrame(routine, now - since, mod.brokenIdle, onBreak)
+      const box = routineFrame(routine, idleMs(now), mod.brokenIdle, onBreak)
 
-      return cropLeft(placeIdle(box, idleBackground(routine, now - since, mod.brokenIdle, onBreak, size), size), size)
+      return cropLeft(placeIdle(box, idleBackground(routine, idleMs(now), mod.brokenIdle, onBreak, size), size), size)
     },
   }
 }
 
-// The doze of an idle period started at `since` (its idle time, from 0).
-const dozePicture = (name: string, since: number): Picture => ({ name, draw: (now, size) => cropLeft(placeIdle(dozeFrame(now - since), null, size), size) })
+// The doze of an idle period started at `since` (its idle time, from 0);
+// calm, its still from the start.
+const dozePicture = (name: string, since: number, isCalm = false): Picture =>
+  isCalm
+    ? { name: `${name}:calm`, draw: (_now, size) => cropLeft(placeIdle(dozeFrame(DOZE_MS + DEEP_SLEEP_MS), null, size), size) }
+    : { name, draw: (now, size) => cropLeft(placeIdle(dozeFrame(now - since), null, size), size) }
 
 const waitingPicture = (name: string, log: SeatLog, scene: WaitingSceneId): Picture => ({ name, draw: (now, size) => cropLeft(waitingFrame(log, now, scene, size), size) })
 
@@ -96,7 +111,8 @@ const waitingPicture = (name: string, log: SeatLog, scene: WaitingSceneId): Pict
 // else the stage's scene while Claude works, else the waiting toon while a
 // waiting period lasts, else the idle routine, else the doze. Each picture
 // is named (the name changes exactly when the picture changes to another)
-// and drawn from this frame's state.
+// and drawn from this frame's state. In calm mode (never for a demo) each
+// picture but a demo holds one frame, its name ending in :calm.
 function pictureOf(mod: Mod, now: number, log: Log): Picture | null {
   const demo = mod.demo
   if (demo?.kind === 'scenes') {
@@ -139,25 +155,40 @@ function pictureOf(mod: Mod, now: number, log: Log): Picture | null {
   // The stage's scene, with Fable's walk and the reactions, as a scene demo
   // is drawn: cropped by the scene's camera. Coming back to it from another
   // picture, it starts over.
+  const isCalm = mod.isCalm
   if (mod.isBandWorking) {
     mod.director = tick(mod.director, now)
     if (!mod.shown?.name.startsWith('scene:')) mod.director = restarted(mod.director, now)
     const d = mod.director
     const cast = castOf(mod, log)
-    const { activity, layer } = layerFor(mod.activity, d, mod.isBubbles, now)
+    const { activity, layer } = layerFor(mod.activity, d, mod.isBubbles, now, isCalm)
     mod.activity = activity
+    const name = `scene:${d.base}:${d.baseAt}`
+    if (isCalm) {
+      const held = calmShot(d, cast)
 
-    return { name: `scene:${d.base}:${d.baseAt}`, draw: (t, size) => sceneWithLayer(heldShot(d, t), size, cast, layer) }
+      return { name: `${name}:calm`, draw: (_t, size) => sceneWithLayer(held, size, cast, layer) }
+    }
+
+    return { name, draw: (t, size) => sceneWithLayer(heldShot(d, t), size, cast, layer) }
   }
   if (mod.seats.since !== null && !mod.isWaitingBroken) {
+    const scene = mod.waiting.scene
+    // Calm: the frozen log, built here so that a failure in it is not
+    // taken for the waiting scene's (areaCells' fallback).
+    if (isCalm) {
+      const view = calmView(mod.seats, now)
+
+      return { name: `waiting:${mod.seats.since}:${scene}:calm:${view.present.join(',')}`, draw: (_t, size) => cropLeft(waitingFrame(view.log, view.now, scene, size), size) }
+    }
     // With the helpers that left still in it, for the conveyor's marks.
     const seats = { ...mod.seats, entries: [...mod.waiting.past, ...mod.seats.entries] }
 
-    return waitingPicture(`waiting:${mod.seats.since}:${mod.waiting.scene}`, seats, mod.waiting.scene)
+    return waitingPicture(`waiting:${mod.seats.since}:${scene}`, seats, scene)
   }
-  if (now - mod.idleSince >= DOZE_MS) return dozePicture(`doze:${mod.idleSince}`, mod.idleSince)
+  if (now - mod.idleSince >= DOZE_MS) return dozePicture(`doze:${mod.idleSince}`, mod.idleSince, isCalm)
 
-  return routinePicture(mod, `idle:${mod.idle}:${mod.idleSince}`, mod.idle, mod.idleSince, log)
+  return routinePicture(mod, `idle:${mod.idle}:${mod.idleSince}`, mod.idle, mod.idleSince, log, isCalm)
 }
 
 // The area's next frame, at its size, or null once the demo it plays is

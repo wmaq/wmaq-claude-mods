@@ -56,9 +56,16 @@ export const isFading = (mod: Mod, now: number): boolean => mod.fade !== null &&
 
 // How often a site repaints: a scene, a demo, the waiting toon and a
 // dissolve about twelve times a second; the idle Clawd is calm, and calmer
-// dozing.
+// dozing. In calm mode the area holds still between changes, so twice a
+// second is enough to catch one no render wakes the loop for (a layer's
+// display lasts MIN_SHOW_MS, a second, at least); a dissolve and a demo
+// still move.
+export const CALM_FRAME_MS = 500
+export const QUICK_MS = 83
+
 export function frameMs(mod: Mod, now: number): number {
-  if (mod.isBandWorking || mod.demo !== null || (mod.seats.since !== null && !mod.isWaitingBroken) || isFading(mod, now)) return 83
+  if (mod.isCalm) return mod.demo !== null || isFading(mod, now) ? QUICK_MS : CALM_FRAME_MS
+  if (mod.isBandWorking || mod.demo !== null || (mod.seats.since !== null && !mod.isWaitingBroken) || isFading(mod, now)) return QUICK_MS
 
   return now - mod.idleSince >= DOZE_MS ? 333 : 166
 }
@@ -73,14 +80,15 @@ export const RESEND_MS = 2000
 
 // Whether the idle Clawd is deep asleep: Claude does not work, nothing
 // else plays in the area, nothing dissolves, and he has dozed for
-// DEEP_SLEEP_MS. (idleSince is the last turn's end: a long turn must not
+// DEEP_SLEEP_MS, or (in calm mode, where the doze is still from its start)
+// he dozes at all. (idleSince is the last turn's end: a long turn must not
 // count as dozing.)
 export const isDeepAsleep = (mod: Mod, now: number): boolean =>
   !mod.isBandWorking &&
   mod.demo === null &&
   (mod.seats.since === null || mod.isWaitingBroken) &&
   !isFading(mod, now) &&
-  now - mod.idleSince >= DOZE_MS + DEEP_SLEEP_MS
+  now - mod.idleSince >= DOZE_MS + (mod.isCalm ? 0 : DEEP_SLEEP_MS)
 
 // The module's own state: made fresh by every load, so it starts over on a
 // reload. What must outlive a reload is in $.state.
@@ -120,6 +128,9 @@ export type Mod = {
   // scene shows it, and whether the layer shows (/stage bubbles).
   activity: Activity
   isBubbles: boolean
+  // Whether the area holds still (/stage calm): each picture one held
+  // frame, changing only when something happens.
+  isCalm: boolean
   // How wide the area may grow (/stage width).
   width: WidthSetting
   // What the scenes draw with (frames.ts's castOf), built once.
@@ -184,6 +195,7 @@ export const createMod = (): Mod => ({
   broken: new Set(),
   activity: createActivity(),
   isBubbles: true,
+  isCalm: false,
   width: DEFAULT_WIDTH,
   cast: null,
   roster: EMPTY_ROSTER,

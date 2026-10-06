@@ -20,6 +20,8 @@ export const LINE_MS = 2500
 // How often the typing dots grow, and the thought puffs rise, in seconds.
 export const DOTS_S = 0.4
 export const PUFFS_S = 0.3
+// Calm mode's layer time: all three puffs show (layer.ts' drawPuffs).
+export const CALM_LAYER_T = 0.75
 
 const NOTHING: Display = { badge: null, what: '', isTyping: false }
 
@@ -125,17 +127,20 @@ export function lineAt(a: Activity, director: Director, now: number): string | n
 // What the layer draws at a moment: a badge with its label, a bubble (a
 // line, or the typing dots), and the time since the display came on (the
 // puffs and dots move with it). A reaction has the space over Clawd's
-// head: the badge and the dots give way, a line stays.
+// head: the badge and the dots give way, a line stays. In calm mode the
+// layer holds still: the dots full, the time CALM_LAYER_T, and a reaction
+// (which draws nothing there) takes no space, so the badge and the dots
+// stay, giving way only to a line.
 export type Layer = { badge: Badge | null; what: string; bubble: string | null; t: number }
 
-export function layerAt(a: Activity, director: Director, now: number): Layer | null {
+export function layerAt(a: Activity, director: Director, now: number, isCalm = false): Layer | null {
   const line = lineAt(a, director, now)
   const { display, since } = a.shown
   const ms = Number.isFinite(since) ? now - since : 0
-  const t = ms / 1000
-  const isReacting = director.reaction !== null
+  const t = isCalm ? CALM_LAYER_T : ms / 1000
+  const isReacting = director.reaction !== null && !isCalm
   const badge = isReacting ? null : display.badge
-  const dots = !isReacting && display.isTyping ? '.'.repeat(1 + (Math.floor(ms / (DOTS_S * 1000)) % 3)) : null
+  const dots = !isReacting && display.isTyping ? (isCalm ? '...' : '.'.repeat(1 + (Math.floor(ms / (DOTS_S * 1000)) % 3))) : null
   const bubble = line ?? dots
   if (badge === null && bubble === null) return null
 
