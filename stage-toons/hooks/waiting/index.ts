@@ -7,6 +7,7 @@ import { drawClawd, EYE_DARK, MONOCLE } from '../clawd'
 import { createBuffer, fillRect, type PixelBuffer, setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite } from '../scene'
 import { C, every } from '../scenes/kit'
+import { BUILDING } from './building'
 import type { WaitingSceneId } from './deal'
 import { HELPER_COLORS, type WaitingCtx, type WaitingScene } from './draw'
 import { LAPTOPS } from './laptops'
@@ -24,6 +25,7 @@ export const STEAM = C.glass
 
 export const WAITING_SCENES: Record<WaitingSceneId, WaitingScene> = {
   laptops: LAPTOPS,
+  building: BUILDING,
 }
 
 // A walking helper's top row: it stands on the bottom row.
