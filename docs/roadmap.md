@@ -152,6 +152,16 @@ by the research: sound (`$.audio` plays only on macOS), model-written
 scenes or summaries (token cost; breaks the no-model-requests promise),
 `turn.step` streaming, the kitty image protocol.
 
+**Stashed ideas** (researched, not yet placed in the plan; each awaits a
+roadmap discussion and the full workflow before development):
+- **Clawd DJ** (the person, 2026-10-06): while Spotify (or any media app)
+  plays, Clawd DJs and the band notes `♪ Artist – Title`. Reading the track
+  through Windows' media session with Windows PowerShell is proven live
+  from a mod, with no account or token. The note, the research and the
+  probe mod: `docs/ideas/2026-10-06-clawd-dj.md`,
+  `docs/research/2026-10-06-spotify-now-playing.md`,
+  `docs/ideas/clawd-dj-probe/`.
+
 **Deferred:**
 - Re-choreograph the scenes for their width (props spread out, longer
   walks, compositions per width): the person, 2026-10-06, after 4e chose

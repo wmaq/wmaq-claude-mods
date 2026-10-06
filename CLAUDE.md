@@ -304,6 +304,8 @@ PC.
 - `docs/roadmap.md`: what's next, per mod, and the open leftovers.
 - `<mod>/CHANGELOG.md`: what each release shipped.
 - `docs/superpowers/specs/`, `docs/superpowers/plans/`: specs and plans.
+- `docs/ideas/`: stashed ideas, researched or probed but not yet on the
+  plan (each with its probe, when there is one); the roadmap lists them.
 - `docs/research/`: research reports (ranked improvement ideas, with the
   notes behind them).
 - `docs/reviews/`: code reviews (correctness, performance, security).
