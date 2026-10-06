@@ -1,8 +1,11 @@
 // Dice: Clawd shakes two big dice and rolls them; they tumble, bounce and
-// land on a double six, and he gathers them up again.
+// land on a double six, and he gathers them up again. On a wider area a
+// board game's track runs along the floor past him, a pawn on it.
 
+import { fillRect, type PixelBuffer } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, C, every, lerp, still } from './kit'
+import { tileOn, WINGS_X } from './wide-c'
 
 const LOOP = 7
 const SHAKE_FOR = 0.6
@@ -31,6 +34,21 @@ const FACES: Sprite = {
 const CORNER: Sprite = { palette: { w: C.white, s: C.paperShade }, frames: [['..w..', '.www.', 'wwsww', '.www.', '..w..']] }
 const SIX = 5
 
+// The wings: the track's squares, 4 wide and 2 tall on the floor, every
+// SQUARE_EVERY columns, plain ones between coloured ones; a pawn stands on
+// one near the start.
+const SQUARE_EVERY = 5
+const SQUARES = [C.paper, C.red, C.paper, C.blue, C.paper, C.green, C.paper, C.gold]
+const PAWN_ON = 4
+const PAWN: Sprite = { palette: { p: C.blue }, frames: [['.pp.', 'pppp', '.pp.', '.pp.', 'pppp']] }
+
+function track(b: PixelBuffer) {
+  tileOn(b, WINGS_X + 1, SQUARE_EVERY, (x, k) => {
+    fillRect(b, x, 12, 4, 2, SQUARES[k % SQUARES.length]!)
+    if (k === PAWN_ON) drawSprite(b, PAWN, 0, x, 7)
+  })
+}
+
 function dieAt(i: number, t: number) {
   const d = DICE[i]!
   if (t < SHAKE_FOR) return { x: d.from.x + (every(t, 0.1) % 2), y: d.from.y, isTumbling: false }
@@ -50,6 +68,7 @@ export const dice: Scene = {
   id: 'dice',
   loop: LOOP,
   focusX: 24,
+  backdrop: track,
   actors: [
     {
       kind: 'clawd',

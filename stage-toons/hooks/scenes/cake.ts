@@ -1,9 +1,12 @@
 // Cake: Clawd carries out a cake with a lit candle, sets it on a table for
-// you and waves; then he picks it up again and carries it back.
+// you and waves; then he picks it up again and carries it back. On a wider
+// area a long table runs on past his, with a smaller cake on a stand and a
+// row of plates laid out to the edge.
 
-import { fillRect } from '../pixels'
+import { fillRect, type PixelBuffer } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
-import { blinking, C, every, lerp } from './kit'
+import { blinking, C, every, lerp, plankOn } from './kit'
+import { tileOn, WINGS_X } from './wide-c'
 
 const LOOP = 8
 const HOME = 2
@@ -21,6 +24,27 @@ const CAKE: Sprite = {
     ['...y...', '...w...', '.wwwww.', 'rrrrrrr', 'ppppppp'],
     ['...r...', '...w...', '.wwwww.', 'rrrrrrr', 'ppppppp'],
   ],
+}
+
+// The wings: a table at the core table's height, from a little past the
+// core to the edge, legs every LEG_EVERY columns; on it a small cake on a
+// stand, unlit, then a plate every PLATE_EVERY columns.
+const BUFFET_X = WINGS_X + 1
+const LEG_EVERY = 13
+const PLATE_EVERY = 6
+const SMALL_CAKE: Sprite = {
+  palette: { w: C.white, r: C.red, p: C.paper, g: C.gray },
+  frames: [['..www..', '.rrrrr.', '.ppppp.', 'ggggggg', '...g...', '..ggg..']],
+}
+
+function buffet(b: PixelBuffer) {
+  plankOn(b, BUFFET_X, TABLE.y, 3, BUFFET_X + 1, LEG_EVERY)
+  drawSprite(b, SMALL_CAKE, 0, BUFFET_X + 2, TABLE.y - 6)
+  tileOn(b, BUFFET_X + 11, PLATE_EVERY, x => {
+    fillRect(b, x, TABLE.y - 1, 3, 1, C.white)
+    fillRect(b, x - 1, TABLE.y - 1, 1, 1, C.paperShade)
+    fillRect(b, x + 3, TABLE.y - 1, 1, 1, C.paperShade)
+  })
 }
 
 function clawdX(t: number): number {
@@ -51,6 +75,7 @@ export const cake: Scene = {
     fillRect(b, TABLE.x, TABLE.y, TABLE.w, 1, C.wood)
     fillRect(b, TABLE.x + 1, TABLE.y + 1, 1, 3, C.woodDark)
     fillRect(b, TABLE.x + TABLE.w - 2, TABLE.y + 1, 1, 3, C.woodDark)
+    buffet(b)
   },
   actors: [
     {

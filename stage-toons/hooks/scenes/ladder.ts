@@ -1,10 +1,12 @@
 // Ladder: Clawd builds a ladder rung by rung, climbs it, cheers at the top,
-// climbs down and walks back; the rungs come off again, top first.
+// climbs down and walks back; the rungs come off again, top first. On a
+// wider area a wall of shelves stands past the ladder, boxes on them.
 
 import type { ClawdLook } from '../clawd'
-import { fillRect } from '../pixels'
-import { CLAWD_TOP, type Scene } from '../scene'
+import { fillRect, type PixelBuffer } from '../pixels'
+import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, C, every, lerp } from './kit'
+import { shelvesOn, WINGS_X } from './wide-c'
 
 const LOOP = 10
 const RAILS = [28, 32]
@@ -23,6 +25,23 @@ const MOVES: [number, number, number, number, number, number][] = [
   [8.5, 9.5, ON_LADDER, HOME, CLAWD_TOP, CLAWD_TOP],
 ]
 const TAKE_DOWN = 9.5
+
+// The wings: three shelves as tall as the ladder, with cardboard boxes of
+// two sizes on them (their lids a shade darker) and a gap here and there.
+const CRATES: Sprite = {
+  palette: { b: C.road, d: C.dust },
+  frames: [
+    ['ddddd', 'bbbbb', 'bbbbb'],
+    ['....', 'dddd', 'bbbb'],
+  ],
+}
+
+function storeroom(b: PixelBuffer) {
+  shelvesOn(b, WINGS_X + 2, [5, 9, 13], 15, 6, (x, y, k, row) => {
+    const n = (k + row * 2) % 5
+    if (n !== 3) drawSprite(b, CRATES, n % 2, x, y - 2)
+  })
+}
 
 function where(t: number) {
   const m = MOVES.find(([from, to]) => t >= from && t < to)
@@ -51,6 +70,7 @@ export const ladder: Scene = {
   loop: LOOP,
   focusX: 28,
   backdrop: (b, t) => {
+    storeroom(b)
     for (const x of RAILS) fillRect(b, x, 1, 1, 13, C.wood)
     RUNGS.forEach((y, k) => {
       const isUp = t >= 0.2 + k * RUNG_EVERY

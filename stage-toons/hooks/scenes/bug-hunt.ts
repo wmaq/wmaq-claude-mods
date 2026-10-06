@@ -1,9 +1,13 @@
 // Bug hunt: a ladybug-sized bug scuttles along the ground and stops; Clawd
 // follows it with a magnifying glass, peers at it wide-eyed, and off it
-// runs again, back and forth.
+// runs again, back and forth. On a wider area tufts of grass grow along
+// the ground past it, a bug hiding in some of them; the first twitches now
+// and then.
 
+import type { PixelBuffer } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, C, every, GLASS, lerp } from './kit'
+import { tileOn, WINGS_X } from './wide-c'
 
 const BUG: Sprite = { palette: { r: C.red, d: C.darkGray }, frames: [['.rr.', 'drrd'], ['.rr.', 'd..d']] }
 const LOOP = 6
@@ -25,6 +29,30 @@ const isRunning = (time: number): boolean => {
   return t < 1 || (t >= 2.5 && t < 3.5)
 }
 
+// The wings: a tuft every TUFT_EVERY columns, in two shapes, and a bug
+// peeking out from behind every BUG_EVERY-th tuft from the third. The
+// first of them twitches its legs for a moment every 3 s, a period that
+// divides the loop.
+const TUFTS: Sprite = {
+  palette: { g: C.green },
+  frames: [
+    ['.g..g', 'g.gg.', 'ggggg'],
+    ['..g..', 'g.g.g', '.ggg.'],
+  ],
+}
+const TUFT_EVERY = 7
+const BUG_EVERY = 6
+
+function wings(b: PixelBuffer, t: number) {
+  tileOn(b, WINGS_X + 1, TUFT_EVERY, (x, k) => {
+    if (k % BUG_EVERY === 2) {
+      const isTwitching = k === 2 && t % 3 < 0.3
+      drawSprite(b, BUG, isTwitching ? every(t, 0.1) % 2 : 0, x + 4, GROUND)
+    }
+    drawSprite(b, TUFTS, k % 2, x, GROUND - 1)
+  })
+}
+
 // Clawd follows a beat behind, its right claw (holding the glass) over the bug.
 const clawdAt = (t: number): number => Math.round(bugAt(t - 0.4)) - 16
 
@@ -32,6 +60,7 @@ export const bugHunt: Scene = {
   id: 'bug-hunt',
   loop: LOOP,
   focusX: 24,
+  backdrop: wings,
   actors: [
     {
       kind: 'clawd',

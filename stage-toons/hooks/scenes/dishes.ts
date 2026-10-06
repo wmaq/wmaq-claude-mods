@@ -1,11 +1,13 @@
 // Dishes: Clawd washes dishes at a sink; bubbles rise, the dirty stack
 // shrinks and the clean one grows. With all five washed, the clean stack
 // slides away to the left and five dirty dishes drop onto the empty spot,
-// so the loop starts again where it began.
+// so the loop starts again where it began. On a wider area a drying rack
+// of clean plates stands past the sink, then cupboards run on to the edge.
 
-import { fillRect, type PixelBuffer, setPixel } from '../pixels'
+import { fillRect, type PixelBuffer, rightOf, setPixel } from '../pixels'
 import { CLAWD_TOP, type Scene } from '../scene'
 import { blinking, C, every, still } from './kit'
+import { tileOn, WINGS_X } from './wide-c'
 
 const PER_DISH = 1
 const DISHES = 5
@@ -26,6 +28,29 @@ function stack(b: PixelBuffer, x: number, count: number, isDirty: boolean) {
   for (let i = 0; i < count; i++) dish(b, x, 12 - i, i, isDirty)
 }
 
+// The wings: a wire rack with plates standing in it on edge, then a row
+// of floor cupboards under one counter, each with two doors and their
+// knobs.
+const RACK_X = WINGS_X + 2
+const CUPBOARDS_X = RACK_X + 13
+const CUPBOARD_W = 9
+
+function kitchen(b: PixelBuffer) {
+  fillRect(b, RACK_X, 13, 10, 1, C.gray)
+  fillRect(b, RACK_X, 10, 1, 3, C.gray)
+  fillRect(b, RACK_X + 9, 10, 1, 3, C.gray)
+  for (let i = 0; i < 4; i++) fillRect(b, RACK_X + 2 + i * 2, 8, 1, 5, C.white)
+  if (CUPBOARDS_X < rightOf(b)) fillRect(b, CUPBOARDS_X, 7, rightOf(b) - CUPBOARDS_X, 1, C.gray)
+  tileOn(b, CUPBOARDS_X, CUPBOARD_W, x => {
+    fillRect(b, x, 8, CUPBOARD_W, 6, C.wood)
+    fillRect(b, x, 8, 1, 6, C.woodDark)
+    fillRect(b, x + 4, 8, 1, 5, C.woodDark)
+    fillRect(b, x, 13, CUPBOARD_W, 1, C.woodDark)
+    setPixel(b, x + 3, 10, C.gold)
+    setPixel(b, x + 5, 10, C.gold)
+  })
+}
+
 const isRestocking = (t: number) => t >= WASHED_AT
 
 export const dishes: Scene = {
@@ -35,6 +60,7 @@ export const dishes: Scene = {
   backdrop: b => {
     fillRect(b, 22, 9, 14, 5, C.gray)
     fillRect(b, 23, 10, 12, 2, C.glass)
+    kitchen(b)
   },
   actors: [
     {

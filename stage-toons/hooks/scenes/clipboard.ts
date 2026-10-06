@@ -1,19 +1,40 @@
 // Clipboard: Clawd paces back and forth with a clipboard, ticking its lines
-// as he goes.
+// as he goes. On a wider area a filing cabinet stands past him, then
+// shelves of binders run on to the edge.
 
-import { fillRect, setPixel } from '../pixels'
+import { fillRect, type PixelBuffer, setPixel } from '../pixels'
 import { CLAWD_TOP, type Scene } from '../scene'
 import { blinking, C, every } from './kit'
+import { shelvesOn, WINGS_X } from './wide-c'
 
 const LOOP = 8
 const paceX = (t: number) => 8 + 12 * (t < 4 ? t / 4 : (8 - t) / 4)
 const facing = (t: number) => (t < 4 ? 1 : -1)
+
+// The wings: a three-drawer filing cabinet, then a wall of two shelves of
+// binders in muted colours, each with a pale label, a gap here and there.
+const CABINET_X = WINGS_X + 2
+const BINDERS = [C.blue, C.darkGray, C.gray, C.blue, C.darkGray, C.green, C.gray]
+
+function wings(b: PixelBuffer) {
+  fillRect(b, CABINET_X, 5, 7, 9, C.gray)
+  for (const y of [5, 8, 11]) {
+    fillRect(b, CABINET_X, y, 7, 1, C.darkGray)
+    fillRect(b, CABINET_X + 2, y + 1, 3, 1, C.white)
+  }
+  shelvesOn(b, CABINET_X + 10, [8, 13], 14, 3, (x, y, k) => {
+    if (k % 9 === 4) return
+    fillRect(b, x, y - 3, 2, 4, BINDERS[k % BINDERS.length]!)
+    setPixel(b, x, y - 2, C.paper)
+  })
+}
 
 export const clipboard: Scene = {
   id: 'clipboard',
   loop: LOOP,
   fadesAtLoop: true,
   focusX: 24,
+  backdrop: wings,
   actors: [
     {
       kind: 'clawd',

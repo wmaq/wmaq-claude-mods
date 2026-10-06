@@ -1,10 +1,13 @@
 // Bug net: a bug flutters about while Clawd watches, net held up: it loops
 // round behind him and back out in front, and as it heads off again he
 // swings, catches it and lifts the net with the bug inside, as the next bug
-// flies in.
+// flies in. On a wider area a meadow's flowers grow along the ground past
+// him, and the next bug flies in from above.
 
+import { fillRect, type PixelBuffer, rightOf, setPixel, topOf } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, C, every, lerp, line, still } from './kit'
+import { tileOn, WINGS_X } from './wide-c'
 
 const LOOP = 6
 const SWING_AT = 3.5
@@ -46,6 +49,34 @@ function bugAt(t: number) {
   return null
 }
 
+// On an area wider than 50 columns the entry from x 50 would show the
+// next bug popping up mid-air, so it flies in from above the area instead,
+// a little from the right, over the same 0.6 s, and is at the catch as
+// the loop ends, as before.
+function fromAbove(t: number, top: number) {
+  const k = (t - NEXT_AT) / (LOOP - NEXT_AT)
+
+  return { x: Math.round(lerp(CATCH.x + 6, CATCH.x, k)), y: Math.round(lerp(top - 2, CATCH.y, k)) }
+}
+
+// The wings: a flower every FLOWER_EVERY columns, its head a cross of
+// petals round a centre at one of a few heights, on a stem with a leaf.
+const FLOWER_EVERY = 6
+const HEADS = [9, 10, 8, 10, 9, 11]
+const PETALS = [C.red, C.white, C.gold, C.blue]
+
+function meadow(b: PixelBuffer) {
+  tileOn(b, WINGS_X + 2, FLOWER_EVERY, (x, k) => {
+    const y = HEADS[k % HEADS.length]!
+    const petals = PETALS[k % PETALS.length]!
+    fillRect(b, x, y + 1, 1, 13 - y, C.green)
+    setPixel(b, x + (k % 2 === 0 ? 1 : -1), 12, C.green)
+    fillRect(b, x - 1, y, 3, 1, petals)
+    fillRect(b, x, y - 1, 1, 3, petals)
+    setPixel(b, x, y, petals === C.gold ? C.white : C.gold)
+  })
+}
+
 const move = (from: { x: number; y: number }, to: { x: number; y: number }, k: number) => ({ x: Math.round(lerp(from.x, to.x, k)), y: Math.round(lerp(from.y, to.y, k)) })
 
 function hoopAt(t: number) {
@@ -63,6 +94,7 @@ export const bugNet: Scene = {
   id: 'bug-net',
   loop: LOOP,
   focusX: 26,
+  backdrop: meadow,
   actors: [
     {
       kind: 'clawd',
@@ -84,7 +116,7 @@ export const bugNet: Scene = {
       kind: 'prop',
       z: t => (isBehind(t) ? -1 : 1),
       draw: (b, t) => {
-        const bug = bugAt(t)
+        const bug = t >= NEXT_AT && rightOf(b) > 50 ? fromAbove(t, topOf(b)) : bugAt(t)
         if (bug) drawSprite(b, BUG, every(t, 0.1), bug.x - 1, bug.y - 1)
       },
     },

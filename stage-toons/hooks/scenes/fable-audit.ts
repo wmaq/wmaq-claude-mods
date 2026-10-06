@@ -1,18 +1,37 @@
 // Fable's audit: Fable studies the scroll through a magnifying glass,
-// question marks and ticks pop up, and Clawd fidgets, then nods.
+// question marks and ticks pop up, and Clawd fidgets, then nods. On a
+// wider area shelves of reports already audited run on past them, a few
+// with ticks.
 
 import { FABLE } from '../clawd'
-import { CLAWD_TOP, drawSprite, type Scene } from '../scene'
-import { blinking, every, GLASS, QMARK, SCROLL, still, TICK, wave } from './kit'
+import type { PixelBuffer } from '../pixels'
+import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
+import { blinking, C, every, GLASS, QMARK, SCROLL, still, TICK, wave } from './kit'
+import { shelvesOn, WINGS_X } from './wide-c'
 
 export const OPUS_X = 4
 export const FABLE_X = 30
+// The wings: two shelves of reports standing face out, one in five with a
+// small green tick, scattered so the ticks don't line up.
+const REPORT: Sprite = {
+  palette: { w: C.paper, l: C.paperShade, g: C.green },
+  frames: [
+    ['wwww', 'wllw', 'wwww', 'wllw'],
+    ['wwww', 'wwwg', 'gwgw', 'wgww'],
+  ],
+}
+
+function reports(b: PixelBuffer) {
+  shelvesOn(b, WINGS_X + 2, [8, 13], 18, 5, (x, y, k, row) => drawSprite(b, REPORT, (k * 3 + row) % 5 === 1 ? 1 : 0, x, y - 3))
+}
+
 const isNodding = (t: number) => t % 3 >= 2 && t % 3 < 2.8
 
 export const fableAudit: Scene = {
   id: 'fable-audit',
   loop: 6,
   focusX: 24,
+  backdrop: reports,
   actors: [
     {
       kind: 'clawd',
