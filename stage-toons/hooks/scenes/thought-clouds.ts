@@ -6,7 +6,7 @@
 import { type PixelBuffer, setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite, STAGE_W } from '../scene'
 import { blinking, C, lerp, still } from './kit'
-import { tileOn } from './wide-d'
+import { tileOn } from './wings'
 
 const LOOP = 6
 const PUFF: Sprite = {

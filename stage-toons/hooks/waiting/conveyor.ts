@@ -4,8 +4,8 @@
 // boxes and their marks are worked out from the time and the seat log.
 // The belt runs on to the area's right edge; boxes start from its origin,
 // just past the last seat, so they pass every seat in the same rhythm
-// whatever the period's seats; with more than four, a box is a row taller,
-// seats 4 to 7 marking its lower row.
+// whatever the period's seats; seats past the fourth mark the box's lid,
+// above their fellows, so the box keeps its size.
 
 import type { ModelKind } from '../agents'
 import { fillRect, type PixelBuffer, rightOf, setPixel } from '../pixels'

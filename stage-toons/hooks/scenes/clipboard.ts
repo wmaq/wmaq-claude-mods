@@ -5,7 +5,7 @@
 import { fillRect, type PixelBuffer, setPixel } from '../pixels'
 import { CLAWD_TOP, type Scene } from '../scene'
 import { blinking, C, every } from './kit'
-import { shelvesOn, WINGS_X } from './wide-c'
+import { shelvesOn, WINGS_X } from './wings'
 
 const LOOP = 8
 const paceX = (t: number) => 8 + 12 * (t < 4 ? t / 4 : (8 - t) / 4)

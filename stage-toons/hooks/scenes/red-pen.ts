@@ -5,7 +5,7 @@
 import { fillRect, setPixel } from '../pixels'
 import { CLAWD_TOP, type Scene } from '../scene'
 import { blinking, C, every, still } from './kit'
-import { tileOn } from './wide-d'
+import { tileOn } from './wings'
 
 const LOOP = 6
 const PER_MISTAKE = 1.5

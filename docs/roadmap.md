@@ -73,6 +73,13 @@ Leftovers the plan schedules are listed in their phase instead.
 line). `toon.ts`, `TOON_ROWS` and `TOON_MIN` keep
   the toon's name. A hot reload starts the desk's seat log over, so seated
   helpers walk in again.
+- **A wider canvas (4e):** no test holds Fable's stride rule on a fast
+  walk (her feet by time, not distance, past today's speed; checked on
+  sheets). Some group-D wings use literal columns (50, 51, 52) where the
+  others use `WINGS_X + n` (`scenes/wings.ts`). Fireworks' decorative
+  rocket just past the edge of an 80-column area spills a few spark pixels
+  into it. Dominoes' cheer reads a chain end its backdrop notes for the
+  frame (`chainEnd`), right only inside a render.
 - **Smoother scenes (4b):** a waiting demo whose toon throws (`/stage
   demo waiting`) is not caught; only the real waiting toon falls back to
   the idle routine. A paint loop that gives up on refused blits clears

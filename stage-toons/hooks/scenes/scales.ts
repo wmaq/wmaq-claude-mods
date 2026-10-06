@@ -6,7 +6,7 @@
 import { fillRect, type PixelBuffer, setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene } from '../scene'
 import { blinking, C, lerp, still, TICK } from './kit'
-import { tileOn } from './wide-d'
+import { tileOn } from './wings'
 
 const LOOP = 6
 const PIVOT = { x: 31, y: 5 }

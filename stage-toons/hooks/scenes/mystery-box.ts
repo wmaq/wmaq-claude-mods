@@ -4,7 +4,7 @@
 
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, BOX, C, every, lerp, QMARK } from './kit'
-import { tileOn } from './wide-d'
+import { tileOn } from './wings'
 
 const walkX = (t: number) => (t < 1.5 ? lerp(6, 12, t / 1.5) : t < 4 ? 12 : lerp(12, 6, t - 4))
 // A closed box, its tape down the middle, and a smaller one; a stack is two

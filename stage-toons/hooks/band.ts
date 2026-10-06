@@ -70,7 +70,7 @@ export function bandMode(s: BandSite): BandMode {
 // to spare, so a line that comes and goes under it (the spinner's, at a
 // turn's start) does not make it flicker.
 export function areaSize(s: BandSite, limit: WidthSetting, previous: number | null): AreaSize {
-  const columns = Math.min(limit === 'full' ? WIDTH_MAX : limit, s.columns - 1, WIDTH_MAX)
+  const columns = Math.min(limit === 'full' ? WIDTH_MAX : limit, s.columns - 1)
   const room = s.maxRows - s.barLines
   const fit = Math.min(AREA_ROWS, room)
   const rows = previous === null || fit <= previous ? fit : Math.max(previous, Math.min(AREA_ROWS, room - 1))

@@ -5,8 +5,8 @@ import { areaCells, layerAbove, sceneWithLayer } from './frames'
 import { idle, waiting, working } from './golden'
 import { CELEBRATE, DOZE_MS, IDLE_IDS, SHOW_OFF_DEMO } from './idle'
 import type { Mod } from './mod'
-import { getPixel } from './pixels'
-import { type AreaSize, CLAWD_TOP, heroAt } from './scene'
+import { getPixel, type PixelBuffer } from './pixels'
+import { type AreaSize, CLAWD_TOP, heroAt, renderFull, type Scene, STAGE_W } from './scene'
 import { REACTIONS, SCENES } from './scenes'
 import { type Cast, composeFrame, heroOnScreen } from './toon'
 import { WAITING_SCENE_IDS } from './waiting/deal'
@@ -121,3 +121,30 @@ test('at 9 rows the whole layer shows over every scene; at 8 rows at least the b
     }
   }
 })
+
+// How many pixels right of the core differ between two pictures of a size.
+function wingsDiffer(a: PixelBuffer, b: PixelBuffer): number {
+  let n = 0
+  for (let y = 0; y < a.h; y++) for (let x = STAGE_W; x < a.w; x++) if (getPixel(a, x, y) !== getPixel(b, x, y)) n++
+
+  return n
+}
+
+// Scenes whose wings go on through the loop point by design rather than by a
+// fixed step: thought-clouds' drift on unwrapped time (its own test), the
+// fading scenes' (their held last moment dissolves into the start), and
+// recycling's missed ball, which lies by the bin until the loop ends.
+const UNSTEPPED = (s: Scene) => s.id === 'thought-clouds' || s.id === 'recycling' || s.fadesAtLoop === true
+
+for (const columns of [120, 200]) {
+  test(`every loop is seamless across the wings at ${columns} columns: the step over the loop point is no bigger than any other`, () => {
+    for (const s of Object.values(SCENES).filter(s => !UNSTEPPED(s))) {
+      const draw = (time: number) => renderFull(s, time, null, time, { columns, rows: 9 })
+      // Every 0.05 s through the loop, so every step a wing takes is among them.
+      const frames = Array.from({ length: Math.round(s.loop / 0.05) }, (_, i) => draw(0.025 + i * 0.05))
+      const inside = Math.max(0, ...frames.slice(1).map((b, i) => wingsDiffer(frames[i]!, b)))
+      const over = wingsDiffer(draw(s.loop - 0.025), draw(s.loop + 0.025))
+      expect(`${s.id} at ${columns}: ${over <= inside}`).toBe(`${s.id} at ${columns}: true`)
+    }
+  })
+}

@@ -7,7 +7,7 @@ import { FABLE } from '../clawd'
 import type { PixelBuffer } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, C, every, GLASS, QMARK, SCROLL, still, TICK, wave } from './kit'
-import { shelvesOn, WINGS_X } from './wide-c'
+import { shelvesOn, WINGS_X } from './wings'
 
 export const OPUS_X = 4
 export const FABLE_X = 30

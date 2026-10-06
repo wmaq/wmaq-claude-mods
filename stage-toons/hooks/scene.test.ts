@@ -64,7 +64,7 @@ test('cropping keeps the focus in view; a wider raster gets the picture at its l
   expect(narrow.w).toBe(24)
   expect(getPixel(narrow, 16, 0)).toBe(1)
   expect(getPixel(crop(full, 24, 50), 0, 0)).toBe(2)
-  expect([...crop(full, 24, 48).px]).toEqual([...full.px])
+  expect(crop(full, 24, 48).px).toBe(full.px)
   // A picture as wide as the raster comes back without its origin.
   const tall = createBuffer(STAGE_W, 18, 0, 4)
   expect([tall.oy, crop(tall, 24, 48).oy]).toEqual([4, undefined])

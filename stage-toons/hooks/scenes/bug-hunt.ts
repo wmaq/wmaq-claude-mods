@@ -7,7 +7,7 @@
 import type { PixelBuffer } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, C, every, GLASS, lerp } from './kit'
-import { tileOn, WINGS_X } from './wide-c'
+import { tileOn, WINGS_X } from './wings'
 
 const BUG: Sprite = { palette: { r: C.red, d: C.darkGray }, frames: [['.rr.', 'drrd'], ['.rr.', 'd..d']] }
 const LOOP = 6

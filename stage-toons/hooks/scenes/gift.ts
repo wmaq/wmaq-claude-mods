@@ -5,7 +5,7 @@
 import { fillRect, type PixelBuffer, rightOf, setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene } from '../scene'
 import { blinking, C, every, GIFT, lerp } from './kit'
-import { tileOn, WINGS_X } from './wide-c'
+import { tileOn, WINGS_X } from './wings'
 
 // Pushing until 1.5 s, waiting until 5 s, then walking back.
 const clawdX = (t: number) => (t < 1.5 ? lerp(4, 10, t / 1.5) : t < 5 ? 10 : lerp(10, 4, t - 5))

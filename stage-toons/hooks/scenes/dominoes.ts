@@ -32,7 +32,8 @@ function wings(b: PixelBuffer): { count: number; gap: number } {
 
 // When the whole row lies flat, for Clawd's cheer. An actor's look has no
 // buffer to read the width from, so the backdrop, drawn before every
-// actor, notes it for the frame it draws.
+// actor, notes it for the frame it draws: look is only right inside a
+// render (heroAt reads the actor's at alone, never its look).
 let chainEnd = DONE
 
 function drawDomino(b: PixelBuffer, x: number, fall: number) {

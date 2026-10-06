@@ -5,7 +5,7 @@
 import { fillRect } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene } from '../scene'
 import { blinking, C, every, still, STONE } from './kit'
-import { RIPPLE_EVERY, waterOn } from './wide-d'
+import { RIPPLE_EVERY, waterOn } from './wings'
 
 const ROWS = [5, 8, 11]
 const STONES = [18, 24, 30]

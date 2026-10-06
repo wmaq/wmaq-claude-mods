@@ -5,7 +5,7 @@
 import { fillRect, type PixelBuffer, setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, C, CHECKLIST, every, PAGE, plankOn, still } from './kit'
-import { tileOn } from './wide-d'
+import { tileOn } from './wings'
 
 // The desk's top row, and a stack of paper on it every STACK_EVERY columns,
 // as tall as these in turn: its sheets' edges shaded every other row, and a

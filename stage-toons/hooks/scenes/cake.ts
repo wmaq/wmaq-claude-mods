@@ -6,7 +6,7 @@
 import { fillRect, type PixelBuffer } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, C, every, lerp, plankOn } from './kit'
-import { tileOn, WINGS_X } from './wide-c'
+import { tileOn, WINGS_X } from './wings'
 
 const LOOP = 8
 const HOME = 2

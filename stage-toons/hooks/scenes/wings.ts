@@ -1,10 +1,10 @@
-// What the themed wings of a few scenes share (blueprint, bug-hunt,
-// bug-net, cake, clipboard, control-panel, dice, dishes, fable-audit, gift,
-// ladder): a set piece repeated from a column to the area's right edge, and
-// a wall of shelves. Everything is drawn in the core's coordinates from
-// column 48 on, so on a 48-column area none of it shows.
+// What the scenes' themed wings share: a set piece repeated from a column
+// to the area's right edge, a wall of shelves, and a strip of water. The
+// wings start at column 48 (WINGS_X), past the core, so on a 48-column area
+// none of them is drawn.
 
-import { fillRect, type PixelBuffer, rightOf } from '../pixels'
+import { fillRect, type PixelBuffer, rightOf, setPixel } from '../pixels'
+import { STAGE_W } from '../scene'
 import { C } from './kit'
 
 // Where the wings start: the first column past the core.
@@ -39,4 +39,19 @@ export function shelvesOn(
     })
   })
   tileOn(b, from, bay, x => fillRect(b, x, top, 1, 14 - top, C.woodDark))
+}
+
+// Water from column from to the edge, rows y and y + 1, its light ripples
+// every RIPPLE_EVERY columns, the lower row's half a period on from the
+// upper's. shift moves them right; a whole RIPPLE_EVERY brings them back.
+export const RIPPLE_EVERY = 8
+export function waterOn(b: PixelBuffer, from: number, y: number, shift: number): void {
+  const edge = rightOf(b)
+  if (from >= edge) return
+  fillRect(b, from, y, edge - from, 2, C.blue)
+  for (let x = from; x < edge; x++) {
+    const at = (((x - STAGE_W - shift) % RIPPLE_EVERY) + RIPPLE_EVERY) % RIPPLE_EVERY
+    if (at === 0) setPixel(b, x, y, C.glass)
+    if (at === RIPPLE_EVERY / 2) setPixel(b, x, y + 1, C.glass)
+  }
 }

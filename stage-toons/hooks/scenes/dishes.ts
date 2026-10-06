@@ -7,7 +7,7 @@
 import { fillRect, type PixelBuffer, rightOf, setPixel } from '../pixels'
 import { CLAWD_TOP, type Scene } from '../scene'
 import { blinking, C, every, still } from './kit'
-import { tileOn, WINGS_X } from './wide-c'
+import { tileOn, WINGS_X } from './wings'
 
 const PER_DISH = 1
 const DISHES = 5

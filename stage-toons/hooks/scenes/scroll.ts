@@ -5,7 +5,7 @@
 import { fillRect, type PixelBuffer, rightOf, setPixel } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, C, every, lerp, still } from './kit'
-import { tileOn } from './wide-d'
+import { tileOn } from './wings'
 
 const LOOP = 7
 const START_X = 18

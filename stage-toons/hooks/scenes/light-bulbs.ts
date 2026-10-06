@@ -5,7 +5,7 @@
 import { type PixelBuffer, setPixel, topOf } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, BULB_OFF, BULB_ON, C, every, still, wave } from './kit'
-import { tileOn } from './wide-d'
+import { tileOn } from './wings'
 
 // z: behind Clawd (-1) or in front of him (1).
 const SPOTS = [

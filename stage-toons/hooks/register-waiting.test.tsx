@@ -174,6 +174,19 @@ test('/stage demo waiting laptops plays the desk row, then the idle routine, the
   expect(text(await runStage($, 'demo waiting 5'))).toBe('Not a /stage command: demo waiting 5. /stage help lists them all.')
 })
 
+test('/stage width just before /stage demo waiting: its helpers walk in from the new edge', async ($, on) => {
+  const { world, clock } = engine(on)
+  await $.session.start(START)
+  const ui = await mountBand($)
+  await runStage($, 'width 60')
+  await runStage($, 'demo waiting laptops')
+  await ui.redraw()
+  // Sonnet walks in from column 60 at 30 pixels a second: in view at once,
+  // where from the band's last width (99) it would still be off the area.
+  await clock.advance(400)
+  expect(shows(lastArea(world), 'sonnet')).toBe(true)
+})
+
 test('/stage demo waiting with no scene plays the next one dealt: two runs, two scenes; a scene it does not know is not a command', async ($, on) => {
   const { world } = engine(on)
   await $.session.start(START)

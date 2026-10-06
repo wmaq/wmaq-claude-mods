@@ -6,7 +6,7 @@ import type { ClawdLook } from '../clawd'
 import { fillRect, type PixelBuffer } from '../pixels'
 import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, C, every, lerp } from './kit'
-import { shelvesOn, WINGS_X } from './wide-c'
+import { shelvesOn, WINGS_X } from './wings'
 
 const LOOP = 10
 const RAILS = [28, 32]
