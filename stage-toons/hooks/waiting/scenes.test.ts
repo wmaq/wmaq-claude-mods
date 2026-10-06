@@ -144,3 +144,22 @@ test("every scene: a leaving helper hops a row up out of its place before it wal
   const top = (scene: (typeof WAITING_SCENE_IDS)[number]) => Math.min(...inSeat(waitingFrame(gone, leftAt + 100, scene), HELPER_COLORS.opus, 0).map(p => p.y))
   expect(WAITING_SCENE_IDS.map(top)).toEqual([6, 8, 7, 6])
 })
+
+test('rowing: a helper standing up out of the boat holds no oar', () => {
+  const roster = spawned(EMPTY_ROSTER, 'a0', 'opus', 0)
+  const leftAt = T + 9600
+  const gone = seat(seated(['opus'], leftAt), ended(roster, 'a0', leftAt), leftAt, true).log
+  expect(where(waitingFrame(gone, leftAt - 50, 'rowing'), OAR).length).toBeGreaterThan(0)
+  expect(where(waitingFrame(gone, leftAt + 100, 'rowing'), OAR)).toEqual([])
+})
+
+test("conveyor: a helper's claws come down onto a box as it passes, then go back out", () => {
+  const log = seated(['opus'])
+  // Box 1 passes seat 0 (x 16) at 5.5 s of the period; the box covers the
+  // left claw, the right one shows at column 22.
+  const claw = (s: number) => where(waitingFrame(log, T + s * 1000, 'conveyor'), HELPER_COLORS.opus).filter(p => p.x === 22).map(p => p.y)
+  expect(boxX(1, 5.5)).toBe(16)
+  expect(claw(5.6)).toEqual([10])
+  expect(claw(6)).not.toContain(10)
+  expect(claw(6).length).toBeGreaterThan(0)
+})

@@ -1,8 +1,9 @@
 import { expect, test } from 'claude-code/testing'
 
-import { bandProps, type Blit, blitsOf, colorInRows, endTurn, engine, mountBand, runStage, spawnAgent, START, type World } from './harness'
+import { bandProps, type Blit, blitsOf, colorInRows, endTurn, engine, mountBand, NOW, runStage, spawnAgent, START, type World } from './harness'
 import { Z_COLOR } from './idle'
 import { HELPER_COLORS } from './waiting'
+import { dealWaiting, NEW_DEAL } from './waiting/deal'
 
 const ALL_ROWS = [0, 1, 2, 3, 4, 5, 6]
 const text = (answer: unknown) => (answer as { text?: string }).text ?? ''
@@ -203,4 +204,15 @@ test('agents that arrive during /stage demo waiting walk in after it', async ($,
   await ui.redraw()
   await clock.advance(2_000)
   expect(shows(lastArea(world), 'sonnet')).toBe(true)
+})
+
+test('/stage demo waiting refused while the bar is hidden takes no scene from the deck', async ($, on) => {
+  engine(on)
+  await $.session.start(START)
+  await mountBand($)
+  await runStage($, 'hide')
+  expect(text(await runStage($, 'demo waiting'))).not.toContain('Playing')
+  await runStage($, 'hide')
+  const first = dealWaiting(NEW_DEAL, new Set(), NOW).scene
+  expect(text(await runStage($, 'demo waiting'))).toContain(`the waiting toon: ${first}`)
 })

@@ -81,6 +81,7 @@ test('waiting takes --scene and --demo, and names the sheet by them', () => {
     assert.equal(main(['waiting', '--agents', 'fable', '--scene', 'rowing', '--count', '1']).path, 'frames-waiting-rowing-fable.png')
     assert.equal(main(['waiting', '--demo', '--scene', 'building', '--count', '1']).path, 'frames-waiting-building-demo.png')
     assert.equal(main(['waiting', '--agents', 'fable', '--count', '1']).path, 'frames-waiting-laptops-fable.png')
+    assert.throws(() => main(['waiting', '--demo', '--agents', 'fable']), /waiting takes --agents or --demo, not both/)
   } finally {
     process.chdir(was)
   }

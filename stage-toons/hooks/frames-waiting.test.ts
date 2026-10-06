@@ -73,6 +73,7 @@ test('a waiting scene that throws gives way to the laptops for the session, and 
     expect(lines).toEqual(['stage-toons: the waiting scene rowing failed and was replaced by the laptops: Error: boom'])
     expect(mod.waiting.scene).toBe('laptops')
     expect([...mod.waiting.broken]).toEqual(['rowing'])
+    expect(mod.waiting.deal.last).toBe('laptops')
     expect(mod.shown?.name).toBe(`waiting:${START}:laptops`)
     WAITING_SCENES.laptops = boom
     run(mod, START + 3100, START + 3200, line => lines.push(line))
@@ -111,4 +112,19 @@ test('a waiting scene that throws is cut to the laptops, not dissolved from', ()
   } finally {
     WAITING_SCENES.rowing = rowing
   }
+})
+
+test('a helper that left while the area showed something else is not kept: it would walk over the next helper', () => {
+  const mod = liveMod('conveyor')
+  mod.roster = withAgents('claude-sonnet-5-5', 'claude-opus-5-5')
+  run(mod, START, START + 5000)
+  // The opus helper gets up; then a turn starts, the area shows the stage's
+  // scene, and the helper is dropped from the log at once, its walk not done.
+  mod.roster = ended(mod.roster, 'a2', START + 5000)
+  run(mod, START + 5000, START + 5200)
+  expect(mod.seats.entries.find(e => e.agentId === 'a2')?.leftAt).toBe(START + 5000)
+  mod.isBandWorking = true
+  run(mod, START + 5300, START + 5400)
+  expect(mod.seats.entries.map(e => e.agentId)).toEqual(['a1'])
+  expect(mod.waiting.past).toEqual([])
 })

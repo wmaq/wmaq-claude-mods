@@ -856,11 +856,14 @@ export const register: Register = on => {
     if (cmd.kind === 'demo' || cmd.kind === 'demo-idle' || cmd.kind === 'demo-waiting' || cmd.kind === 'demo-work') {
       // The work demo plays over the stage's own scene; the waiting demo the
       // scene asked for, or the next one dealt.
+      const deal = mod.waiting.deal
       const waiting = cmd.kind === 'demo-waiting' ? (cmd.scene ?? takeWaiting(mod, now)) : undefined
       const { demo, label } = demoFor(cmd, mod.workflow, now, mod.director.scene, waiting)
       // The bar's lines with the demo's line under it, at the band's width.
       const barLines = bandLayout(mod.workflow, before, false, mod.lastBand?.columns ?? 100, 'demo', countOf(await read($, tasksAtom))).length
       const text = startDemo(mod, demo, label, now, await read($, hiddenAtom), barLines)
+      // A demo refused takes no scene from the deck.
+      if (mod.demo !== demo) mod.waiting = { ...mod.waiting, deal }
       // The band grows to hold it.
       if (mod.demo) $.ui.invalidate('ui.render')
       // Asked for, the work demo shows the pop-ups even while they are off.

@@ -183,7 +183,9 @@ export function areaCells(mod: Mod, columns: number, now: number, log: Log): str
       if (!picture.name.startsWith('waiting:')) throw error
       const { scene } = mod.waiting
       if (scene !== FALLBACK_WAITING) {
-        mod.waiting = { ...mod.waiting, scene: FALLBACK_WAITING, broken: new Set([...mod.waiting.broken, scene]) }
+        // The laptops show for the rest of the period: the next is dealt another.
+        const deal = { ...mod.waiting.deal, last: FALLBACK_WAITING }
+        mod.waiting = { ...mod.waiting, scene: FALLBACK_WAITING, deal, broken: new Set([...mod.waiting.broken, scene]) }
         log(`stage-toons: the waiting scene ${scene} failed and was replaced by the laptops: ${String(error)}`)
       } else {
         mod.isWaitingBroken = true

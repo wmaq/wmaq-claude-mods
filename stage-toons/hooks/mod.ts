@@ -228,7 +228,9 @@ export function reseat(mod: Mod, now: number) {
     }
   } else if (log.since !== null) {
     const isKept = (e: SeatEntry) => log.entries.some(n => n.agentId === e.agentId && n.arrivedAt === e.arrivedAt)
-    const left = before.entries.filter(e => e.leftAt !== null && !isKept(e))
+    // Only helpers that walked out: one dropped unseen before its walk is
+    // done would be drawn walking over its seat's next helper.
+    const left = before.entries.filter(e => e.leftAt !== null && !isKept(e) && freesAt(e) <= now)
     const past = mod.waiting.past.filter(e => now - freesAt(e) < PAST_MS)
     if (left.length > 0 || past.length !== mod.waiting.past.length) mod.waiting = { ...mod.waiting, past: [...past, ...left] }
   }

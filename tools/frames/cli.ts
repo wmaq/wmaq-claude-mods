@@ -150,6 +150,7 @@ function render(args: Args, times: readonly number[]): { frames: Canvas[]; name:
       const agents = listOpt(opts, 'agents')
       const scene = opts.get('scene') ?? FALLBACK_WAITING
       const isDemo = opts.has('demo')
+      if (isDemo && opts.has('agents')) throw new Error(`waiting takes --agents or --demo, not both\n${USAGE}`)
       const frames = waitingFrames(isDemo ? 'demo' : agents, times, numberOpt(opts, 'columns', STAGE_W, 1), scene)
 
       return { frames, name: `frames-waiting-${scene}-${isDemo ? 'demo' : agents.join('-')}.png` }
