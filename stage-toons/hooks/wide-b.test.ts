@@ -94,6 +94,40 @@ test('the terminal: the desk joins at 44, a leg every 23 columns after its right
   expect(gaps(b, 13, 43, 120).length).toBe(77 - 3)
 })
 
+test('the terminal: props stand on the desk in a fixed order, every 46 columns to the edge', () => {
+  const b = draw('terminal', 0, WIDE)
+  for (const x of [48, 94, 140]) {
+    // The mug, the duck, the second monitor, the plant's pot, the lamp's base.
+    expect(at(b, x + 2, 11)).toBe(C.paperShade)
+    expect(at(b, x + 12, 8)).toBe(C.gold)
+    expect(at(b, x + 18, 5)).toBe(C.darkGray)
+    expect(at(b, x + 19, 6)).toBe(C.ink)
+    expect(at(b, x + 30, 9)).toBe(C.brick)
+    expect(at(b, x + 38, 11)).toBe(C.darkGray)
+  }
+  // Each prop stands on the desk: nothing of the set on rows 12 and 13 but the desk.
+  for (let x = 48; x < 200; x++) expect({ x, floor: [C.wood, C.woodDark, EMPTY].includes(at(b, x, 13)) }).toEqual({ x, floor: true })
+  expect({ edge: isSetIn(b, 192, 200) }).toEqual({ edge: true })
+  // Never Clawd's orange nor Fable's violet, and nothing above row 5.
+  const kit = new Set<number>(Object.values(C))
+  for (const t of [0, 1.3, 2.5, 3.7]) {
+    const px = wings(draw('terminal', t, WIDE), c => c !== EMPTY).split(' ').map(p => p.split(',').map(Number))
+    expect({ t, bad: px.filter(p => !kit.has(p[2]!) || p[1]! < 5).map(p => p.join(',')) }).toEqual({ t, bad: [] })
+  }
+})
+
+test("the terminal: the mug's steam rises and the second monitor's graph changes, both meeting themselves at the loop point", () => {
+  const steam = (t: number) => wings(draw('terminal', t), c => c === C.smoke)
+  const graph = (t: number) => wings(draw('terminal', t), c => c === C.green)
+  expect(steam(0.1)).not.toBe(steam(0.5))
+  expect(steam(0.5)).not.toBe(steam(0.9))
+  expect(graph(0.1)).not.toBe(graph(1.3))
+  // A puff takes 1.2 s, four to the 4.8 s loop; the graph's four take it all.
+  expect(steam(4.8 - 0.01)).toBe(steam(1.2 - 0.01))
+  expect(new Set([0.1, 1.3, 2.5, 3.7].map(graph)).size).toBe(4)
+  expect(graph(4.8 + 0.1)).toBe(graph(0.1))
+})
+
 test('the test tubes: a tube every 7 columns from 45, bubbling in turn; only the core three get ticks', () => {
   const b = draw('test-tubes', 5.9)
   for (let x = 45; x < 120; x += 7) expect(at(b, x + 1, 13)).toBe(C.glass)
