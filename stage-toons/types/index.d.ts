@@ -70,6 +70,11 @@ export type IdleId = string
 // The model family an agent runs on, which colours its helper (hooks/agents.ts).
 export type ModelKind = 'sonnet' | 'opus' | 'fable' | 'haiku' | 'unknown'
 
+// A task's status in Claude's task list, and the list by task id
+// (hooks/tasks.ts): what the bar counts.
+export type TaskStatus = 'pending' | 'in_progress' | 'completed'
+export type TaskList = Record<string, TaskStatus>
+
 declare module 'claude-code' {
   interface PluginState {
     'stage-toons': {
@@ -94,6 +99,9 @@ declare module 'claude-code' {
       // so a paint loop an earlier load left running stops (a hot reload
       // cancels only the waits pending as it lands).
       loadId: string | null
+      // Claude's task list, as the main conversation's task tools left it:
+      // kept across a reload, so the bar's count stays.
+      tasks: TaskList
     }
   }
 }
