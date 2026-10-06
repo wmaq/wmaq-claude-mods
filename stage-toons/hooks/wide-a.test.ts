@@ -82,7 +82,8 @@ test('fishing: the water runs to the edge, its ripples tiled every 25 columns', 
   for (const y of [11, 12, 13]) expect(gaps(b, y, 21, 200)).toEqual([])
   for (let t = 0; t < 8; t += 0.32) {
     const mid = draw('fishing', t, MID)
-    const glass = (from: number, to: number) => columnsOf(mid, C.glass).filter(x => x >= from && x < to)
+    // On the water's top row: a splash's drops fly above it.
+    const glass = (from: number, to: number) => Array.from({ length: to - from }, (_, i) => from + i).filter(x => at(mid, x, 11) === C.glass)
     // Each tile has the core's three ripples, 25 columns on, stepping and
     // wrapping with them (the core's own may hide behind the line or a catch).
     expect(glass(47, 72)).toHaveLength(3)
@@ -94,6 +95,40 @@ test('fishing: the water runs to the edge, its ripples tiled every 25 columns', 
   const t47 = Array.from({ length: 25 }, (_, i) => (i * 8) / 25 + 0.01).find(t => at(draw('fishing', t, MID), 47, 11) === C.glass)
   expect(t47).not.toBe(undefined)
   expect(at(draw('fishing', t47!, { columns: 48, rows: 7 }), 47, 11)).toBe(C.blue)
+})
+
+test('fishing: now and then a fish jumps out of the water in the wings, in an arc, with a splash out and in', () => {
+  // Every 0.05 s through the loop, at 200 columns: jumpers start at 52, 81, 110, ...
+  const frames = Array.from({ length: 160 }, (_, i) => draw('fishing', 0.025 + i * 0.05))
+  const fishIn = (b: PixelBuffer, from: number) => {
+    const out: { x: number; y: number }[] = []
+    for (let y = -4; y < 14; y++) for (let x = from; x < from + 11; x++) if (at(b, x, y) === C.green) out.push({ x, y })
+    return out
+  }
+  const starts: number[] = []
+  for (const from of [52, 81, 110]) {
+    const seen = frames.map(b => fishIn(b, from))
+    // Out for about a second a loop, once.
+    const out = seen.flatMap((px, i) => (px.length > 0 ? [i] : []))
+    expect(out.length).toBeGreaterThanOrEqual(18)
+    expect(out.length).toBeLessThanOrEqual(21)
+    starts.push(out[0]!)
+    // Always above the water, rising to row 3 at the top of its arc, and moving right as it goes.
+    const all = seen.flat()
+    expect(all.every(p => p.y <= 10)).toBe(true)
+    expect(Math.min(...all.map(p => p.y))).toBe(3)
+    expect(Math.max(...all.map(p => p.x)) - Math.min(...all.map(p => p.x))).toBe(10)
+  }
+  // Each at its own moment.
+  expect(new Set(starts).size).toBe(3)
+  // The splashes throw white drops above the water now and then, never all the time.
+  const splashing = frames.filter(b => Array.from({ length: 152 }, (_, i) => 48 + i).some(x => at(b, x, 9) === C.white)).length
+  expect(splashing).toBeGreaterThan(5)
+  expect(splashing).toBeLessThan(120)
+  // The water stays water under them.
+  const water: number[] = [C.blue, C.glass]
+  const dry = frames.filter(b => Array.from({ length: 152 }, (_, i) => 48 + i).some(x => [11, 12, 13].some(y => !water.includes(at(b, x, y)))))
+  expect(dry).toHaveLength(0)
 })
 
 test('flashlight: past column 47 the beam narrows to nothing over 12 columns', () => {
