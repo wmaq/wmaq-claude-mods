@@ -110,7 +110,7 @@ test('each picture has a name that changes when the picture does', () => {
   mod.isBandWorking = false
   mod.roster = spawned(EMPTY_ROSTER, 'a1', 'claude-fable-5-1', START + DOZE_MS + 2000)
   frame(mod, START + DOZE_MS + 2000)
-  expect(mod.shown?.name).toBe(`waiting:${START + DOZE_MS + 2000}`)
+  expect(mod.shown?.name).toBe(`waiting:${START + DOZE_MS + 2000}:${mod.waiting.scene}`)
   mod.demo = { kind: 'scenes', at: START + DOZE_MS + 3000, seconds: 2, scenes: ['dice', 'gift'] }
   frame(mod, START + DOZE_MS + 5500)
   expect(mod.shown?.name).toBe(`demo:${START + DOZE_MS + 3000}:1`)

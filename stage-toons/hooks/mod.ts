@@ -14,7 +14,8 @@ import type { PixelBuffer } from './pixels'
 import { storeKey } from './progress'
 import { FADE_MS, type SceneId, STAGE_W } from './scene'
 import { type Cast, TOON_ROWS } from './toon'
-import { EMPTY_LOG, seat, type SeatLog } from './waiting/seats'
+import { dealWaiting, FALLBACK_WAITING, NEW_DEAL, type WaitingDeal, type WaitingSceneId } from './waiting/deal'
+import { EMPTY_LOG, freesAt, seat, type SeatEntry, type SeatLog } from './waiting/seats'
 import { type Activity, createActivity } from './work'
 import { DEFAULT_WORKFLOW } from './workflow'
 
@@ -124,6 +125,10 @@ export type Mod = {
   roster: Roster
   seats: SeatLog
   isWaitingBroken: boolean
+  // The waiting period's scene, dealt as it starts; the helpers that left
+  // in it (the conveyor's boxes still carry their marks); the scenes that
+  // threw this session.
+  waiting: { since: number | null; scene: WaitingSceneId; deal: WaitingDeal; past: SeatEntry[]; broken: Set<WaitingSceneId> }
   // Automatic moves: whether they are on, whether the project is on a
   // Windows path (globs ignore case there), and the notes for Claude about
   // moves it has not heard of yet.
@@ -179,6 +184,7 @@ export const createMod = (): Mod => ({
   roster: EMPTY_ROSTER,
   seats: EMPTY_LOG,
   isWaitingBroken: false,
+  waiting: { since: null, scene: FALLBACK_WAITING, deal: NEW_DEAL, past: [], broken: new Set() },
   isAuto: true,
   isWindows: false,
   notes: [],
@@ -204,11 +210,28 @@ export function queued<T>(mod: Mod, run: () => Promise<T>): Promise<T> {
 // demo over it, not hidden, and Claude not working.
 export const isWaitingShown = (mod: Mod): boolean => mod.band.requestId !== undefined && mod.demo === null && !mod.isHidden && !mod.isBandWorking
 
-// The seat log moved on to now; a waiting period that ended restarts the
-// idle clock where it ended.
+// How long a helper that left is remembered after its seat frees: longer
+// than a box takes from the last seat to the belt's end.
+export const PAST_MS = 5000
+
+// The seat log moved on to now; a waiting period that starts is dealt its
+// scene, one that ended restarts the idle clock where it ended.
 export function reseat(mod: Mod, now: number) {
-  const { log, endedAt } = seat(mod.seats, mod.roster, now, isWaitingShown(mod))
+  const before = mod.seats
+  const { log, endedAt } = seat(before, mod.roster, now, isWaitingShown(mod))
   mod.seats = log
+  if (log.since !== mod.waiting.since) {
+    mod.waiting = { ...mod.waiting, since: log.since, past: [] }
+    if (log.since !== null) {
+      const { scene, deal } = dealWaiting(mod.waiting.deal, mod.waiting.broken, log.since)
+      mod.waiting = { ...mod.waiting, scene, deal }
+    }
+  } else if (log.since !== null) {
+    const isKept = (e: SeatEntry) => log.entries.some(n => n.agentId === e.agentId && n.arrivedAt === e.arrivedAt)
+    const left = before.entries.filter(e => e.leftAt !== null && !isKept(e))
+    const past = mod.waiting.past.filter(e => now - freesAt(e) < PAST_MS)
+    if (left.length > 0 || past.length !== mod.waiting.past.length) mod.waiting = { ...mod.waiting, past: [...past, ...left] }
+  }
   // Never backwards: a period that ended unseen may report an end before
   // the main turn's own.
   if (endedAt !== null) mod.idleSince = Math.max(mod.idleSince, endedAt)

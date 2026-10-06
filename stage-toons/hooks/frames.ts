@@ -14,7 +14,7 @@ import { encodeCells, type PixelBuffer } from './pixels'
 import { dissolve, FADE_MS } from './scene'
 import { REACTIONS, SCENES } from './scenes'
 import { type Cast, composeFrame, heroOnScreen } from './toon'
-import { waitingFrame } from './waiting'
+import { FALLBACK_WAITING, waitingFrame, type WaitingSceneId } from './waiting'
 import { waitingDemoAt } from './waiting/demo'
 import type { SeatLog } from './waiting/seats'
 import { type Activity, type Layer, layerAt, settleActivity } from './work'
@@ -90,7 +90,7 @@ function routinePicture(mod: Mod, name: string, routine: IdleId, since: number, 
 // The doze of an idle period started at `since` (its idle time, from 0).
 const dozePicture = (name: string, since: number): Picture => ({ name, draw: (now, columns) => cropLeft(placeIdle(dozeFrame(now - since)), columns) })
 
-const waitingPicture = (name: string, log: SeatLog): Picture => ({ name, draw: (now, columns) => cropLeft(waitingFrame(log, now), columns) })
+const waitingPicture = (name: string, log: SeatLog, scene: WaitingSceneId): Picture => ({ name, draw: (now, columns) => cropLeft(waitingFrame(log, now, scene), columns) })
 
 // What the area shows now, or null once the demo it plays is over: a demo,
 // else the stage's scene while Claude works, else the waiting toon while a
@@ -133,7 +133,7 @@ function pictureOf(mod: Mod, now: number, log: Log): Picture | null {
     if (!demoStep(demo, now)) return null
     const at = waitingDemoAt(demo.at, now)
 
-    return 'log' in at ? waitingPicture(`demo:${demo.at}:waiting`, at.log) : routinePicture(mod, `demo:${demo.at}:idle`, mod.idle, now - at.idleMs, log)
+    return 'log' in at ? waitingPicture(`demo:${demo.at}:waiting`, at.log, FALLBACK_WAITING) : routinePicture(mod, `demo:${demo.at}:idle`, mod.idle, now - at.idleMs, log)
   }
 
   // The stage's scene, with Fable's walk and the reactions, as a scene demo
@@ -149,7 +149,12 @@ function pictureOf(mod: Mod, now: number, log: Log): Picture | null {
 
     return { name: `scene:${d.base}:${d.baseAt}`, draw: (t, columns) => sceneWithLayer(heldShot(d, t), columns, cast, layer) }
   }
-  if (mod.seats.since !== null && !mod.isWaitingBroken) return waitingPicture(`waiting:${mod.seats.since}`, mod.seats)
+  if (mod.seats.since !== null && !mod.isWaitingBroken) {
+    // With the helpers that left still in it, for the conveyor's marks.
+    const seats = { ...mod.seats, entries: [...mod.waiting.past, ...mod.seats.entries] }
+
+    return waitingPicture(`waiting:${mod.seats.since}:${mod.waiting.scene}`, seats, mod.waiting.scene)
+  }
   if (now - mod.idleSince >= DOZE_MS) return dozePicture(`doze:${mod.idleSince}`, mod.idleSince)
 
   return routinePicture(mod, `idle:${mod.idle}:${mod.idleSince}`, mod.idle, mod.idleSince, log)
@@ -166,14 +171,24 @@ export function areaCells(mod: Mod, columns: number, now: number, log: Log): str
   // The demo is over: what was shown stays, to dissolve from next frame.
   if (picture === null) return null
   let current: PixelBuffer
-  try {
-    current = picture.draw(now, columns)
-  } catch (error) {
-    if (!picture.name.startsWith('waiting:')) throw error
-    mod.isWaitingBroken = true
-    log(`stage-toons: the waiting toon failed and was replaced by the idle routine: ${String(error)}`)
-    picture = pictureOf(mod, now, log)!
-    current = picture.draw(now, columns)
+  // A waiting scene that throws gives way to the laptops, and the laptops
+  // to the idle routine.
+  for (;;) {
+    try {
+      current = picture.draw(now, columns)
+      break
+    } catch (error) {
+      if (!picture.name.startsWith('waiting:')) throw error
+      const { scene } = mod.waiting
+      if (scene !== FALLBACK_WAITING) {
+        mod.waiting = { ...mod.waiting, scene: FALLBACK_WAITING, broken: new Set([...mod.waiting.broken, scene]) }
+        log(`stage-toons: the waiting scene ${scene} failed and was replaced by the laptops: ${String(error)}`)
+      } else {
+        mod.isWaitingBroken = true
+        log(`stage-toons: the waiting toon failed and was replaced by the idle routine: ${String(error)}`)
+      }
+      picture = pictureOf(mod, now, log)!
+    }
   }
   if (mod.fade !== null && !isFading(mod, now)) mod.fade = null
   if (mod.shown !== null && mod.shown.name !== picture.name && mod.fade === null) mod.fade = { from: mod.shown, at: now }
