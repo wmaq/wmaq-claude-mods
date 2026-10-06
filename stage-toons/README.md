@@ -90,6 +90,7 @@ You can move it yourself with `/stage`:
 | `/stage workflow reload` | Read `.claude/stage-toons.json` again and switch to it |
 | `/stage auto [on \| off]` | Show the rules that move the stage by itself; turn them on or off |
 | `/stage bubbles [on \| off]` | Whether Clawd's pop-ups show: what Claude is doing over his head, and what he says |
+| `/stage width [<n> \| full]` | How wide the cartoons may grow under the bar: up to n columns (120 by default; 48 to 512), or the band's whole width |
 | `/stage log [n]` | The last n moves (15; up to 200) with how long each stage lasted |
 | `/stage time` | Time per feature and per stage |
 | `/stage help` | The list of commands (a `/stage` it doesn't understand answers one line, with the stage you may have meant) |
@@ -182,7 +183,12 @@ off.
 
 ## While Claude waits for you
 
-The area below the bar, 48 columns by 7 rows, is where Clawd lives: it
+The area below the bar is where Clawd lives: as wide as the band, up to
+120 columns (`/stage width` changes it, up to 512 columns or the band's
+whole width), and 9 rows high (8 or 7 in a shorter band). Each scene keeps
+its picture at the area's left and runs its set on to the right edge (the
+road, the table, the river), or fills the room with a few quiet props of
+its own; the rows above the picture are headroom for Clawd's pop-ups. It
 plays the stage's scene while Claude works, and the demos. When Claude
 isn't working, a small Clawd stands at its left. He has five routines: the
 classic one (he blinks, glances at the prompt and the bar, taps a foot),
@@ -206,8 +212,9 @@ When Claude's turn ends while agents still work (background subagents, a
 Fable audit, teammates), Clawd walks aside with a cup of coffee and a row
 of small helpers gets to work beside him, one for each agent at work, in
 its model's colour: Sonnet magenta, Opus orange, Fable violet (with a
-monocle), Haiku teal, any other model grey. Four seats; more agents wait
-for one to free. A helper hops up and walks off when its agent finishes,
+monocle), Haiku teal, any other model grey. Four seats on a 48-column area, one
+more each 8 columns past it, eight at most; more agents wait for one to
+free. A helper hops up and walks off when its agent finishes,
 and when the last has gone Clawd walks back and his idle routine plays. He
 doesn't doze while agents work.
 
@@ -222,7 +229,7 @@ that one.
 
 The area shows in a terminal at least 35 columns wide (30 for the band,
 beside Claude Code's own mark) with room for the bar and 7 rows (8 or 9
-rows of band), whether or not Claude works; otherwise the bar is text
+rows of band; a taller band gives it up to 9 rows), whether or not Claude works; otherwise the bar is text
 alone. A band you collapse shows no area.
 
 Whatever the area shows next (Claude starting or stopping, a move to
@@ -293,8 +300,9 @@ stage an `auto` list, even an empty one, and the file has only its own.
 Beside `track` and `side`, the file may set how a session on the project
 starts: `"auto": false` with the rules off, `"hide": true` with the bar and
 the cartoons hidden, `"bubbles": false` with Clawd's pop-ups off (and
-`true` or `false` the other way). Where the file sets one, it wins over
-your own `/stage auto`, `/stage hide` or `/stage bubbles` setting, at
+`true` or `false` the other way), `"width": 90` with the cartoons up to 90
+columns wide (48 to 512, or `"full"`). Where the file sets one, it wins over
+your own `/stage auto`, `/stage hide`, `/stage bubbles` or `/stage width` setting, at
 each session's start and at `/stage workflow reload`; where it says
 nothing, yours applies. The commands still change the session at once, and
 say when the file starts it otherwise. `/stage workflow init` writes
@@ -343,7 +351,7 @@ workflow` shows the current workflow and its scenes.
 Limits: 1 to 15 track stages, up to 5 side stages; ids are lowercase
 letters, digits and dashes, and not one of `/stage`'s words (`next`,
 `back`, `hide`, `demo`, `feature`, `message`, `workflow`, `auto`,
-`bubbles`, `log`, `time`, `help`, `done`). A mistake in the file is reported with where it
+`bubbles`, `width`, `log`, `time`, `help`, `done`). A mistake in the file is reported with where it
 is, and the session keeps a working workflow.
 
 ## Install

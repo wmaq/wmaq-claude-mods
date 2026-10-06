@@ -68,7 +68,9 @@ Leftovers the plan schedules are listed in their phase instead.
   band of exactly the bar plus 7 rows might lose the area at each turn's
   start, if the spinner's line comes out of the band's space (read from
   the code; Windows Terminal never got that short, so never seen; one row
-  of hysteresis would fix it). `toon.ts`, `TOON_ROWS` and `TOON_MIN` keep
+  of hysteresis would fix it; no hysteresis can keep 7 rows in 6, but since
+4e a band of the bar plus 8 or more keeps an area through the spinner's
+line). `toon.ts`, `TOON_ROWS` and `TOON_MIN` keep
   the toon's name. A hot reload starts the desk's seat log over, so seated
   helpers walk in again.
 - **Smoother scenes (4b):** a waiting demo whose toon throws (`/stage
@@ -153,3 +155,8 @@ what remains.
 by the research: sound (`$.audio` plays only on macOS), model-written
 scenes or summaries (token cost; breaks the no-model-requests promise),
 `turn.step` streaming, the kitty image protocol.
+
+**Deferred:**
+- Re-choreograph the scenes for their width (props spread out, longer
+  walks, compositions per width): the person, 2026-10-06, after 4e chose
+  the wider set.
