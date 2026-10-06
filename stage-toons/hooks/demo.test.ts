@@ -1,7 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { BandSite } from './band'
-import { type Demo, demoAt, demoFor, demoLine, hasRoom, IDLE_DEMO_LENGTH, idleDemoAt, idleDemoLine } from './demo'
+import { type Demo, demoAt, demoFor, demoLine, demoStep, hasRoom, IDLE_DEMO_LENGTH, idleDemoAt, idleDemoLine, WORK_STEPS, workDemoAt, workDemoLine } from './demo'
+import { LINES } from './work'
 import { IDLE_IDS } from './idle'
 import { DEMO_ORDER, STAGE_SCENES } from './scenes'
 import { TOON_ROWS } from './toon'
@@ -93,4 +94,26 @@ test('a band already drawn has room for the demo when the bar and the area fit i
   expect(hasRoom(band, 4)).toBe(false)
   expect(hasRoom({ ...band, columns: 29 }, 3)).toBe(false)
   expect(hasRoom({ ...band, surface: 'desktop' }, 3)).toBe(false)
+})
+
+test('the work demo plays its steps, seconds each, over the scene from its start; past the end it holds the last', () => {
+  const demo = { kind: 'work', at: 1000, seconds: 3, scene: 'dice' } as const
+  expect(demoFor({ kind: 'demo-work', seconds: 3 }, DEFAULT_WORKFLOW, 1000, 'dice')).toEqual({ demo, label: `what Clawd shows while Claude works, over dice, in ${WORK_STEPS.length} steps` })
+  const first = workDemoAt(demo, 1000)
+  expect(first.activity.shown.display).toEqual({ badge: 'thinking', what: '', isTyping: false })
+  expect(first.director).toMatchObject({ base: 'dice', baseAt: 1000, reaction: null })
+  expect(workDemoLine(first, true)).toBe(`Work demo 1/${WORK_STEPS.length}: thinking · /stage demo stop ends it`)
+  expect(workDemoLine(first, false)).toBe(`Work demo 1/${WORK_STEPS.length}: thinking (Clawd's pop-ups are off) · /stage demo stop ends it`)
+  const testing = workDemoAt(demo, 1000 + 4 * 3000 + 500)
+  expect(testing.activity.shown.display).toEqual({ badge: 'test', what: 'npm test', isTyping: false })
+  // The failed test: the failure from the step's start, and a red line.
+  const fails = WORK_STEPS.findIndex(s => s.isFailure)
+  const failing = workDemoAt(demo, 1000 + fails * 3000 + 100)
+  expect(failing.director.reaction).toEqual({ id: 'failure', at: 1000 + fails * 3000 })
+  expect(LINES['test-fail']).toContain(failing.activity.said?.line)
+  // After REACTION_MS the reaction is over.
+  expect(workDemoAt(demo, 1000 + fails * 3000 + 2900).director.reaction).toBe(null)
+  const end = 1000 + WORK_STEPS.length * 3000
+  expect(demoStep(demo, end)).toBe(null)
+  expect(workDemoAt(demo, end + 500).step.name).toBe('writing the answer')
 })

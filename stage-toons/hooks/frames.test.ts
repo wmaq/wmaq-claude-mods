@@ -359,3 +359,19 @@ test("the layer hides while Clawd's head is high up: the ladder scene's climb", 
   frame(mod, START + 1000 + 6500)
   expect(rowText(mod.shown!.draw(START + 1000 + 6500, 48), 1)).toBe('')
 })
+
+test('the work demo is one picture: the scene plays on under each step, the layer changes', () => {
+  const mod = liveMod()
+  mod.demo = { kind: 'work', at: START, seconds: 3, scene: 'dice' }
+  frame(mod, START + 4 * 3000 + 100)
+  expect(mod.shown?.name).toBe(`demo:${START}:work`)
+  expect(rowText(mod.shown!.draw(START + 4 * 3000 + 100, 48), 1)).toBe('npm test')
+  frame(mod, START + 5 * 3000 + 100)
+  expect(mod.shown?.name).toBe(`demo:${START}:work`)
+  expect(mod.fade).toBe(null)
+  expect(rowText(mod.shown!.draw(START + 5 * 3000 + 100, 48), 1)).toBe('npm run')
+  // Off, the pop-ups still show in the demo, which asks for them.
+  mod.isBubbles = false
+  expect(rowText(mod.shown!.draw(START + 5 * 3000 + 200, 48), 1)).toBe('npm run')
+  expect(frame(mod, START + 14 * 3000)).toBe(null)
+})

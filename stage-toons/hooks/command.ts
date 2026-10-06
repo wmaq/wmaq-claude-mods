@@ -2,7 +2,7 @@
 
 import type { Progress, StageDef, StageId, Workflow, WorkflowSettings } from '../types'
 import { ruleText } from './auto'
-import { DEMO_MAX, DEMO_MIN, DEMO_SECONDS } from './demo'
+import { DEMO_MAX, DEMO_MIN, DEMO_SECONDS, WORK_DEMO_SECONDS } from './demo'
 import { ago, LOG_DEFAULT } from './history'
 import { applyMove, backStage, describe, HISTORY_MAX, nextStage, parseStage, stageLabel } from './stages'
 import { allStages, DONE_ID, doneOf, RESERVED_IDS, stageIds, zeroStage } from './workflow'
@@ -17,6 +17,7 @@ export type Command =
   | { kind: 'hide' }
   | { kind: 'demo'; seconds: number; stage: StageId | null }
   | { kind: 'demo-idle'; seconds: number }
+  | { kind: 'demo-work'; seconds: number }
   | { kind: 'demo-waiting' }
   | { kind: 'demo-stop' }
   | { kind: 'workflow' }
@@ -36,7 +37,7 @@ export function usage(w: Workflow): string {
   const stages = [...w.track.map((s, i) => `${i + 1} ${s.id}`), DONE_ID, ...w.side.map(s => (s === zero ? `0 ${s.id}` : s.id))]
 
   return [
-    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo waiting | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | log [n] | time | help]',
+    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work] [seconds] | demo waiting | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | log [n] | time | help]',
     '  /stage                  show the current stage and the recent moves',
     `  /stage 5, /stage plan   move to a stage${zero ? ` (0 or ? for ${zero.label})` : ''}`,
     '  /stage next, /stage back',
@@ -46,6 +47,7 @@ export function usage(w: Workflow): string {
     '  /stage hide             hide or show the bar and the cartoons',
     `  /stage demo [<stage> | idle] [seconds]  play every scene, one stage's scenes, or the idle routines, ${DEMO_SECONDS} s each (${DEMO_MIN} to ${DEMO_MAX}); /stage demo stop ends it`,
     '  /stage demo waiting     play the toon shown while Claude waits on agents, about 25 s',
+    `  /stage demo work [seconds]  play what Clawd shows while Claude works: thinking, each kind of tool, his lines, ${WORK_DEMO_SECONDS} s each`,
     '  /stage workflow [init | reload]  show the workflow; write the default to .claude/stage-toons.json; read the file again',
     "  /stage auto [on | off]  show the workflow's rules for moving the stage by itself; turn them on or off",
     "  /stage bubbles [on | off]  whether Clawd's pop-ups show: what Claude is doing over his head, and what he says",
@@ -108,14 +110,14 @@ export function unknownText(w: Workflow, args: string): string {
 }
 
 // Seconds as /stage demo takes them: none for the default, else 2 to 60.
-function secondsOf(word: string | undefined): number | null {
-  if (word === undefined) return DEMO_SECONDS
+function secondsOf(word: string | undefined, fallback = DEMO_SECONDS): number | null {
+  if (word === undefined) return fallback
   const seconds = /^\d+$/.test(word) ? Number(word) : NaN
 
   return seconds >= DEMO_MIN && seconds <= DEMO_MAX ? seconds : null
 }
 
-// demo [<stage id> | idle] [seconds], demo waiting, or demo stop. A bare
+// demo [<stage id> | idle | work] [seconds], demo waiting, or demo stop. A bare
 // number is the seconds: stages are named by id only.
 function parseDemo(w: Workflow, arg: string): Command {
   const [first, second, ...rest] = arg === '' ? [] : arg.split(/\s+/)
@@ -127,9 +129,10 @@ function parseDemo(w: Workflow, arg: string): Command {
 
     return seconds === null ? { kind: 'usage' } : { kind: 'demo', seconds, stage: null }
   }
-  const seconds = secondsOf(second)
+  const seconds = secondsOf(second, first === 'work' ? WORK_DEMO_SECONDS : DEMO_SECONDS)
   if (seconds === null) return { kind: 'usage' }
   if (first === 'idle') return { kind: 'demo-idle', seconds }
+  if (first === 'work') return { kind: 'demo-work', seconds }
 
   return stageIds(w).includes(first) ? { kind: 'demo', seconds, stage: first } : { kind: 'usage' }
 }

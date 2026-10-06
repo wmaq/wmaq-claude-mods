@@ -5,7 +5,7 @@
 
 import type { IdleId } from '../types'
 import { cropLeft, placeIdle } from './area'
-import { demoAt, demoStep, idleDemoAt } from './demo'
+import { demoAt, demoStep, idleDemoAt, workDemoAt } from './demo'
 import { type Director, heldShot, restarted, type Shot, tick } from './director'
 import { drawLayer } from './layer'
 import { DOZE_MS, dozeFrame, idleBackground, routineFrame } from './idle'
@@ -113,6 +113,21 @@ function pictureOf(mod: Mod, now: number, log: Log): Picture | null {
     const name = `demo:${demo.at}:${f.index}:${f.routine ?? 'doze'}`
 
     return f.routine === null ? dozePicture(name, now - f.ms - DOZE_MS) : routinePicture(mod, name, f.routine, now - f.ms, log)
+  }
+  // The work demo: one picture, the stage's scene playing on from the
+  // demo's start under the layer of each step in turn.
+  if (demo?.kind === 'work') {
+    if (!demoStep(demo, now)) return null
+    const cast = castOf(mod, log)
+
+    return {
+      name: `demo:${demo.at}:work`,
+      draw: (t, columns) => {
+        const f = workDemoAt(demo, t)
+
+        return sceneWithLayer(heldShot(f.director, t), columns, cast, layerAt(f.activity, f.director, t))
+      },
+    }
   }
   if (demo?.kind === 'waiting') {
     if (!demoStep(demo, now)) return null

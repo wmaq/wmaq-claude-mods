@@ -72,3 +72,27 @@ test('/stage demo plays the whole library', async ($, on) => {
   await mountBand($)
   expect(text(await runStage($, 'demo'))).toBe('Playing 38 scenes, 10 s each (about 6 min). /stage demo stop ends it.')
 })
+
+test('/stage demo work plays the layer over the stage\'s scene, step by step, then ends', async ($, on) => {
+  const { clock } = engine(on)
+  await $.session.start(START)
+  const ui = await mountBand($)
+  expect(text(await runStage($, 'demo work'))).toBe('Playing what Clawd shows while Claude works, over mystery-box, in 14 steps, 3 s each (under a minute). /stage demo stop ends it.')
+  await ui.redraw(bandProps(100))
+  expect(await bandText($)).toContain('Work demo 1/14: thinking')
+  await clock.advance(3_000)
+  expect(await bandText($)).toContain('Work demo 2/14: searching')
+  await clock.advance(12 * 3_000)
+  expect(await bandText($)).toContain('Work demo 14/14: writing the answer')
+  await clock.advance(3_000)
+  expect(await bandText($)).not.toContain('Work demo')
+})
+
+test('/stage demo work with the pop-ups off still shows them, and says so', async ($, on) => {
+  engine(on)
+  await $.session.start(START)
+  await mountBand($)
+  await runStage($, 'bubbles off')
+  expect(text(await runStage($, 'demo work 2'))).toContain("Clawd's pop-ups are off: the demo shows them; /stage bubbles on turns them on.")
+  expect(await bandText($)).toContain("Work demo 1/14: thinking (Clawd's pop-ups are off)")
+})

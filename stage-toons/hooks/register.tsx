@@ -15,7 +15,7 @@ import { ended, reconcileRoster, rememberKind, spawned } from './agents'
 import { autoMatch, hasRules, type Heard, isWindowsPath, relativePath, type Signal, typedSkill, viaOf } from './auto'
 import { areaColumns, BAR_TONES, bandLayout, bandMode, type BandSite } from './band'
 import { autoText, bubblesText, hideText, moveFor, parseCommand, settingsText, settingsWords, showText, unknownText, usage, WORKFLOW_FILE, workflowSummary } from './command'
-import { demoAt, demoFor, demoLine, demoStep, idleDemoAt, idleDemoLine, startDemo, WAITING_DEMO_LINE } from './demo'
+import { demoAt, demoFor, demoLine, demoStep, idleDemoAt, idleDemoLine, startDemo, WAITING_DEMO_LINE, workDemoAt, workDemoLine } from './demo'
 import { createDirector, react, restarted, withAuditing, withScene } from './director'
 import { areaCells, type Log } from './frames'
 import { CELEBRATE, pickIdle } from './idle'
@@ -697,8 +697,8 @@ export const register: Register = on => {
         await $.command.register({
           name: COMMAND,
           description:
-            "Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene, a stage's scenes, the idle routines or the waiting toon; /stage workflow shows or reloads the workflow; /stage auto, bubbles, log and time: the automatic moves, Clawd's pop-ups, the history, the time spent",
-          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle] [seconds] | demo waiting | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | log [n] | time]',
+            "Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene, a stage's scenes, the idle routines, the waiting toon or what Clawd shows while Claude works; /stage workflow shows or reloads the workflow; /stage auto, bubbles, log and time: the automatic moves, Clawd's pop-ups, the history, the time spent",
+          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work] [seconds] | demo waiting | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | log [n] | time]',
           immediate: true,
         })
       ).command
@@ -838,13 +838,16 @@ export const register: Register = on => {
     }
     if (cmd.kind === 'help') return { text: usage(mod.workflow) }
     if (cmd.kind === 'usage') return { text: unknownText(mod.workflow, e.args) }
-    if (cmd.kind === 'demo' || cmd.kind === 'demo-idle' || cmd.kind === 'demo-waiting') {
-      const { demo, label } = demoFor(cmd, mod.workflow, now)
+    if (cmd.kind === 'demo' || cmd.kind === 'demo-idle' || cmd.kind === 'demo-waiting' || cmd.kind === 'demo-work') {
+      // The work demo plays over the stage's own scene.
+      const { demo, label } = demoFor(cmd, mod.workflow, now, mod.director.scene)
       // The bar's lines with the demo's line under it, at the band's width.
       const barLines = bandLayout(mod.workflow, before, false, mod.lastBand?.columns ?? 100, 'demo', countOf(await read($, tasksAtom))).length
       const text = startDemo(mod, demo, label, now, await read($, hiddenAtom), barLines)
       // The band grows to hold it.
       if (mod.demo) $.ui.invalidate('ui.render')
+      // Asked for, the work demo shows the pop-ups even while they are off.
+      if (mod.demo === demo && demo.kind === 'work' && !mod.isBubbles) return { text: `${text}\nClawd's pop-ups are off: the demo shows them; /stage bubbles on turns them on.` }
 
       return { text }
     }
@@ -1016,10 +1019,20 @@ export const register: Register = on => {
     const columns = e.props.bodyColumns
     const sceneFrame = mod.demo?.kind === 'scenes' ? demoAt(mod.demo, now) : null
     const idleFrameOfDemo = mod.demo?.kind === 'idle' ? idleDemoAt(mod.demo, now) : null
+    const workFrame = mod.demo?.kind === 'work' ? workDemoAt(mod.demo, now) : null
     if (sceneFrame) mod.demoLineIndex = sceneFrame.index
     if (idleFrameOfDemo) mod.demoLineIndex = idleFrameOfDemo.index
+    if (workFrame) mod.demoLineIndex = workFrame.index
     const demoText =
-      sceneFrame && mod.demo ? demoLine(sceneFrame, mod.demo, mod.workflow) : idleFrameOfDemo ? idleDemoLine(idleFrameOfDemo) : mod.demo?.kind === 'waiting' ? WAITING_DEMO_LINE : undefined
+      sceneFrame && mod.demo
+        ? demoLine(sceneFrame, mod.demo, mod.workflow)
+        : idleFrameOfDemo
+          ? idleDemoLine(idleFrameOfDemo)
+          : workFrame
+            ? workDemoLine(workFrame, mod.isBubbles)
+            : mod.demo?.kind === 'waiting'
+              ? WAITING_DEMO_LINE
+              : undefined
     const tasks = countOf(await read($, tasksAtom))
     const lines = progress === null ? [] : bandLayout(mod.workflow, progress, await read($, auditingAtom), columns, demoText, tasks)
     const site: BandSite = {
