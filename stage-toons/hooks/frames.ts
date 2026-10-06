@@ -6,18 +6,57 @@
 import type { IdleId } from '../types'
 import { cropLeft, placeIdle } from './area'
 import { demoAt, demoStep, idleDemoAt } from './demo'
-import { heldShot, restarted, tick } from './director'
+import { type Director, heldShot, restarted, type Shot, tick } from './director'
+import { drawLayer } from './layer'
 import { DOZE_MS, dozeFrame, idleBackground, routineFrame } from './idle'
 import { isFading, type Mod, type Picture, reseat } from './mod'
 import { encodeCells, type PixelBuffer } from './pixels'
 import { dissolve, FADE_MS } from './scene'
 import { REACTIONS, SCENES } from './scenes'
-import { type Cast, composeFrame } from './toon'
+import { type Cast, composeFrame, heroOnScreen } from './toon'
 import { waitingFrame } from './waiting'
 import { waitingDemoAt } from './waiting/demo'
 import type { SeatLog } from './waiting/seats'
+import { type Activity, type Layer, layerAt, settleActivity } from './work'
 
 export type Log = (text: string) => void
+
+// The highest the hero's head may be for the whole layer to show, and for
+// the bubble alone (it takes the top two pixel rows and its tail the
+// third): above them (a climb, a seat up high) it would cover his face.
+export const LAYER_CLEAR_Y = 4
+export const BUBBLE_CLEAR_Y = 2
+
+// The part of the layer that fits over a head at row y: all of it, the
+// bubble alone, or nothing.
+export function layerAbove(layer: Layer, y: number): Layer | null {
+  if (y >= LAYER_CLEAR_Y) return layer
+  if (y >= BUBBLE_CLEAR_Y && layer.bubble !== null) return { ...layer, badge: null, what: '' }
+
+  return null
+}
+
+// A shot of the scene with the activity layer over it: the badge, label
+// and bubble above the hero's head, and his eyes up while Claude thinks.
+// The layer is as it was worked out for its frame: an outgoing picture
+// keeps it through its dissolve.
+export function sceneWithLayer(shot: Shot, columns: number, cast: Cast, layer: Layer | null): PixelBuffer {
+  if (layer === null) return composeFrame(shot, columns, cast)
+  const head = heroOnScreen(shot, columns, cast)
+  const shown = layerAbove(layer, head.y)
+  const frame = composeFrame(shown?.badge === 'thinking' ? { ...shot, mood: 'think' } : shot, columns, cast)
+  if (shown) drawLayer(frame, shown, head.x)
+
+  return frame
+}
+
+// The layer for a frame of the stage's scene, with the activity settled;
+// none while /stage bubbles is off.
+export function layerFor(activity: Activity, director: Director, isBubbles: boolean, now: number): { activity: Activity; layer: Layer | null } {
+  const settled = settleActivity(activity, now)
+
+  return { activity: settled, layer: isBubbles ? layerAt(settled, director, now) : null }
+}
 
 // The mod's one Cast, built on the first frame. It keeps the first log it
 // was given: the hooks hand every frame the same one (register.tsx's
@@ -90,8 +129,10 @@ function pictureOf(mod: Mod, now: number, log: Log): Picture | null {
     if (!mod.shown?.name.startsWith('scene:')) mod.director = restarted(mod.director, now)
     const d = mod.director
     const cast = castOf(mod, log)
+    const { activity, layer } = layerFor(mod.activity, d, mod.isBubbles, now)
+    mod.activity = activity
 
-    return { name: `scene:${d.base}:${d.baseAt}`, draw: (t, columns) => composeFrame(heldShot(d, t), columns, cast) }
+    return { name: `scene:${d.base}:${d.baseAt}`, draw: (t, columns) => sceneWithLayer(heldShot(d, t), columns, cast, layer) }
   }
   if (mod.seats.since !== null && !mod.isWaitingBroken) return waitingPicture(`waiting:${mod.seats.since}`, mod.seats)
   if (now - mod.idleSince >= DOZE_MS) return dozePicture(`doze:${mod.idleSince}`, mod.idleSince)

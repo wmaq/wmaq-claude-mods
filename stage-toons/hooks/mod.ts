@@ -15,6 +15,7 @@ import { storeKey } from './progress'
 import { FADE_MS, type SceneId, STAGE_W } from './scene'
 import { type Cast, TOON_ROWS } from './toon'
 import { EMPTY_LOG, seat, type SeatLog } from './waiting/seats'
+import { type Activity, createActivity } from './work'
 import { DEFAULT_WORKFLOW } from './workflow'
 
 export const PLUGIN = 'stage-toons'
@@ -112,6 +113,10 @@ export type Mod = {
   shown: Picture | null
   fade: { from: Picture; at: number } | null
   broken: Set<SceneId>
+  // What Claude is doing right now (work.ts), as the layer over the stage's
+  // scene shows it, and whether the layer shows (/stage bubbles).
+  activity: Activity
+  isBubbles: boolean
   // What the scenes draw with (frames.ts's castOf), built once.
   cast: Cast | null
   // The agents known and their helpers at the desk row; whether the
@@ -168,6 +173,8 @@ export const createMod = (): Mod => ({
   shown: null,
   fade: null,
   broken: new Set(),
+  activity: createActivity(),
+  isBubbles: true,
   cast: null,
   roster: EMPTY_ROSTER,
   seats: EMPTY_LOG,

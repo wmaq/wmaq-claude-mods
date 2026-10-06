@@ -1,14 +1,15 @@
 import { expect, test } from 'claude-code/testing'
 
 import { EMPTY_ROSTER, spawned } from './agents'
-import { react, withAuditing, withScene } from './director'
-import { areaCells, castOf } from './frames'
+import { createDirector, react, withAuditing, withScene } from './director'
+import { areaCells, castOf, layerAbove } from './frames'
 import { DOZE_MS } from './idle'
 import { createMod, frameMs, isDeepAsleep, type Mod } from './mod'
-import { encodeCells, type PixelBuffer } from './pixels'
+import { encodeCells, glyphAt, type PixelBuffer } from './pixels'
 import { dissolve, FADE_MS } from './scene'
 import { C } from './scenes/kit'
 import { HELPER_COLORS } from './waiting'
+import { createActivity, said, toolStarted, withMode } from './work'
 
 const START = 1_000_000
 const quiet = () => undefined
@@ -241,4 +242,120 @@ test("a stage move, Fable's arrival and his departure while Claude works each di
   frame(mod, START + 8000)
   expect(mod.shown?.name).toBe(`scene:dice:${START + 8000}`)
   expect(mod.fade?.from.name).toBe(`scene:fable-audit:${START + 5000}`)
+})
+
+// The text of a picture's terminal row, as drawn now.
+const rowText = (b: PixelBuffer, row: number) => Array.from({ length: b.w }, (_, x) => String.fromCharCode(glyphAt(b, x, row)?.cp ?? 0x20)).join('').trim()
+
+test("the layer shows over the stage's scene while Claude works: a tool's badge and label, a line in its bubble", () => {
+  const mod = liveMod()
+  mod.isBandWorking = true
+  mod.activity = toolStarted(createActivity(), 'tu-1', 'test', 'npm test')
+  frame(mod, START + 1000)
+  const now = mod.shown!.draw(START + 1000, 48)
+  expect(rowText(now, 1)).toBe('npm test')
+  expect(has(now, C.liquid)).toBe(true)
+  mod.activity = said(mod.activity, 'All green!', START + 1100)
+  frame(mod, START + 1200)
+  expect(rowText(mod.shown!.draw(START + 1200, 48), 0)).toBe('All green!')
+  expect(rowText(mod.shown!.draw(START + 1200, 48), 1)).toBe('')
+})
+
+test("a head a little high keeps the bubble alone: stamp's crate; higher, nothing, and no eyes up", () => {
+  const busy = said(toolStarted(createActivity(), 'tu-1', 'edit', 'a.ts'), 'Saved it.', START + 900)
+  const stamp = liveMod()
+  stamp.isBandWorking = true
+  stamp.director = createDirector('stamp', false)
+  stamp.activity = busy
+  frame(stamp, START + 1000)
+  const b = stamp.shown!.draw(START + 1000, 48)
+  expect(rowText(b, 0)).toBe('Saved it.')
+  expect(rowText(b, 1)).toBe('')
+  expect(has(b, C.gold)).toBe(false)
+  // Fishing's seat: nothing at all, and thinking leaves his eyes as the scene has them.
+  const plain = liveMod()
+  plain.isBandWorking = true
+  plain.director = createDirector('fishing', false)
+  frame(plain, START + 1000)
+  const thinking = liveMod()
+  thinking.isBandWorking = true
+  thinking.director = createDirector('fishing', false)
+  thinking.activity = said(withMode(createActivity(), 'thinking'), 'Hmm.', START + 900)
+  frame(thinking, START + 1000)
+  expect(shownCells(thinking, START + 1000)).toBe(shownCells(plain, START + 1000))
+})
+
+test('layerAbove: the whole layer from row 4, the bubble alone from row 2', () => {
+  const layer = { badge: 'git' as const, what: 'git push', bubble: 'Pushed!', t: 0 }
+  expect(layerAbove(layer, 4)).toBe(layer)
+  expect(layerAbove(layer, 2)).toEqual({ badge: null, what: '', bubble: 'Pushed!', t: 0 })
+  expect(layerAbove({ ...layer, bubble: null }, 3)).toBe(null)
+  expect(layerAbove(layer, 1)).toBe(null)
+})
+
+test('with /stage bubbles off, the scene shows with no layer', () => {
+  const on = liveMod()
+  on.isBandWorking = true
+  frame(on, START + 1000)
+  const plain = shownCells(on, START + 1000)
+  const off = liveMod()
+  off.isBandWorking = true
+  off.isBubbles = false
+  off.activity = said(withMode(toolStarted(createActivity(), 'tu-1', 'git', 'git push'), 'thinking'), 'Pushed!', START + 900)
+  frame(off, START + 1000)
+  expect(shownCells(off, START + 1000)).toBe(plain)
+})
+
+test('thinking, thought puffs rise over Clawd and his eyes turn up', () => {
+  const plain = liveMod()
+  plain.isBandWorking = true
+  frame(plain, START + 1000)
+  const mod = liveMod()
+  mod.isBandWorking = true
+  mod.activity = withMode(createActivity(), 'thinking')
+  frame(mod, START + 1000)
+  expect(shownCells(mod, START + 1000)).not.toBe(shownCells(plain, START + 1000))
+  expect(mod.activity.shown.display.badge).toBe('thinking')
+})
+
+test('no layer over the idle Clawd, the waiting toon or a scene demo', () => {
+  const busy = said(toolStarted(createActivity(), 'tu-1', 'edit', 'a.ts'), 'Committed!', START)
+  const idle = liveMod()
+  idle.activity = busy
+  frame(idle, START + 500)
+  const demo = liveMod()
+  demo.isBandWorking = true
+  demo.activity = busy
+  demo.demo = { kind: 'scenes', at: START, seconds: 2, scenes: ['dice'] }
+  frame(demo, START + 500)
+  for (const mod of [idle, demo]) {
+    const b = mod.shown!.draw(START + 500, 48)
+    expect([rowText(b, 0), rowText(b, 1)]).toEqual(['', ''])
+  }
+})
+
+test("the outgoing scene keeps its bubble through the dissolve at a turn's end", () => {
+  const mod = liveMod()
+  mod.isBandWorking = true
+  frame(mod, START + 1000)
+  mod.activity = said(mod.activity, 'All green!', START + 1500)
+  frame(mod, START + 1600)
+  mod.isBandWorking = false
+  mod.activity = createActivity()
+  mod.idleSince = START + 1700
+  frame(mod, START + 1700)
+  expect(rowText(mod.fade!.from.draw(START + 1800, 48), 0)).toBe('All green!')
+  const cells = frame(mod, START + 1800)
+  expect(cells).not.toBe(shownCells(mod, START + 1800))
+})
+
+test("the layer hides while Clawd's head is high up: the ladder scene's climb", () => {
+  const mod = liveMod()
+  mod.isBandWorking = true
+  mod.director = createDirector('ladder', false)
+  mod.activity = toolStarted(createActivity(), 'tu-1', 'read', 'a.ts')
+  frame(mod, START + 1000)
+  expect(rowText(mod.shown!.draw(START + 1000, 48), 1)).toBe('a.ts')
+  frame(mod, START + 1000 + 6500)
+  expect(rowText(mod.shown!.draw(START + 1000 + 6500, 48), 1)).toBe('')
 })
