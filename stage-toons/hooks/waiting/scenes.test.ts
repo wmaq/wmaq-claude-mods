@@ -135,3 +135,12 @@ test("conveyor: a helper that left keeps its marks on the boxes it marked while 
   const left = seat(log, ended(roster, 'a1', T + 5000), T + 5000, true).log
   expect(marksOf(left, 1, T + 5600).map(m => m.seat)).toEqual([0, 1])
 })
+
+test("every scene: a leaving helper hops a row up out of its place before it walks", () => {
+  const roster = spawned(EMPTY_ROSTER, 'a0', 'opus', 0)
+  // Left at 9.6 s of the period: 0.1 s later the hop shows, the boat not bobbing.
+  const leftAt = T + 9600
+  const gone = seat(seated(['opus'], leftAt), ended(roster, 'a0', leftAt), leftAt, true).log
+  const top = (scene: (typeof WAITING_SCENE_IDS)[number]) => Math.min(...inSeat(waitingFrame(gone, leftAt + 100, scene), HELPER_COLORS.opus, 0).map(p => p.y))
+  expect(WAITING_SCENE_IDS.map(top)).toEqual([6, 8, 7, 6])
+})

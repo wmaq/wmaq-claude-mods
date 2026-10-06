@@ -84,3 +84,31 @@ test('a waiting scene that throws gives way to the laptops for the session, and 
     WAITING_SCENES.laptops = laptops
   }
 })
+
+test('a waiting scene that throws is cut to the laptops, not dissolved from', () => {
+  const rowing = WAITING_SCENES.rowing
+  let throws = false
+  try {
+    const mod = liveMod('rowing')
+    mod.roster = withAgents('claude-sonnet-5-5')
+    run(mod, START, START + 3000)
+    expect(mod.shown?.name).toBe(`waiting:${START}:rowing`)
+    // Throws once, in one state: the old picture would still draw.
+    WAITING_SCENES.rowing = {
+      ...rowing,
+      helper: (...args) => {
+        if (throws) {
+          throws = false
+          throw new Error('boom')
+        }
+        rowing.helper(...args)
+      },
+    }
+    throws = true
+    areaCells(mod, 48, START + 3100, quiet)
+    expect(mod.shown?.name).toBe(`waiting:${START}:laptops`)
+    expect(mod.fade).toBeNull()
+  } finally {
+    WAITING_SCENES.rowing = rowing
+  }
+})

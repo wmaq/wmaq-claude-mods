@@ -172,7 +172,9 @@ export function areaCells(mod: Mod, columns: number, now: number, log: Log): str
   if (picture === null) return null
   let current: PixelBuffer
   // A waiting scene that throws gives way to the laptops, and the laptops
-  // to the idle routine.
+  // to the idle routine: a cut, as the scene that threw can't be trusted to
+  // draw the dissolve's old picture.
+  let isCut = false
   for (;;) {
     try {
       current = picture.draw(now, columns)
@@ -188,10 +190,11 @@ export function areaCells(mod: Mod, columns: number, now: number, log: Log): str
         log(`stage-toons: the waiting toon failed and was replaced by the idle routine: ${String(error)}`)
       }
       picture = pictureOf(mod, now, log)!
+      isCut = true
     }
   }
-  if (mod.fade !== null && !isFading(mod, now)) mod.fade = null
-  if (mod.shown !== null && mod.shown.name !== picture.name && mod.fade === null) mod.fade = { from: mod.shown, at: now }
+  if (isCut || (mod.fade !== null && !isFading(mod, now))) mod.fade = null
+  if (!isCut && mod.shown !== null && mod.shown.name !== picture.name && mod.fade === null) mod.fade = { from: mod.shown, at: now }
   mod.shown = picture
   if (mod.fade === null) return encodeCells(current)
   let from: PixelBuffer
