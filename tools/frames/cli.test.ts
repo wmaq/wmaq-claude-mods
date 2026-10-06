@@ -74,6 +74,18 @@ test('a missing --workflow file says so in one line', () => {
   assert.throws(() => main(['band', '--stage', 'plan', '--workflow', path]), (e: Error) => e.message === `no workflow file at ${path}`)
 })
 
+test('waiting takes --scene and --demo, and names the sheet by them', () => {
+  const was = process.cwd()
+  process.chdir(dir)
+  try {
+    assert.equal(main(['waiting', '--agents', 'fable', '--scene', 'rowing', '--count', '1']).path, 'frames-waiting-rowing-fable.png')
+    assert.equal(main(['waiting', '--demo', '--scene', 'building', '--count', '1']).path, 'frames-waiting-building-demo.png')
+    assert.equal(main(['waiting', '--agents', 'fable', '--count', '1']).path, 'frames-waiting-laptops-fable.png')
+  } finally {
+    process.chdir(was)
+  }
+})
+
 test('waiting takes --columns, the area\'s width', () => {
   const out = join(dir, 'narrow.png')
   const result = main(['waiting', '--agents', 'fable,opus', '--columns', '30', '--count', '2', '--columns-per-row', '2', '--out', out])

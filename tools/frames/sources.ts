@@ -20,6 +20,7 @@ import { SCENES } from '../../stage-toons/hooks/scenes'
 import { applyMove, freshProgress } from '../../stage-toons/hooks/stages'
 import type { TaskCount } from '../../stage-toons/hooks/tasks'
 import { TOON_ROWS } from '../../stage-toons/hooks/toon'
+import { FALLBACK_WAITING, WAITING_SCENE_IDS, type WaitingSceneId } from '../../stage-toons/hooks/waiting/deal'
 import { DEFAULT_WORKFLOW, stageIds, stageOf } from '../../stage-toons/hooks/workflow'
 import { said, toolStarted, withMode } from '../../stage-toons/hooks/work'
 import { type Canvas, createCanvas, drawCells, drawText, type TextStyle } from './grid'
@@ -98,12 +99,15 @@ export function idleFrames(routine: string, doze: boolean, times: readonly numbe
 }
 
 // A mod whose band's area is on screen while Claude waits on these agents,
-// spawned at time 0 (a name's model family colours its helper).
-function waitingMod(agents: readonly string[]): Mod {
+// spawned at time 0 (a name's model family colours its helper), at a
+// waiting scene (the laptops when none is named).
+function waitingMod(agents: readonly string[], scene: WaitingSceneId = FALLBACK_WAITING): Mod {
   const mod = createMod()
   mod.band.requestId = 'r1'
   mod.isBandWorking = false
   mod.idleSince = 0
+  // The deck holds the one scene: the period is dealt it.
+  mod.waiting = { ...mod.waiting, deal: { deck: [scene], last: undefined } }
   agents.forEach((name, i) => {
     mod.roster = spawned(mod.roster, `agent-${i + 1}`, name, 0)
   })
@@ -142,10 +146,15 @@ export function workDemoFrames(opts: WorkDemoOptions, times: readonly number[]):
   return areaFrames(mod, STAGE_W, times).map(cells => cellsCanvas(cells, STAGE_W, TOON_ROWS))
 }
 
-export function waitingFrames(agents: readonly string[], times: readonly number[], columns = STAGE_W): Canvas[] {
-  if (agents.length === 0) throw new Error('waiting needs --agents, for example --agents fable,sonnet')
+// The waiting toon with these agents at work, or its demo ('demo': the
+// script /stage demo waiting plays, from time 0), at a waiting scene.
+export function waitingFrames(agents: readonly string[] | 'demo', times: readonly number[], columns = STAGE_W, scene: string = FALLBACK_WAITING): Canvas[] {
+  known('waiting scene', scene, WAITING_SCENE_IDS)
+  if (agents !== 'demo' && agents.length === 0) throw new Error('waiting needs --agents (for example --agents fable,sonnet) or --demo')
+  const mod = waitingMod(agents === 'demo' ? [] : agents, scene as WaitingSceneId)
+  if (agents === 'demo') mod.demo = { kind: 'waiting', at: 0, scene: scene as WaitingSceneId }
 
-  return areaFrames(waitingMod(agents), columns, times).map(cells => cellsCanvas(cells, columns, TOON_ROWS))
+  return areaFrames(mod, columns, times).map(cells => cellsCanvas(cells, columns, TOON_ROWS))
 }
 
 export type BandOptions = {

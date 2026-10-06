@@ -2,7 +2,7 @@
 // contact sheet. From the repository root:
 //   npx -y tsx tools/frames/cli.ts scene bricklaying
 //   npx -y tsx tools/frames/cli.ts idle classic --doze
-//   npx -y tsx tools/frames/cli.ts waiting --agents fable,sonnet
+//   npx -y tsx tools/frames/cli.ts waiting --agents fable,sonnet --scene rowing
 //   npx -y tsx tools/frames/cli.ts band --stage plan --feature "frame tool" --agents opus
 // See README.md beside this file for every option.
 
@@ -11,6 +11,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import type { Workflow } from '../../stage-toons/types'
 import { STAGE_SCENES } from '../../stage-toons/hooks/scenes'
 import { STAGE_W } from '../../stage-toons/hooks/scene'
+import { FALLBACK_WAITING } from '../../stage-toons/hooks/waiting/deal'
 import { parseWorkflow } from '../../stage-toons/hooks/workflow'
 import { type Canvas, toRgba } from './grid'
 import { encodePng } from './png'
@@ -21,7 +22,8 @@ const USAGE = `usage: npx -y tsx tools/frames/cli.ts <what> [options]
   scene <id> [--reaction advance|failure] [--auditing] [--width N]
         [--mode thinking|responding] [--phase <phase>] [--what text] [--say line]
   idle <routine> [--doze]
-  waiting --agents fable,sonnet,... [--columns N]
+  waiting --agents fable,sonnet,... [--scene id] [--columns N]
+  waiting --demo [--scene id] [--columns N]
   band --stage <id> [--feature F] [--message M] [--columns N] [--max-rows N]
        [--agents a,b] [--auditing] [--working] [--scene id] [--workflow file.json] [--idle routine]
        [--tasks done/total]
@@ -30,7 +32,7 @@ const USAGE = `usage: npx -y tsx tools/frames/cli.ts <what> [options]
 common: --from MS (0) --every MS (250; 500 for turn) --count N (16) --columns-per-row N (4)
         --scale N (1) --out file.png`
 
-const FLAGS = new Set(['auditing', 'doze', 'working'])
+const FLAGS = new Set(['auditing', 'demo', 'doze', 'working'])
 
 // The options each command takes, beside the common ones: anything else is
 // an error, so a mistyped option is not drawn with its default.
@@ -38,7 +40,7 @@ const COMMON = ['from', 'every', 'count', 'columns-per-row', 'scale', 'out']
 const OPTIONS: Record<string, readonly string[]> = {
   scene: ['reaction', 'auditing', 'width', 'mode', 'phase', 'what', 'say'],
   idle: ['doze'],
-  waiting: ['agents', 'columns'],
+  waiting: ['agents', 'columns', 'scene', 'demo'],
   band: ['stage', 'feature', 'message', 'columns', 'max-rows', 'agents', 'auditing', 'working', 'scene', 'workflow', 'idle', 'tasks'],
   turn: ['stage', 'scene', 'idle', 'start', 'end', 'columns'],
   'demo-work': ['stage', 'scene', 'seconds', 'workflow'],
@@ -146,8 +148,11 @@ function render(args: Args, times: readonly number[]): { frames: Canvas[]; name:
       return { frames: idleFrames(need(), opts.has('doze'), times), name: `frames-idle-${id?.replace(/[:*]/g, '-')}${opts.has('doze') ? '-doze' : ''}.png` }
     case 'waiting': {
       const agents = listOpt(opts, 'agents')
+      const scene = opts.get('scene') ?? FALLBACK_WAITING
+      const isDemo = opts.has('demo')
+      const frames = waitingFrames(isDemo ? 'demo' : agents, times, numberOpt(opts, 'columns', STAGE_W, 1), scene)
 
-      return { frames: waitingFrames(agents, times, numberOpt(opts, 'columns', STAGE_W, 1)), name: `frames-waiting-${agents.join('-')}.png` }
+      return { frames, name: `frames-waiting-${scene}-${isDemo ? 'demo' : agents.join('-')}.png` }
     }
     case 'band': {
       const stage = opts.get('stage')

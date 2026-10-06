@@ -3,6 +3,7 @@ import { test } from 'node:test'
 
 import { hex } from '../../stage-toons/hooks/pixels'
 import { HELPER_COLORS } from '../../stage-toons/hooks/waiting'
+import { WATER } from '../../stage-toons/hooks/waiting/rowing'
 import { CELL_H, CELL_W, type Canvas } from './grid'
 import { bandFrames, idleFrames, sceneFrames, turnFrames, waitingFrames, workDemoFrames } from './sources'
 
@@ -29,6 +30,17 @@ test('an unknown id is an error that lists the known ones', () => {
   assert.throws(() => bandFrames({ stage: 'plan', idle: 'nope' }, [0]), /unknown idle routine "nope"/)
   assert.throws(() => bandFrames({ stage: 'nope' }, [0]), /unknown stage "nope"; known: roadmap, brainstorm/)
   assert.throws(() => waitingFrames([], [0]), /waiting needs --agents/)
+  assert.throws(() => waitingFrames(['fable'], [0], 48, 'sailing'), /unknown waiting scene "sailing"; known: laptops, building, rowing, conveyor/)
+})
+
+test('waiting draws the scene asked for, and --demo the demo\'s script over it', () => {
+  const [rowing] = waitingFrames(['fable'], [3000], 48, 'rowing')
+  const [laptops] = waitingFrames(['fable'], [3000])
+  assert.ok(has(rowing!, WATER))
+  assert.ok(!has(laptops!, WATER))
+  const [early, full] = waitingFrames('demo', [500, 9000], 48, 'conveyor')
+  assert.ok(!has(early!, HELPER_COLORS.haiku))
+  for (const kind of ['sonnet', 'opus', 'fable', 'haiku'] as const) assert.ok(has(full!, HELPER_COLORS[kind]))
 })
 
 test("the waiting toon seats Fable's helper at the desk row, in violet", () => {
