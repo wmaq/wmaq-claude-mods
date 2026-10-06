@@ -83,11 +83,13 @@ You can move it yourself with `/stage`:
 | `/stage hide` | Hide or show the bar and the cartoons |
 | `/stage demo [<stage> \| idle] [seconds]` | Play every scene, one stage's scenes (by id), or the idle routines, 10 s each (2 to 60); a bare number is the seconds |
 | `/stage demo waiting` | Play the waiting toon with pretend agents (about 25 s) |
+| `/stage demo work [seconds]` | Play what Clawd shows while Claude works (thinking, each kind of tool, his lines), 3 s a step |
 | `/stage demo stop` | End the demo |
 | `/stage workflow` | Show the workflow, where it came from, and each stage's scenes |
 | `/stage workflow init` | Write the default workflow to `.claude/stage-toons.json` to edit |
 | `/stage workflow reload` | Read `.claude/stage-toons.json` again and switch to it |
 | `/stage auto [on \| off]` | Show the rules that move the stage by itself; turn them on or off |
+| `/stage bubbles [on \| off]` | Whether Clawd's pop-ups show: what Claude is doing over his head, and what he says |
 | `/stage log [n]` | The last n moves (15; up to 200) with how long each stage lasted |
 | `/stage time` | Time per feature and per stage |
 | `/stage help` | The list of commands (a `/stage` it doesn't understand answers one line, with the stage you may have meant) |
@@ -143,6 +145,35 @@ included) and the tokens in and out of Claude's turns and its agents'.
 While the session's cost can't be read, the dollars wait and go to the
 stage current when it can again.
 
+## While Claude works
+
+The area plays the stage's scene, and over Clawd's head it shows what
+Claude is doing right now:
+
+- **thinking**: thought puffs rise over his head, and he looks up;
+- **a tool at work**: a small icon for the kind of work (searching,
+  reading, editing, testing, building, git, running a command, the web,
+  agents) with a label naming what it touches (`auth.ts`, `npm test`);
+  it stays a moment after the tool ends, so quick calls in a row don't
+  flicker;
+- **writing the answer**: a speech bubble filling with dots.
+
+At a few moments he says a line in a speech bubble: `All green!` when
+tests pass, `Red tests.` when they fail, `Committed!`, `Pushed!`,
+`All done!` when Claude's last task is done, `Oops.` with a failed tool's
+flinch, `Onward!` when the stage moves forward, `Hi, Fable!` when Fable
+walks in. Every line is fixed: the mod asks no model for them.
+
+While Claude keeps a task list, the bar counts it after the stage:
+`5/10 Plan · 3 of 8 tasks · stage-toons` (with a `✓` when all are done;
+a finished list goes at the next turn's start). On a narrow bar the
+feature goes first, then the count.
+
+`/stage bubbles off` turns the pop-ups off (the icons, labels, puffs and
+bubbles) for every project; the scenes, the reactions and the tasks count
+stay. `/stage demo work` plays them all, 3 s a step, even while they are
+off.
+
 ## While Claude waits for you
 
 The area below the bar, 48 columns by 7 rows, is where Clawd lives: it
@@ -190,7 +221,8 @@ builds something up dissolves back to its start when it loops.
 each named with the stage that plays it, so you can see them without
 waiting for the work to reach each stage. `/stage demo plan` plays only the
 scenes of one stage, `/stage demo idle` the idle routines and
-`/stage demo waiting` the waiting toon. A new prompt ends the demo.
+`/stage demo waiting` the waiting toon and `/stage demo work` what Clawd
+shows while Claude works. A new prompt ends the demo.
 
 ## Your own workflow
 
@@ -246,8 +278,9 @@ stage an `auto` list, even an empty one, and the file has only its own.
 
 Beside `track` and `side`, the file may set how a session on the project
 starts: `"auto": false` with the rules off, `"hide": true` with the bar and
-the cartoons hidden (and `true` or `false` the other way). Where the file
-sets one, it wins over your own `/stage auto` or `/stage hide` setting, at
+the cartoons hidden, `"bubbles": false` with Clawd's pop-ups off (and
+`true` or `false` the other way). Where the file sets one, it wins over
+your own `/stage auto`, `/stage hide` or `/stage bubbles` setting, at
 each session's start and at `/stage workflow reload`; where it says
 nothing, yours applies. The commands still change the session at once, and
 say when the file starts it otherwise. `/stage workflow init` writes
@@ -295,8 +328,8 @@ workflow` shows the current workflow and its scenes.
 
 Limits: 1 to 15 track stages, up to 5 side stages; ids are lowercase
 letters, digits and dashes, and not one of `/stage`'s words (`next`,
-`back`, `hide`, `demo`, `feature`, `message`, `workflow`, `auto`, `log`,
-`time`, `help`, `done`). A mistake in the file is reported with where it
+`back`, `hide`, `demo`, `feature`, `message`, `workflow`, `auto`,
+`bubbles`, `log`, `time`, `help`, `done`). A mistake in the file is reported with where it
 is, and the session keeps a working workflow.
 
 ## Install
@@ -360,6 +393,10 @@ adds to Claude's context:
 - Claude's occasional `set_stage` calls and their one-line answers;
 - a one-line `[stage-toons]` note when the stage moves by itself or you
   move it with `/stage`.
+
+What Clawd shows while Claude works comes from hooks on the tool calls and
+on Claude Code's spinner (which it reads, not redraws): nothing reaches
+Claude, and no model is asked.
 
 ## Development
 

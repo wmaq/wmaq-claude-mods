@@ -1,8 +1,9 @@
 # frames: stage-toons' drawing as PNG contact sheets
 
 A developer tool, not part of the mod. It renders what stage-toons draws
-(a scene as the area plays it while Claude works, the idle Clawd, the
-waiting toon, a turn's start and end, the whole band with its bar) to a PNG of frames sampled over
+(a scene as the area plays it while Claude works, with what Claude is doing
+over Clawd's head, the idle Clawd, the waiting toon, a turn's start and
+end, the work demo, the whole band with its bar) to a PNG of frames sampled over
 time, so a session that can't see a terminal (a cloud session) can read
 the picture and check the pixel art. It imports the mod's own modules, so
 what it draws is what the mod draws.
@@ -15,6 +16,11 @@ file name are relative to the current folder. From the repository root:
 npx -y tsx tools/frames/cli.ts scene bricklaying
 npx -y tsx tools/frames/cli.ts scene dice --reaction advance
 npx -y tsx tools/frames/cli.ts scene red-pen --auditing
+npx -y tsx tools/frames/cli.ts scene bricklaying --phase test --what "npm test"
+npx -y tsx tools/frames/cli.ts scene dice --mode thinking
+npx -y tsx tools/frames/cli.ts scene dice --reaction failure --say "Red tests."
+npx -y tsx tools/frames/cli.ts demo-work --stage develop
+npx -y tsx tools/frames/cli.ts band --stage plan --tasks 3/8
 npx -y tsx tools/frames/cli.ts idle classic
 npx -y tsx tools/frames/cli.ts idle classic --doze --from 290000 --every 2000
 npx -y tsx tools/frames/cli.ts waiting --agents fable,sonnet,opus,haiku --every 500
@@ -28,11 +34,12 @@ npx -y tsx tools/frames/cli.ts turn --scene sweeping --from 4900 --every 83
 
 | Command | Draws |
 |---|---|
-| `scene <id> [--reaction advance\|failure] [--auditing] [--width N]` | the area while Claude works with that scene (48 columns by default); `--auditing` plays Fable's walk-in over it from time 0 |
+| `scene <id> [--reaction advance\|failure] [--auditing] [--width N] [--mode thinking\|responding] [--phase <phase>] [--what text] [--say line]` | the area while Claude works with that scene (48 columns by default); `--auditing` plays Fable's walk-in over it from time 0. The rest draw the layer over Clawd's head from time 0, held for the sheet: `--mode` the thought puffs or the typing dots, `--phase` a tool's icon (`search`, `read`, `edit`, `test`, `build`, `git`, `run`, `web`, `agents`) with `--what` its label, `--say` a line in a bubble |
 | `idle <routine> [--doze]` | the area's idle Clawd, the idle period starting at 0; `--doze` from the doze on (still after 5 minutes). Besides the five routines: `celebrate` (Done's), and `show-off:<stage id>`, the prop of that stage (any id: one of your own gets the page with a tick) |
 | `waiting --agents a,b,… [--columns N]` | the desk row: a helper per agent, coloured by model family (`fable`, `sonnet`, `opus`, `haiku`; anything else grey), arriving from time 0; `--columns` is the area's width (48 by default) |
-| `band --stage <id> [--feature F] [--message M] [--columns N] [--max-rows N] [--agents …] [--auditing] [--working] [--scene id] [--workflow file.json] [--idle routine]` | the band: the bar's lines (100 columns by default), and under them the idle Clawd (`--idle`'s routine, classic by default), or the waiting toon with `--agents`; `--working` draws the stage's scene instead (its first, or `--scene`'s; `--auditing` walks Fable in from time 0), and ignores `--agents` and `--idle` |
+| `band --stage <id> [--feature F] [--message M] [--columns N] [--max-rows N] [--agents …] [--auditing] [--working] [--scene id] [--workflow file.json] [--idle routine] [--tasks done/total]` | the band: the bar's lines (100 columns by default; `--tasks 3/8` adds Claude's task count), and under them the idle Clawd (`--idle`'s routine, classic by default), or the waiting toon with `--agents`; `--working` draws the stage's scene instead (its first, or `--scene`'s; `--auditing` walks Fable in from time 0), and ignores `--agents` and `--idle` |
 | `turn [--stage id] [--scene id] [--idle routine] [--start MS] [--end MS] [--columns N]` | the area through one turn: the idle Clawd (classic, or `--idle`'s) until `--start` (1000), the stage's scene (the stage's first, or `--scene`) until `--end` (5000), then the idle Clawd again, both edges dissolving (`--start 0` skips the idle Clawd before). Its own defaults are `--every 500 --count 16`; a closer look at an edge takes `--from` and `--every 83` |
+| `demo-work [--stage id] [--scene id] [--seconds N] [--workflow file.json]` | `/stage demo work`: the layer's 14 steps over the stage's scene (its first, or `--scene`'s), `--seconds` each (3); its own defaults sample the middle of each step |
 
 Common options: `--from MS` (0), `--every MS` (250), `--count N` (16),
 `--columns-per-row N` (4), `--scale N` (1), `--out file.png` (default
