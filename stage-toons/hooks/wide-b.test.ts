@@ -4,6 +4,7 @@ import { EMPTY, getPixel, type PixelBuffer } from './pixels'
 import { type AreaSize, renderFull, renderSeamed, type Scene } from './scene'
 import { SCENES } from './scenes'
 import { C } from './scenes/kit'
+import { ticketAt } from './scenes/waiting-bench'
 
 // The wide sets of stargazing, sweeping, the terminal, the test tubes, the
 // workbench, the dominoes, the waiting bench and the writing desk.
@@ -199,6 +200,48 @@ test('the dominoes: the extra row dissolves with the core at the loop point', ()
 test('the waiting bench runs on from 28, legs as far apart as its own', () => {
   const b = draw('waiting-bench', 1)
   expect([42, 59, 76].map(x => at(b, x, 12))).toEqual([C.woodDark, C.woodDark, C.woodDark])
+})
+
+test('the waiting bench: the wall clock has a rim, a face, ticks at 12, 3, 6 and 9, and a hand going round', () => {
+  for (const columns of [48, 120]) {
+    const b = draw('waiting-bench', 0, { columns, rows: 7 })
+    // The rim's top, left and right; the face inside it.
+    expect([at(b, 39, 1), at(b, 35, 5), at(b, 43, 5), at(b, 39, 9)]).toEqual([C.gray, C.gray, C.gray, C.gray])
+    expect([at(b, 37, 3), at(b, 41, 7)]).toEqual([C.paper, C.paper])
+    // At 0 the hand points up from the centre to its tick at 12.
+    expect([at(b, 39, 4), at(b, 39, 3), at(b, 39, 5)]).toEqual([C.ink, C.ink, C.ink])
+    expect([at(b, 39, 2), at(b, 42, 5), at(b, 39, 8), at(b, 36, 5)]).toEqual([C.darkGray, C.darkGray, C.darkGray, C.darkGray])
+  }
+  // Half a second on, the hand points between 1 and 2.
+  const later = draw('waiting-bench', 0.5, { columns: 48, rows: 7 })
+  expect([at(later, 40, 4), at(later, 41, 3), at(later, 39, 3)]).toEqual([C.ink, C.ink, C.paper])
+})
+
+test('the waiting bench: a ticket display, a water cooler and a plant every 51 columns, the bench going on behind', () => {
+  const b = draw('waiting-bench', 0, WIDE)
+  for (const x of [48, 99, 150]) {
+    // The display on the wall, rows 2 to 8: a frame round a dark screen with red digits.
+    expect([at(b, x + 3, 2), at(b, x + 13, 8), at(b, x + 4, 3)]).toEqual([C.darkGray, C.darkGray, C.ink])
+    // The cooler's bottle and body, standing on the floor in front of the bench.
+    expect([at(b, x + 20, 3), at(b, x + 20, 4), at(b, x + 19, 11), at(b, x + 19, 13)]).toEqual([C.glass, C.blue, C.paperShade, C.darkGray])
+    // The plant's leaves and its pot.
+    expect([at(b, x + 37, 5), at(b, x + 35, 11), at(b, x + 37, 13)]).toEqual([C.green, C.brick, C.brick])
+  }
+  // At the start the display reads 42: a 4 and a 2, in red.
+  const digit = (x: number) => Array.from({ length: 15 }, (_, p) => (at(b, x + (p % 3), 3 + Math.floor(p / 3)) === C.red ? '1' : '0')).join('')
+  expect([digit(53), digit(57)]).toEqual(['101101111001001', '111001111100111'])
+})
+
+test("the waiting bench: the display counts a ticket up every 3 s of the scene's own time, on through the loop point", () => {
+  const reads = (time: number) => wings(draw('waiting-bench', time), c => c === C.red)
+  expect(reads(2.9)).toBe(reads(0.1))
+  expect(reads(3.1)).not.toBe(reads(2.9))
+  // Past the 8 s loop it reads on, not back to the start: 44 at 8.1 s, as at 6.1 s.
+  expect(reads(8.1)).toBe(reads(6.1))
+  expect(reads(8.1)).not.toBe(reads(0.1))
+  expect([0, 2.9, 3, 8.1, 9].map(ticketAt)).toEqual([42, 42, 43, 44, 45])
+  // From 99 round to 00.
+  expect([ticketAt(57 * 3), ticketAt(58 * 3)]).toEqual([99, 0])
 })
 
 test('the writing desk: a second stack, written already, on the desk past the core', () => {
