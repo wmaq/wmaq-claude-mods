@@ -73,6 +73,13 @@ test('a bubble takes the label\'s place: its line on paper in the top row, padde
   expect(getPixel(b, 17, 2)).toBe(EMPTY)
 })
 
+test('with hasTail false the bubble has no tail, for a head at its row', () => {
+  const b = createBuffer(48, AREA_H)
+  drawLayer(b, layer({ bubble: 'Saved it.' }), 12, false)
+  expect(textIn(b, 0).trimEnd()).toBe(`${' '.repeat(13)}Saved it.`)
+  expect(getPixel(b, 12, 2)).toBe(EMPTY)
+})
+
 test('with no badge, the bubble starts at the head', () => {
   const b = createBuffer(48, AREA_H)
   drawLayer(b, layer({ bubble: '...' }), 20)

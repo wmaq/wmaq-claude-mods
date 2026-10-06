@@ -45,7 +45,7 @@ export function sceneWithLayer(shot: Shot, columns: number, cast: Cast, layer: L
   const head = heroOnScreen(shot, columns, cast)
   const shown = layerAbove(layer, head.y)
   const frame = composeFrame(shown?.badge === 'thinking' ? { ...shot, mood: 'think' } : shot, columns, cast)
-  if (shown) drawLayer(frame, shown, head.x)
+  if (shown) drawLayer(frame, shown, head.x, head.y > BUBBLE_CLEAR_Y)
 
   return frame
 }

@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { afterTaskCall, atTurnStart, countOf, countText, isAllDone, NO_TASKS, taskCreated, taskUpdated, todosWritten } from './tasks'
+import { afterTaskCall, atTurnStart, countOf, countText, isAllDone, NO_TASKS, sameCount, TASK_TOOLS, taskCreated, taskUpdated, todosWritten } from './tasks'
 
 test('tasks are counted as they are created, updated and deleted', () => {
   let list = taskCreated(NO_TASKS, '1')
@@ -65,4 +65,12 @@ test("a call's result moves the list: TaskCreate's id, TaskUpdate's status chang
   expect(afterTaskCall(list, 'Read', { file_path: 'a' }, 'text')).toBe(list)
   expect(countOf(afterTaskCall(list, 'TodoWrite', { todos: [] }, { oldTodos: [], newTodos: [{ content: 'x', status: 'completed', activeForm: 'X' }] }))).toEqual({ done: 1, total: 1 })
   expect(countOf(afterTaskCall(list, 'TodoWrite', { todos: [{ content: 'x', status: 'pending', activeForm: 'X' }] }, 'ok'))).toEqual({ done: 0, total: 1 })
+})
+
+test('sameCount: the same done and total, or both none', () => {
+  expect(sameCount(null, null)).toBe(true)
+  expect(sameCount({ done: 1, total: 2 }, { done: 1, total: 2 })).toBe(true)
+  expect(sameCount({ done: 1, total: 2 }, { done: 2, total: 2 })).toBe(false)
+  expect(sameCount(null, { done: 0, total: 1 })).toBe(false)
+  expect([...TASK_TOOLS].sort()).toEqual(['TaskCreate', 'TaskUpdate', 'TodoWrite'])
 })

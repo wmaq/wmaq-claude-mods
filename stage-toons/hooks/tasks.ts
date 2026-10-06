@@ -46,6 +46,9 @@ export function countOf(list: TaskList): TaskCount | null {
   return { done: statuses.filter(s => s === 'completed').length, total: statuses.length }
 }
 
+// Whether two counts read the same on the bar.
+export const sameCount = (a: TaskCount | null, b: TaskCount | null): boolean => a?.done === b?.done && a?.total === b?.total
+
 export const isAllDone = (list: TaskList): boolean => {
   const count = countOf(list)
 
@@ -68,9 +71,12 @@ const field = (value: unknown, key: string): unknown => (typeof value === 'objec
 const idOf = (value: unknown): string | undefined =>
   typeof value === 'string' && value !== '' ? value : typeof value === 'number' && Number.isFinite(value) ? String(value) : undefined
 
+// The tools that move the list.
+export const TASK_TOOLS: ReadonlySet<string> = new Set(['TaskCreate', 'TaskUpdate', 'TodoWrite'])
+
 // The list after a call of the main conversation that did not fail, read
-// from its arguments and its result (the tool's output, whose shape the
-// engine's types don't give, so each field is checked): TaskCreate adds its
+// from its arguments and its result (the tool's record, as the engine's
+// BuiltinToolResults types it; each field is still checked): TaskCreate adds its
 // task (the result's task.id, or a "#3" in a text result), a TaskUpdate
 // sets the status it changed to (or the one it asked for) unless its
 // result says it failed, TodoWrite gives the whole list (the result's, or

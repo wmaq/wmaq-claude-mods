@@ -3,7 +3,7 @@
 // top two terminal rows), a badge for what Claude is doing, its label, and
 // a speech bubble. The whole layer is kept inside the area.
 
-import { clearCell, type PixelBuffer, setPixel, drawText } from './pixels'
+import { clearCell, drawText, type PixelBuffer, setPixel } from './pixels'
 import { drawSprite, type Sprite } from './scene'
 import { C } from './scenes/kit'
 import type { Phase } from './phase'
@@ -62,8 +62,9 @@ const fitText = (text: string, cells: number): string => (cells <= 0 ? '' : text
 // column headX (in the area's own columns). The badge's left edge is at
 // headX - 2; the label (or the bubble, which takes its place) one cell to
 // its right, or the bubble at headX with no badge; all moved left as far as
-// it takes to fit.
-export function drawLayer(b: PixelBuffer, layer: Layer, headX: number): void {
+// it takes to fit. hasTail false leaves out the bubble's tail (pixel row 2),
+// for a head that reaches that row.
+export function drawLayer(b: PixelBuffer, layer: Layer, headX: number, hasTail = true): void {
   const hasBadge = layer.badge !== null
   const text = layer.bubble ?? layer.what
   const isBubble = layer.bubble !== null
@@ -91,5 +92,5 @@ export function drawLayer(b: PixelBuffer, layer: Layer, headX: number): void {
   }
   drawText(b, at + 1, BUBBLE_ROW, shown, C.ink)
   // The tail, under the bubble's first cell.
-  setPixel(b, at, BUBBLE_ROW * 2 + 2, C.paper)
+  if (hasTail) setPixel(b, at, BUBBLE_ROW * 2 + 2, C.paper)
 }

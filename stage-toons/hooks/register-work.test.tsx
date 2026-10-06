@@ -132,6 +132,13 @@ test('the task tools count on the bar, redrawing it; the last task done says All
   expect(await bandText($, 'terminal', WORKING)).not.toContain('tasks')
 })
 
+test('task calls of one batch, ending together, each count', async ($, on) => {
+  taskTools(engine(on).world)
+  await $.session.start(START)
+  await Promise.all(['a', 'b', 'c'].map(s => callTool($, 'TaskCreate', { subject: s, description: s })))
+  expect(await bandText($)).toContain('0 of 3 tasks')
+})
+
 test('a list with work left stays at the next turn', async ($, on) => {
   taskTools(engine(on).world)
   await $.session.start(START)

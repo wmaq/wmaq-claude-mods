@@ -5,7 +5,7 @@ import { createDirector, react, withAuditing, withScene } from './director'
 import { areaCells, castOf, layerAbove } from './frames'
 import { DOZE_MS } from './idle'
 import { createMod, frameMs, isDeepAsleep, type Mod } from './mod'
-import { encodeCells, glyphAt, type PixelBuffer } from './pixels'
+import { encodeCells, getPixel, glyphAt, type PixelBuffer } from './pixels'
 import { dissolve, FADE_MS } from './scene'
 import { C } from './scenes/kit'
 import { HELPER_COLORS } from './waiting'
@@ -272,6 +272,11 @@ test("a head a little high keeps the bubble alone: stamp's crate; higher, nothin
   expect(rowText(b, 0)).toBe('Saved it.')
   expect(rowText(b, 1)).toBe('')
   expect(has(b, C.gold)).toBe(false)
+  // His head reaches pixel row 2 there: the bubble keeps off it, no tail.
+  expect(has(b, C.paper)).toBe(true)
+  let paperBelow = false
+  for (let x = 0; x < b.w; x++) if (getPixel(b, x, 2) === C.paper) paperBelow = true
+  expect(paperBelow).toBe(false)
   // Fishing's seat: nothing at all, and thinking leaves his eyes as the scene has them.
   const plain = liveMod()
   plain.isBandWorking = true

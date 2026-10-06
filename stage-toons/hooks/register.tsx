@@ -9,7 +9,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, ToolCallInput } from 'claude-code'
 
-import type { Progress, ScenePick, SessionWorkflow, StageId, Workflow, WorkflowSettings } from '../types'
+import type { Progress, ScenePick, SessionWorkflow, StageId, TaskList, Workflow, WorkflowSettings } from '../types'
 import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { ended, reconcileRoster, rememberKind, spawned } from './agents'
 import { autoMatch, hasRules, type Heard, isWindowsPath, relativePath, type Signal, typedSkill, viaOf } from './auto'
@@ -30,7 +30,7 @@ import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolSchema, workflowText }
 import type { SceneId } from './scene'
 import { STAGE_SCENES } from './scenes'
 import { applyMove, describe, freshProgress, isAdvance, reconcile, stageLabel } from './stages'
-import { afterTaskCall, atTurnStart, countOf, isAllDone } from './tasks'
+import { afterTaskCall, atTurnStart, countOf, isAllDone, sameCount, TASK_TOOLS } from './tasks'
 import { TOON_ROWS } from './toon'
 import { isDone } from './track'
 import { createActivity, lineOf, said, toolEnded, toolStarted, withMode } from './work'
@@ -621,16 +621,24 @@ async function reloadWorkflow($: EngineInterface, mod: Mod, now: number): Promis
 }
 
 // A call of the main conversation's that ended: the line it says (a test
-// run, a commit, a push), and the task list it moved, the bar redrawn with
-// the count and "All done!" said when the last task is done.
+// run, a commit, a push), and the task list it moved, the bar redrawn when
+// the count changed and "All done!" said when the last task is done. The
+// list is read and written in one update: a batch's task calls end
+// together, and each must build on the one before.
 async function heardCall($: EngineInterface, mod: Mod, args: ToolArgs, output: unknown, isError: boolean, now: number) {
-  const moment = momentOf(String(args.tool), args, isError)
+  const tool = String(args.tool)
+  const moment = momentOf(tool, args, isError)
   if (moment !== null) mod.activity = said(mod.activity, lineOf(moment, now), now)
-  if (isError) return
-  const before = await read($, tasksAtom)
-  const after = afterTaskCall(before, String(args.tool), args, output)
-  if (after === before) return
-  await update($, tasksAtom, () => after)
+  if (isError || !TASK_TOOLS.has(tool)) return
+  let before: TaskList = {}
+  let after: TaskList = {}
+  await update($, tasksAtom, list => {
+    before = list
+    after = afterTaskCall(list, tool, args, output)
+
+    return after
+  })
+  if (sameCount(countOf(before), countOf(after))) return
   $.ui.invalidate('ui.render')
   if (isAllDone(after) && !isAllDone(before)) mod.activity = said(mod.activity, lineOf('all-done', now), now)
 }
@@ -782,7 +790,14 @@ export const register: Register = on => {
       result = await next(e)
     } finally {
       // The clock fails only as the plugin unloads: the call's own outcome stands.
-      const end = phase === null ? null : await $.clock.now().catch(() => null)
+      let end: number | null = null
+      if (phase !== null) {
+        try {
+          end = await $.clock.now()
+        } catch {
+          end = null
+        }
+      }
       if (end !== null) mod.activity = toolEnded(mod.activity, e.tool_use_id, end)
     }
     if (e.agentId !== undefined || result.deny !== undefined) return result

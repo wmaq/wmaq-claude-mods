@@ -50,13 +50,20 @@ const WRAPPERS: Record<string, readonly string[]> = {
   time: ['-f', '--format', '-o', '--output'],
 }
 
+// The runners named with a word of their own before the command.
+const RUNNERS: Record<string, string> = { uv: 'run', poetry: 'run', pnpm: 'exec', pipenv: 'run' }
+
 // A command's words without what only runs it: environment assignments,
-// and the wrappers (npx, env, sudo, nice, timeout with its duration, time)
-// with their options.
+// the wrappers (npx, env, sudo, nice, timeout with its duration, time)
+// with their options, and uv run, poetry run, pnpm exec, pipenv run.
 function bare(words: readonly string[]): string[] {
   let i = 0
   for (;;) {
     while (i < words.length && isAssignment(words[i]!)) i++
+    if (RUNNERS[words[i] ?? ''] !== undefined && words[i + 1] === RUNNERS[words[i]!]) {
+      i += 2
+      continue
+    }
     const wrapper = WRAPPERS[words[i] ?? '']
     if (!wrapper) break
     const isTimeout = words[i] === 'timeout'
@@ -78,7 +85,7 @@ export function firstCommand(line: string): string[] {
 }
 
 const TEST_RUNNERS = new Set(['jest', 'vitest', 'pytest', 'mocha', 'rspec', 'phpunit', 'ctest'])
-const TEST_SUBCOMMANDS = new Set(['go', 'cargo', 'dotnet', 'mvn', 'gradle', 'bun'])
+const TEST_SUBCOMMANDS = new Set(['go', 'cargo', 'dotnet', 'mvn', 'gradle', 'gradlew', './gradlew', 'bun', 'deno'])
 const PACKAGE_MANAGERS = new Set(['npm', 'pnpm', 'yarn'])
 const BUILD_TOOLS = new Set(['tsc', 'make', 'cmake', 'webpack', 'gradle', 'mvn'])
 
@@ -158,7 +165,7 @@ export function whatOf(tool: string, args: Args): string {
     case 'Glob':
       return labelOf(text(args.pattern))
     case 'Bash':
-      return labelOf(firstCommand(text(args.command)).slice(0, 2).join(' '))
+      return labelOf(gitless(firstCommand(text(args.command))).slice(0, 2).join(' '))
     case 'WebFetch':
       return labelOf(hostOf(text(args.url)))
     case 'WebSearch':
@@ -172,6 +179,17 @@ export function whatOf(tool: string, args: Args): string {
   }
 }
 
+// A git command's words without git's global options (-C <dir>, -c k=v,
+// --no-pager): git, then its verb and what follows. Other commands as
+// given.
+function gitless(words: readonly string[]): string[] {
+  if (words[0] !== 'git') return [...words]
+  let i = 1
+  while (i < words.length && words[i]!.startsWith('-')) i += words[i] === '-C' || words[i] === '-c' ? 2 : 1
+
+  return ['git', ...words.slice(i)]
+}
+
 // The moments a call says a line at, as it ends: a test run that passed or
 // failed, a commit, a push (anywhere in the shell line).
 export type Moment = 'test-pass' | 'test-fail' | 'commit' | 'push'
@@ -181,7 +199,7 @@ export function momentOf(tool: string, args: Args, isError: boolean): Moment | n
   const commands = commandsOf(text(args.command)).map(bare)
   if (isTest(firstCommand(text(args.command)))) return isError ? 'test-fail' : 'test-pass'
   if (isError) return null
-  const gitDoes = (verb: string) => commands.some(w => w[0] === 'git' && w.slice(1).filter((word, i, all) => !word.startsWith('-') && all[i - 1] !== '-C' && all[i - 1] !== '-c')[0] === verb)
+  const gitDoes = (verb: string) => commands.some(w => w[0] === 'git' && gitless(w)[1] === verb)
   if (gitDoes('push')) return 'push'
 
   return gitDoes('commit') ? 'commit' : null
