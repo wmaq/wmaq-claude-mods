@@ -120,6 +120,19 @@ test("thought-clouds' wing clouds drift right to left on unwrapped time, never j
   expect(away(sky(s.loop + 2), 9)).toEqual(away(sky(2), 0))
 })
 
+test('mystery-box: the piles of taped boxes stand 5 columns apart, from 52 to the edge', () => {
+  const b = draw('mystery-box', 1, 200)
+  // A pile is 19 columns wide; one every 24: at 52, 76, 100, ...
+  for (const x of [52, 76, 100, 124, 148, 172]) {
+    expect(at(b, x, 13)).toBe(C.woodDark)
+    expect(at(b, x + 18, 13)).toBe(C.woodDark)
+    expect(at(b, x + 6, 2)).toBe(C.woodDark)
+    for (let gap = x + 19; gap < x + 24; gap++) for (let y = 0; y < 14; y++) expect(at(b, gap, y)).toBe(EMPTY)
+  }
+  // The last pile at 196 is cut by the edge.
+  expect(at(b, 196, 13)).toBe(C.woodDark)
+})
+
 test('light-bulbs: the wings\' bulbs are unlit, each on a wire from the area\'s top', () => {
   for (const t of moments(scene('light-bulbs'))) {
     const b = draw('light-bulbs', t, 120)
