@@ -64,13 +64,28 @@ test('stargazing: the shooting star starts further right, on the same slope and 
   }
 })
 
-test('sweeping: past the core the shelf holds books already shelved, the same at the fade', () => {
-  const b = draw('sweeping', 0)
-  expect([48, 49, 50, 51].map(x => at(b, x, 3))).toEqual([C.blue, C.red, C.green, C.gold])
-  // Runs of 4 every 9 columns: quieter than a full shelf.
-  expect(at(b, 52, 3)).toBe(EMPTY)
-  expect(at(b, 57, 3)).toBe(C.blue)
-  expect(wings(draw('sweeping', 7.99))).toBe(wings(b))
+test('sweeping: past the core the shelf is full of books already shelved, to the edge, the same at the fade', () => {
+  const b = draw('sweeping', 0, WIDE)
+  // A book on every column from 45 (after the core's eighth) to the edge, standing on the plank.
+  expect(gaps(b, 6, 45, 200)).toEqual([])
+  // 3 or 4 tall: never above the core's books' top row (3), and none a twin of its left neighbour.
+  expect(gaps(b, 2, 45, 200)).toHaveLength(155)
+  const tall = Array.from({ length: 155 }, (_, i) => at(b, 45 + i, 3)).filter(c => c !== EMPTY).length
+  expect(tall).toBeGreaterThan(100)
+  expect(tall).toBeLessThan(155)
+  for (let x = 46; x < 200; x++) expect(at(b, x, 6) === at(b, x - 1, 6)).toBe(false)
+  // The four colours, mostly dimmed: a few books as bright as the core's, not most.
+  const bright = Array.from({ length: 155 }, (_, i) => at(b, 45 + i, 6)).filter(c => ([C.blue, C.red, C.green, C.gold] as number[]).includes(c)).length
+  expect(bright).toBeGreaterThan(15)
+  expect(bright).toBeLessThan(80)
+  // The same books at every width, and through the fade.
+  const mid = draw('sweeping', 3, AREA)
+  for (let x = 45; x < 120; x++) for (let y = 2; y < 8; y++) expect(at(mid, x, y)).toBe(at(b, x, y))
+  expect(wings(draw('sweeping', 7.99, WIDE))).toBe(wings(b))
+  // At 48 columns the shelf is as it was: bare from 45, ending at 46.
+  const core = draw('sweeping', 7.99, { columns: 48, rows: 9 })
+  expect([45, 46].map(x => at(core, x, 5))).toEqual([EMPTY, EMPTY])
+  expect(at(core, 46, 7)).toBe(C.woodDark)
 })
 
 test('the terminal: the desk joins at 44, a leg every 23 columns after its right leg', () => {
@@ -141,4 +156,24 @@ test('the writing desk: a second stack, written already, on the desk past the co
     expect(at(b, 52, 5)).toBe(EMPTY)
   }
   expect(at(draw('writing-desk', 0), 68, 13)).toBe(C.woodDark)
+})
+
+test('the writing desk: the growing stack stands on the desk, never over its top, at every width', () => {
+  for (const columns of [48, 120, 200]) {
+    for (let t = 0.013; t < 6; t += 0.1) {
+      const b = draw('writing-desk', t, { columns, rows: 9 })
+      // The desk's top is whole from 10 to the edge, the stack's bottom page on the row above.
+      expect(gaps(b, 12, 10, columns)).toEqual([])
+      for (let x = 10; x < columns; x++) expect(at(b, x, 12)).toBe(C.wood)
+      expect(at(b, 36, 11)).toBe(C.paper)
+      expect(at(b, 41, 11)).toBe(C.paper)
+      // Clawd's legs aside, nothing under the desk but its legs.
+      for (let x = 32; x < columns; x++) expect([EMPTY, C.woodDark]).toContain(at(b, x, 13))
+      // At most 6 pages: the top one on row 6, the rows above clear over the stack.
+      for (let y = -4; y < 6; y++) for (let x = 36; x < 42; x++) expect(at(b, x, y)).toBe(EMPTY)
+    }
+  }
+  // It grows a page every 0.9 s, from one to six.
+  const pages = (t: number) => Array.from({ length: 6 }, (_, i) => at(draw('writing-desk', t), 36, 11 - i)).filter(c => c !== EMPTY).length
+  expect([0.1, 1, 1.9, 2.8, 3.7, 4.6, 5.9].map(pages)).toEqual([1, 2, 3, 4, 5, 6, 6])
 })
