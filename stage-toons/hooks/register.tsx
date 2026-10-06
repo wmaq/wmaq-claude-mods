@@ -14,7 +14,7 @@ import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { ended, reconcileRoster, rememberKind, spawned } from './agents'
 import { autoMatch, hasRules, type Heard, isWindowsPath, relativePath, type Signal, typedSkill, viaOf } from './auto'
 import { areaSize, BAR_TONES, bandLayout, bandMode, type BandSite } from './band'
-import { autoText, bubblesText, hideText, moveFor, parseCommand, settingsText, settingsWords, showText, unknownText, usage, WORKFLOW_FILE, workflowSummary } from './command'
+import { autoText, bubblesText, CALM_DEMO_LINE, calmText, hideText, moveFor, parseCommand, settingsText, settingsWords, showText, unknownText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { demoAt, demoFor, demoLine, demoStep, idleDemoAt, idleDemoLine, startDemo, waitingDemoLine, workDemoAt, workDemoLine } from './demo'
 import { createDirector, react, restarted, withAuditing, withScene } from './director'
 import { areaCells, type Log } from './frames'
@@ -39,6 +39,7 @@ import { DEFAULT_WORKFLOW, parseWorkflow, sameWorkflow, stageIds, stageList, sta
 const HIDDEN_KEY = 'hidden'
 const AUTO_KEY = 'auto'
 const BUBBLES_KEY = 'bubbles'
+const CALM_KEY = 'calm'
 const WIDTH_KEY = 'width'
 const PRUNED_KEY = 'pruned-at'
 // Set once the first session's welcome toast was given.
@@ -85,6 +86,9 @@ const usdAtom = atom({ plugin: 'stage-toons', key: 'usdCredited' } as const, nul
 const tasksAtom = atom({ plugin: 'stage-toons', key: 'tasks' } as const, {})
 // Whether Clawd's pop-ups show, for this session, as autoAtom is.
 const bubblesAtom = atom({ plugin: 'stage-toons', key: 'bubbles' } as const, true)
+// Whether the cartoons hold still, for this session, as autoAtom is: off
+// unless turned on.
+const calmAtom = atom({ plugin: 'stage-toons', key: 'calm' } as const, false)
 // How wide the cartoons grow, for this session, as autoAtom is.
 const widthAtom = atom({ plugin: 'stage-toons', key: 'width' } as const, DEFAULT_WIDTH as WidthSetting)
 
@@ -431,6 +435,20 @@ async function setBubbles($: EngineInterface, mod: Mod, isOn: boolean) {
   }
 }
 
+// /stage calm on or off, kept for every project. The paint loop reads it
+// at its next frame; the band is drawn again, which wakes a loop the deep
+// sleep stopped.
+async function setCalm($: EngineInterface, mod: Mod, isOn: boolean) {
+  mod.isCalm = isOn
+  await update($, calmAtom, () => isOn)
+  $.ui.invalidate('ui.render')
+  try {
+    await $.store.set(CALM_KEY, isOn)
+  } catch {
+    // Lasts for this session.
+  }
+}
+
 async function setAuditing($: EngineInterface, mod: Mod, isAuditing: boolean) {
   await update($, auditingAtom, () => isAuditing)
   mod.director = withAuditing(mod.director, isAuditing, await $.clock.now())
@@ -512,7 +530,7 @@ const sessionWorkflowOf = (file: FileWorkflow): SessionWorkflow =>
   file.kind === 'ok' ? { workflow: file.workflow, source: 'file', ...(file.settings ? { settings: file.settings } : {}) } : { workflow: DEFAULT_WORKFLOW, source: 'default' }
 
 // The project's starting state, at a fresh session start and at /stage
-// workflow reload: the file's auto, hide, bubbles and width where it sets them, else the
+// workflow reload: the file's auto, hide, bubbles, calm and width where it sets them, else the
 // person's own (the store's), else as the session has it. Nothing is
 // saved: the store keeps the person's own settings.
 async function applySettings($: EngineInterface, mod: Mod, settings: WorkflowSettings | undefined) {
@@ -544,6 +562,17 @@ async function applySettings($: EngineInterface, mod: Mod, settings: WorkflowSet
       // As this session had it.
     }
   }
+  // Off unless the store says on (bubbles is the other way round).
+  const wasCalm = await read($, calmAtom)
+  let isCalm = wasCalm
+  if (settings?.calm !== undefined) isCalm = settings.calm
+  else {
+    try {
+      isCalm = (await $.store.get(CALM_KEY)) === true
+    } catch {
+      // As this session had it.
+    }
+  }
   const wasWidth = await read($, widthAtom)
   let width = wasWidth
   if (settings?.width !== undefined) width = settings.width
@@ -558,12 +587,14 @@ async function applySettings($: EngineInterface, mod: Mod, settings: WorkflowSet
   mod.isAuto = isAuto
   mod.isHidden = isHidden
   mod.isBubbles = isBubbles
+  mod.isCalm = isCalm
   mod.width = width
   await update($, autoAtom, () => isAuto)
   await update($, hiddenAtom, () => isHidden)
   await update($, bubblesAtom, () => isBubbles)
+  await update($, calmAtom, () => isCalm)
   await update($, widthAtom, () => width)
-  if (isHidden !== wasHidden || width !== wasWidth) $.ui.invalidate('ui.render')
+  if (isHidden !== wasHidden || width !== wasWidth || isCalm !== wasCalm) $.ui.invalidate('ui.render')
 }
 
 // Registers set_stage for the workflow; false when the engine refused.
@@ -711,6 +742,7 @@ export const register: Register = on => {
       mod.isAuto = await read($, autoAtom)
       mod.isHidden = await read($, hiddenAtom)
       mod.isBubbles = await read($, bubblesAtom)
+      mod.isCalm = await read($, calmAtom)
       mod.width = await read($, widthAtom)
     }
     mod.surface = e.surface
@@ -735,8 +767,8 @@ export const register: Register = on => {
         await $.command.register({
           name: COMMAND,
           description:
-            "Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene, a stage's scenes, the idle routines, the waiting toon or what Clawd shows while Claude works; /stage workflow shows or reloads the workflow; /stage auto, bubbles, width, log and time: the automatic moves, Clawd's pop-ups, how wide the cartoons grow, the history, the time spent",
-          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work] [seconds] | demo waiting [scene] | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | width [<n> | full] | log [n] | time]',
+            "Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene, a stage's scenes, the idle routines, the waiting toon or what Clawd shows while Claude works; /stage workflow shows or reloads the workflow; /stage auto, bubbles, calm, width, log and time: the automatic moves, Clawd's pop-ups, whether the cartoons hold still, how wide they grow, the history, the time spent",
+          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work] [seconds] | demo waiting [scene] | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | calm [on | off] | width [<n> | full] | log [n] | time]',
           immediate: true,
         })
       ).command
@@ -881,6 +913,11 @@ export const register: Register = on => {
 
       return { text: bubblesText(mod.isBubbles, (await read($, workflowAtom))?.settings?.bubbles) }
     }
+    if (cmd.kind === 'calm') {
+      if (cmd.isOn !== null) await setCalm($, mod, cmd.isOn)
+
+      return { text: calmText(mod.isCalm, (await read($, workflowAtom))?.settings?.calm) }
+    }
     if (cmd.kind === 'width') {
       if (cmd.width !== null) await setWidth($, mod, cmd.width)
       const room = mod.lastBand === null ? null : Math.min(mod.lastBand.columns - 1, WIDTH_MAX)
@@ -907,10 +944,11 @@ export const register: Register = on => {
       if (mod.demo !== demo) mod.waiting = { ...mod.waiting, deal }
       // The band grows to hold it.
       if (mod.demo) $.ui.invalidate('ui.render')
-      // Asked for, the work demo shows the pop-ups even while they are off.
-      if (mod.demo === demo && demo.kind === 'work' && !mod.isBubbles) return { text: `${text}\nClawd's pop-ups are off: the demo shows them; /stage bubbles on turns them on.` }
+      // Asked for, the work demo shows the pop-ups even while they are off,
+      // and every demo moves while calm mode is on.
+      const notes = mod.demo !== demo ? [] : [...(demo.kind === 'work' && !mod.isBubbles ? ["Clawd's pop-ups are off: the demo shows them; /stage bubbles on turns them on."] : []), ...(mod.isCalm ? [CALM_DEMO_LINE] : [])]
 
-      return { text }
+      return { text: [text, ...notes].join('\n') }
     }
     if (cmd.kind === 'demo-stop') {
       if (!mod.demo) return { text: 'No demo is playing.' }

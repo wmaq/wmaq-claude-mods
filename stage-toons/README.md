@@ -90,6 +90,7 @@ You can move it yourself with `/stage`:
 | `/stage workflow reload` | Read `.claude/stage-toons.json` again and switch to it |
 | `/stage auto [on \| off]` | Show the rules that move the stage by itself; turn them on or off |
 | `/stage bubbles [on \| off]` | Whether Clawd's pop-ups show: what Claude is doing over his head, and what he says |
+| `/stage calm [on \| off]` | Whether the cartoons hold still, changing only when something happens (off by default) |
 | `/stage width [<n> \| full]` | How wide the cartoons may grow under the bar: up to n columns (120 by default; 48 to 512), or the band's whole width |
 | `/stage log [n]` | The last n moves (15; up to 200) with how long each stage lasted |
 | `/stage time` | Time per feature and per stage |
@@ -245,6 +246,27 @@ scenes of one stage, `/stage demo idle` the idle routines and
 `/stage demo waiting` the waiting toon and `/stage demo work` what Clawd
 shows while Claude works. A new prompt ends the demo.
 
+## Calm mode
+
+`/stage calm on` holds the cartoons still, for every project: each
+picture is one held frame, and the area changes only when something
+happens. Claude starting or stopping, a move to another stage, Fable
+coming or going, a helper arriving or leaving, the doze and the next
+idle period each dissolve into the next still, as in motion. While
+Claude works, Clawd holds a moment of the stage's scene; between turns
+he stands still in his routine's pose, sits down to doze after a
+minute, and shows off a finished step's prop or celebrates Done held
+still. While agents work, the helpers sit at their seats in the wait's
+scene, the work held part done.
+
+The pop-ups stay, held still: what Claude is doing over Clawd's head
+changes when the work does, and his lines show as they come. A
+failure or a move forward shows only its line, without the hop. The
+bar and its task count are unchanged. The demos move anyway, and the
+stills come back when they end. `/stage calm off` brings the motion
+back; with it on, the area is redrawn about twice a second instead of
+twelve times.
+
 ## Your own workflow
 
 A project can define its own stages in `.claude/stage-toons.json`.
@@ -300,9 +322,10 @@ stage an `auto` list, even an empty one, and the file has only its own.
 Beside `track` and `side`, the file may set how a session on the project
 starts: `"auto": false` with the rules off, `"hide": true` with the bar and
 the cartoons hidden, `"bubbles": false` with Clawd's pop-ups off (and
-`true` or `false` the other way), `"width": 90` with the cartoons up to 90
+`true` or `false` the other way), `"calm": true` with calm mode on (and
+`false` with it off), `"width": 90` with the cartoons up to 90
 columns wide (48 to 512, or `"full"`). Where the file sets one, it wins over
-your own `/stage auto`, `/stage hide`, `/stage bubbles` or `/stage width` setting, at
+your own `/stage auto`, `/stage hide`, `/stage bubbles`, `/stage calm` or `/stage width` setting, at
 each session's start and at `/stage workflow reload`; where it says
 nothing, yours applies. The commands still change the session at once, and
 say when the file starts it otherwise. `/stage workflow init` writes
@@ -351,7 +374,7 @@ workflow` shows the current workflow and its scenes.
 Limits: 1 to 15 track stages, up to 5 side stages; ids are lowercase
 letters, digits and dashes, and not one of `/stage`'s words (`next`,
 `back`, `hide`, `demo`, `feature`, `message`, `workflow`, `auto`,
-`bubbles`, `width`, `log`, `time`, `help`, `done`). A mistake in the file is reported with where it
+`bubbles`, `calm`, `width`, `log`, `time`, `help`, `done`). A mistake in the file is reported with where it
 is, and the session keeps a working workflow.
 
 ## Install

@@ -54,10 +54,10 @@ export type WidthSetting = number | 'full'
 
 // What a project's workflow file sets for the session's start: whether
 // rules move the stage (auto), whether the bar is hidden (hide), whether
-// Clawd's pop-ups show (bubbles) and how wide the cartoons grow (width).
-// Each left out where the file says nothing, and the person's own setting
-// holds.
-export type WorkflowSettings = { auto?: boolean; hide?: boolean; bubbles?: boolean; width?: WidthSetting }
+// Clawd's pop-ups show (bubbles), how wide the cartoons grow (width) and
+// whether they hold still (calm). Each left out where the file says
+// nothing, and the person's own setting holds.
+export type WorkflowSettings = { auto?: boolean; hide?: boolean; bubbles?: boolean; width?: WidthSetting; calm?: boolean }
 
 // The session's workflow, where it came from, and the file's settings.
 // Settings is absent where an older version kept it, or the file sets none.
@@ -114,6 +114,9 @@ declare module 'claude-code' {
       // How wide the cartoons grow (/stage width): kept across a reload, as
       // bubbles is.
       width: WidthSetting
+      // Whether the cartoons hold still (/stage calm): kept across a
+      // reload, as bubbles is.
+      calm: boolean
     }
   }
 }

@@ -27,6 +27,7 @@ export type Command =
   | { kind: 'workflow-reload' }
   | { kind: 'auto'; isOn: boolean | null }
   | { kind: 'bubbles'; isOn: boolean | null }
+  | { kind: 'calm'; isOn: boolean | null }
   | { kind: 'width'; width: WidthSetting | null }
   | { kind: 'width-usage' }
   | { kind: 'log'; count: number }
@@ -41,7 +42,7 @@ export function usage(w: Workflow): string {
   const stages = [...w.track.map((s, i) => `${i + 1} ${s.id}`), DONE_ID, ...w.side.map(s => (s === zero ? `0 ${s.id}` : s.id))]
 
   return [
-    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work] [seconds] | demo waiting [scene] | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | width [<n> | full] | log [n] | time | help]',
+    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work] [seconds] | demo waiting [scene] | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | calm [on | off] | width [<n> | full] | log [n] | time | help]',
     '  /stage                  show the current stage and the recent moves',
     `  /stage 5, /stage plan   move to a stage${zero ? ` (0 or ? for ${zero.label})` : ''}`,
     '  /stage next, /stage back',
@@ -55,6 +56,7 @@ export function usage(w: Workflow): string {
     '  /stage workflow [init | reload]  show the workflow; write the default to .claude/stage-toons.json; read the file again',
     "  /stage auto [on | off]  show the workflow's rules for moving the stage by itself; turn them on or off",
     "  /stage bubbles [on | off]  whether Clawd's pop-ups show: what Claude is doing over his head, and what he says",
+    '  /stage calm [on | off]  whether the cartoons hold still, changing only when something happens',
     `  /stage width [<n> | full]  how wide the cartoons may grow under the bar (${DEFAULT_WIDTH} columns by default, ${WIDTH_MAX} at most)`,
     `  /stage log [n]          the last n moves (${LOG_DEFAULT}; up to ${HISTORY_MAX}) with how long each stage lasted`,
     '  /stage time             time per feature and per stage, wall-clock and Claude working',
@@ -72,7 +74,7 @@ export function parseCommand(w: Workflow, args: string): Command {
   if (word === 'feature') return tail ? { kind: 'feature', name: tail } : { kind: 'usage' }
   if (word === 'message') return tail ? { kind: 'message', text: tail } : { kind: 'usage' }
   if (word === 'demo') return parseDemo(w, tail.toLowerCase())
-  if (word === 'auto' || word === 'bubbles') {
+  if (word === 'auto' || word === 'bubbles' || word === 'calm') {
     const sub = tail.toLowerCase()
     if (sub === '') return { kind: word, isOn: null }
 
@@ -190,6 +192,7 @@ export function settingsWords(settings: WorkflowSettings | undefined): string | 
   if (settings?.auto !== undefined) parts.push(`automatic moves ${settings.auto ? 'on' : 'off'}`)
   if (settings?.hide !== undefined) parts.push(`the bar ${settings.hide ? 'hidden' : 'shown'}`)
   if (settings?.bubbles !== undefined) parts.push(`Clawd's pop-ups ${settings.bubbles ? 'on' : 'off'}`)
+  if (settings?.calm !== undefined) parts.push(`calm mode ${settings.calm ? 'on' : 'off'}`)
   if (settings?.width !== undefined) parts.push(widthSettingWords(settings.width))
 
   return parts.length === 0 ? null : parts.length === 1 ? parts[0]! : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`
@@ -240,6 +243,19 @@ export function bubblesText(isOn: boolean, fileBubbles?: boolean): string {
 
   return fileBubbles === undefined ? state : `${state} This project's workflow file starts them ${fileBubbles ? 'on' : 'off'}.`
 }
+
+// /stage calm's answer; fileCalm, what the project's workflow file starts
+// the session with, if it says.
+export function calmText(isOn: boolean, fileCalm?: boolean): string {
+  const state = isOn
+    ? 'Calm mode is on: the cartoons hold still and change only when something happens. /stage calm off brings the motion back.'
+    : 'Calm mode is off: the cartoons move. /stage calm on holds them still.'
+
+  return fileCalm === undefined ? state : `${state} This project's workflow file starts it ${fileCalm ? 'on' : 'off'}.`
+}
+
+// What a demo's answer adds while calm mode is on.
+export const CALM_DEMO_LINE = 'Calm mode is on: the demo moves anyway, and the stills come back when it ends.'
 
 // /stage hide's answer; fileHide, what the project's workflow file starts
 // the session with, if it says.
