@@ -1,94 +1,45 @@
 // The waiting toon: while Claude waits on agents, Clawd stands aside with a
-// cup and watches a row of helpers, one per agent at work, typing at their
-// laptops, each in its model's colour. 48 x 14 pixels, drawn from the seat
-// log and the time alone.
+// cup and watches a row of helpers, one per agent at work, each in its
+// model's colour, at one of the waiting scenes (WAITING_SCENES). 48 x 14
+// pixels, drawn from the seat log, the scene and the time alone.
 
-import type { ModelKind } from '../agents'
-import { CLAWD_ORANGE, drawClawd, EYE_DARK, FABLE_VIOLET, MONOCLE } from '../clawd'
+import { drawClawd, EYE_DARK, MONOCLE } from '../clawd'
 import { createBuffer, fillRect, type PixelBuffer, setPixel } from '../pixels'
-import { CLAWD_TOP, drawSprite, type Sprite } from '../scene'
+import { CLAWD_TOP, drawSprite } from '../scene'
 import { C, every } from '../scenes/kit'
+import type { WaitingSceneId } from './deal'
+import { HELPER_COLORS, type WaitingCtx, type WaitingScene } from './draw'
+import { LAPTOPS } from './laptops'
 import { AREA_W, clawdWalking, clawdX, type Helper, helperAt, type SeatLog } from './seats'
+
+export { FALLBACK_WAITING, isWaitingScene, WAITING_SCENE_IDS, type WaitingSceneId } from './deal'
+export { HELPER_COLORS } from './draw'
+export { LAPTOP, LAPTOP_LIGHT, SPARK } from './laptops'
 
 export const AREA_H = 14
 // The repeating motions' periods all divide this many seconds.
 export const WAITING_BEAT = 6
-
-export const HELPER_COLORS: Record<ModelKind, number> = {
-  sonnet: 0xe8559f,
-  opus: CLAWD_ORANGE,
-  fable: FABLE_VIOLET,
-  haiku: 0x2bb3a8,
-  unknown: 0xa3a3a3,
-}
-export const LAPTOP = 0x4a4f57
-export const LAPTOP_LIGHT = C.glass
-export const SPARK = C.gold
 export const CUP = C.white
 export const STEAM = C.glass
 
-// A seated helper's top row; the desk's top and legs.
-const SEATED_TOP = 7
-const DESK_Y = 12
+export const WAITING_SCENES: Record<WaitingSceneId, WaitingScene> = {
+  laptops: LAPTOPS,
+}
+
 // A walking helper's top row: it stands on the bottom row.
 const WALKING_TOP = 9
 
-// The seated helper behind its laptop: M body, E eyes, L the laptop's back,
-// o its light. The claws are drawn apart, tapping.
-const SEATED = ['.MMMMM.', '.MEMEM.', '.MMMMM.', '.LLoLL.', '.LLLLL.']
-// Hopping off the seat: the body alone.
-const HOPPING = SEATED.slice(0, 3)
 // The walking helper, facing right; mirrored, facing left. Two strides.
 const WALKING = [
   ['.MMMMM.', '..MEME.', 'MMMMMMM', '.MMMMM.', '.M...M.'],
   ['.MMMMM.', '..MEME.', 'MMMMMMM', '.MMMMM.', '..M.M..'],
 ]
 
-function drawDesk(b: PixelBuffer, x: number, hasLegs: boolean) {
-  fillRect(b, x, DESK_Y, 7, 1, C.wood)
-  if (!hasLegs) return
-  setPixel(b, x + 1, DESK_Y + 1, C.woodDark)
-  setPixel(b, x + 5, DESK_Y + 1, C.woodDark)
-}
-
-// t: seconds into the waiting period.
-function drawHelper(b: PixelBuffer, h: Helper, t: number) {
+function drawWalker(b: PixelBuffer, h: Helper) {
   const color = HELPER_COLORS[h.entry.kind]
-  const seat = h.entry.seat
-  if (h.pose === 'seated') {
-    drawDesk(b, h.x, true)
-    // The laptop's light dims for a moment now and then, at each seat's own time.
-    const isLit = (t + seat * 0.37) % 1.5 < 1.2
-    drawSprite(b, { palette: { M: color, E: EYE_DARK, L: LAPTOP, o: isLit ? LAPTOP_LIGHT : LAPTOP }, frames: [SEATED] }, 0, h.x, SEATED_TOP)
-    // The claws tap in turns at the laptop's edges.
-    const beat = every(t + seat * 0.125, 0.25) % 2
-    setPixel(b, h.x, SEATED_TOP + 2 + beat, color)
-    setPixel(b, h.x + 6, SEATED_TOP + 3 - beat, color)
-    if (h.entry.kind === 'fable') setPixel(b, h.x + 5, SEATED_TOP + 1, MONOCLE)
-
-    return
-  }
-  if (h.pose === 'hop') {
-    // Up off the seat, the desk folding away under it.
-    drawDesk(b, h.x, false)
-    drawSprite(b, { palette: { M: color, E: EYE_DARK }, frames: [HOPPING] }, 0, h.x, SEATED_TOP - 1)
-    setPixel(b, h.x, SEATED_TOP + 1, color)
-    setPixel(b, h.x + 6, SEATED_TOP + 1, color)
-
-    return
-  }
   const isLeft = h.pose === 'walk-in'
   drawSprite(b, { palette: { M: color, E: EYE_DARK }, frames: WALKING }, h.stride, h.x, WALKING_TOP, isLeft)
   if (h.entry.kind === 'fable') setPixel(b, isLeft ? h.x + 1 : h.x + 5, WALKING_TOP + 1, MONOCLE)
-}
-
-// Every 2 s a spark pops above one seated helper's head for half a second,
-// along the row.
-function drawSpark(b: PixelBuffer, seated: Helper[], t: number) {
-  if (seated.length === 0 || t % 2 >= 0.5) return
-  const h = seated[every(t, 2) % seated.length]!
-  const spark: Sprite = { palette: { y: SPARK }, frames: [['.y.', 'yyy', '.y.']] }
-  drawSprite(b, spark, 0, h.x + 2, SEATED_TOP - 4)
 }
 
 const SIP_FROM = 4
@@ -128,7 +79,9 @@ function drawCup(b: PixelBuffer, x: number, isRaised: boolean, t: number) {
   setPixel(b, x + 14 + (every(t, 0.5) % 2), CLAWD_TOP - 1, STEAM)
 }
 
-export function waitingFrame(log: SeatLog, now: number): PixelBuffer {
+// The frame: the scene under the helpers, the seated and hopping helpers
+// as the scene draws them, the scene over them, Clawd, then the walkers.
+export function waitingFrame(log: SeatLog, now: number, scene: WaitingSceneId = 'laptops'): PixelBuffer {
   const b = createBuffer(AREA_W, AREA_H)
   const t = log.since === null ? 0 : (now - log.since) / 1000
   const helpers = log.entries.flatMap(e => {
@@ -137,10 +90,13 @@ export function waitingFrame(log: SeatLog, now: number): PixelBuffer {
     return h ? [h] : []
   })
   const seated = helpers.filter(h => h.pose === 'seated').sort((a, b2) => a.entry.seat - b2.entry.seat)
-  for (const h of helpers) if (h.pose === 'seated' || h.pose === 'hop') drawHelper(b, h, t)
-  drawSpark(b, seated, t)
+  const ctx: WaitingCtx = { t, now, log, helpers, seated }
+  const drawn = WAITING_SCENES[scene]
+  drawn.under?.(b, ctx)
+  for (const h of helpers) if (h.pose === 'seated' || h.pose === 'hop') drawn.helper(b, h, ctx)
+  drawn.over?.(b, ctx)
   drawClawdAside(b, log, now, t)
-  for (const h of helpers) if (h.pose === 'walk-in' || h.pose === 'walk-out') drawHelper(b, h, t)
+  for (const h of helpers) if (h.pose === 'walk-in' || h.pose === 'walk-out') drawWalker(b, h)
 
   return b
 }

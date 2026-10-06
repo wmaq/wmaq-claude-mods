@@ -30,8 +30,10 @@ const walkMs = (pixels: number, speed: number) => (Math.abs(pixels) / speed) * 1
 
 // Where a helper walking in from the right edge stands at a moment.
 const walkInX = (e: SeatEntry, now: number) => Math.max(SEAT_X[e.seat]!, AREA_W - ((now - e.arrivedAt) / 1000) * WALK_SPEED)
+// When a helper reaches its seat, walking in.
+export const seatedAt = (e: SeatEntry): number => e.arrivedAt + walkMs(AREA_W - SEAT_X[e.seat]!, WALK_SPEED)
 // Whether the helper had sat down when it got up.
-const satAt = (e: SeatEntry, at: number) => at - e.arrivedAt >= walkMs(AREA_W - SEAT_X[e.seat]!, WALK_SPEED)
+const satAt = (e: SeatEntry, at: number) => at >= seatedAt(e)
 // Where a leaving helper starts walking out: its seat, or (turned round
 // mid walk-in) where it stood.
 const outFrom = (e: SeatEntry, leftAt: number) => (satAt(e, leftAt) ? SEAT_X[e.seat]! : walkInX(e, leftAt))
