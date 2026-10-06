@@ -431,7 +431,9 @@ test('the starfield: each depth in its colour, drifting left at its own speed, w
 })
 
 test('stargazing and fireworks have a drifting night sky behind them, and only they among the scenes', () => {
-  const withSky = Object.values(SCENES).filter(s => s.background !== undefined).map(s => s.id)
+  // thought-clouds' background is its wings' clouds, drawn only right of
+  // column 48: no sky behind the core.
+  const withSky = Object.values(SCENES).filter(s => s.background !== undefined && s.id !== 'thought-clouds').map(s => s.id)
   expect(withSky.sort()).toEqual(['fireworks', 'stargazing'])
   for (const id of withSky) {
     const scene = SCENES[id]!

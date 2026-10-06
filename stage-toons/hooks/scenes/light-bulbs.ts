@@ -1,9 +1,11 @@
 // Light bulbs: ideas pop around Clawd and fizzle, until one stays lit: one
-// peeks up from behind his head, one pops up in front of him.
+// peeks up from behind his head, one pops up in front of him. On a wider
+// area, unlit bulbs hang on wires in the wings, at varied heights.
 
-import { type PixelBuffer, setPixel } from '../pixels'
-import { CLAWD_TOP, drawSprite, type Scene } from '../scene'
+import { type PixelBuffer, setPixel, topOf } from '../pixels'
+import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, BULB_OFF, BULB_ON, C, every, still, wave } from './kit'
+import { tileOn } from './wide-d'
 
 // z: behind Clawd (-1) or in front of him (1).
 const SPOTS = [
@@ -13,11 +15,23 @@ const SPOTS = [
   { x: 28, y: 8, z: 1 },
 ]
 const EUREKA = 4.8
+// A bulb hanging from its wire: the cap on top, the glass below, unlit.
+const HANGING: Sprite = { palette: { y: C.bulbOff, g: C.gray }, frames: [['.g.', 'yyy', 'yyy', '.y.']] }
+// The wings' bulbs, one every 9 columns, their tops on these rows in turn.
+const HANG_EVERY = 9
+const HANG_TOPS = [3, 6, 4, 7, 5]
 
 export const lightBulbs: Scene = {
   id: 'light-bulbs',
   loop: 6,
   focusX: 24,
+  backdrop: b => {
+    tileOn(b, 51, HANG_EVERY, (x, k) => {
+      const top = HANG_TOPS[k % HANG_TOPS.length]!
+      for (let y = topOf(b); y < top; y++) setPixel(b, x + 1, y, C.darkGray)
+      drawSprite(b, HANGING, 0, x, top)
+    })
+  },
   actors: [
     {
       kind: 'clawd',

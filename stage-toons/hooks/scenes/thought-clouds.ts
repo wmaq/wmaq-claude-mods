@@ -1,9 +1,12 @@
 // Thought clouds: Clawd sits and thinks; small clouds puff up over him,
-// drift together into one big cloud with a spark in it, and thin away.
+// drift together into one big cloud with a spark in it, and thin away. On a
+// wider area, slow clouds drift right to left across the wings' sky and
+// thin away as they reach the core.
 
-import { setPixel } from '../pixels'
-import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
+import { type PixelBuffer, setPixel } from '../pixels'
+import { CLAWD_TOP, drawSprite, type Scene, type Sprite, STAGE_W } from '../scene'
 import { blinking, C, lerp, still } from './kit'
+import { tileOn } from './wide-d'
 
 const LOOP = 6
 const PUFF: Sprite = {
@@ -35,10 +38,39 @@ const DRIFT_FROM = 2.4
 const MERGE_AT = 3.6
 const THIN_AT = 5.4
 
+// The wings' clouds: a pattern of SKY_EVERY columns, repeated from the core's
+// edge to the area's, drifting left SKY_SPEED pixels a second. Each cloud is
+// a puff's frame at its offset in the pattern and its row; within a few
+// columns of the core it thins to smaller frames, and is gone at its edge.
+const SKY_EVERY = 40
+const SKY_SPEED = 1.5
+// A puff's frames in dimmer colours: far off, so they don't pass for his
+// thoughts.
+const FAR_PUFF: Sprite = { palette: { w: C.paperShade, s: C.gray }, frames: PUFF.frames }
+const SKY: { at: number; y: number; frame: number }[] = [
+  { at: 4, y: 1, frame: 3 },
+  { at: 25, y: 4, frame: 2 },
+]
+
+// Drawn in the background, with the scene's time unwrapped: the clouds
+// drift on through the loop point with no jump.
+function drawSky(b: PixelBuffer, time: number) {
+  const drift = Math.floor(time * SKY_SPEED) % SKY_EVERY
+  for (const cloud of SKY) {
+    const offset = (((cloud.at - drift) % SKY_EVERY) + SKY_EVERY) % SKY_EVERY
+    tileOn(b, STAGE_W + offset, SKY_EVERY, x => {
+      const near = x - STAGE_W
+      const frame = near < 2 ? 0 : near < 5 ? Math.min(1, cloud.frame) : near < 9 ? Math.min(2, cloud.frame) : cloud.frame
+      drawSprite(b, FAR_PUFF, frame, x, cloud.y)
+    })
+  }
+}
+
 export const thoughtClouds: Scene = {
   id: 'thought-clouds',
   loop: LOOP,
   focusX: CENTRE,
+  background: drawSky,
   actors: [
     {
       kind: 'clawd',

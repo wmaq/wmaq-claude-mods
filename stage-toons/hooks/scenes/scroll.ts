@@ -1,9 +1,11 @@
 // Scroll: Clawd sits writing with a quill while a scroll unrolls across the
-// floor, then rolls it back up.
+// floor, then rolls it back up. On a wider area a rack of scrolls rolled up
+// already stands in the wings; the scroll itself unrolls as far as ever.
 
-import { fillRect, setPixel } from '../pixels'
-import { CLAWD_TOP, type Scene } from '../scene'
+import { fillRect, type PixelBuffer, rightOf, setPixel } from '../pixels'
+import { CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
 import { blinking, C, every, lerp, still } from './kit'
+import { tileOn } from './wide-d'
 
 const LOOP = 7
 const START_X = 18
@@ -11,12 +13,34 @@ const LONGEST = 27
 const WRITE_FOR = 5.5
 const ROLL_UP_AT = 6.2
 
+// The rack: two shelves, on rows 8 and 13, from column 50 to the edge, a
+// post every BAY columns; two rolled scrolls lie on each shelf of a bay,
+// and every other bay has a third on top of its upper two.
+const RACK_X = 50
+const SHELVES = [8, 13]
+const BAY = 16
+const ROLLED: Sprite = { palette: { w: C.paper, s: C.paperShade, d: C.woodDark }, frames: [['dwwwwwd', 'dsssssd']] }
+
+function drawRack(b: PixelBuffer) {
+  const edge = rightOf(b)
+  for (const y of SHELVES) if (RACK_X < edge) fillRect(b, RACK_X, y, edge - RACK_X, 1, C.wood)
+  tileOn(b, RACK_X, BAY, (x, k) => {
+    fillRect(b, x, 5, 1, 9, C.woodDark)
+    for (const y of SHELVES) {
+      drawSprite(b, ROLLED, 0, x + 1, y - 2)
+      drawSprite(b, ROLLED, 0, x + 9, y - 2)
+    }
+    if (k % 2 === 0) drawSprite(b, ROLLED, 0, x + 5, SHELVES[0]! - 4)
+  })
+}
+
 const length = (t: number) => Math.round(t < ROLL_UP_AT ? lerp(2, LONGEST, t / WRITE_FOR) : lerp(LONGEST, 2, (t - ROLL_UP_AT) / (LOOP - ROLL_UP_AT)))
 
 export const scroll: Scene = {
   id: 'scroll',
   loop: LOOP,
   focusX: 20,
+  backdrop: drawRack,
   actors: [
     {
       kind: 'clawd',

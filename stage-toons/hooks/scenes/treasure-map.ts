@@ -1,9 +1,12 @@
 // Treasure map: Clawd unrolls a map, a dotted path runs across it with pins
-// popping in along the way to a red X, and he rolls it up again.
+// popping in along the way to a red X, and he rolls it up again. On a wider
+// area the sea lies in the wings, its waves tiled, with a small island; the
+// map unrolls as far as ever.
 
-import { fillRect, type PixelBuffer, setPixel } from '../pixels'
-import { CLAWD_TOP, type Scene } from '../scene'
+import { fillRect, type PixelBuffer, rightOf, setPixel } from '../pixels'
+import { CLAWD_TOP, drawSprite, type Scene, type Sprite, STAGE_W } from '../scene'
 import { blinking, C, lerp, still } from './kit'
+import { tileOn } from './wide-d'
 
 const LOOP = 8
 const MAP_X = 23
@@ -31,6 +34,28 @@ const X_AT = PATH_FROM + PATH_FOR
 // How far the map is unrolled, in columns.
 const width = (t: number) => Math.round(t < ROLL_UP_AT ? lerp(1, MAP_W, t / UNROLL_FOR) : lerp(MAP_W, 1, (t - ROLL_UP_AT) / (LOOP - ROLL_UP_AT)))
 
+// The sea: rows 11 to 13 from the core's edge to the area's, a wave every
+// WAVE_EVERY columns on its top row, still, with a light crest. The island,
+// a sandbank with a palm, stands a little way out.
+const SEA_Y = 11
+const WAVE_EVERY = 6
+const ISLAND_X = 62
+const ISLAND: Sprite = {
+  palette: { g: C.green, t: C.woodDark, s: C.road },
+  frames: [['..ggg.....', '.g.t.g....', '....t.....', '....t.....', '..sssss...', 'sssssssss.']],
+}
+
+function drawSea(b: PixelBuffer) {
+  const edge = rightOf(b)
+  if (STAGE_W >= edge) return
+  fillRect(b, STAGE_W, SEA_Y + 1, edge - STAGE_W, 2, C.blue)
+  tileOn(b, STAGE_W, WAVE_EVERY, x => {
+    fillRect(b, x + 1, SEA_Y, 3, 1, C.blue)
+    setPixel(b, x + 2, SEA_Y, C.glass)
+  })
+  drawSprite(b, ISLAND, 0, ISLAND_X, SEA_Y - 4)
+}
+
 function drawX(b: PixelBuffer, x: number, y: number) {
   for (const d of [-1, 0, 1]) {
     setPixel(b, x + d, y + d, C.red)
@@ -42,6 +67,7 @@ export const treasureMap: Scene = {
   id: 'treasure-map',
   loop: LOOP,
   focusX: 28,
+  backdrop: drawSea,
   actors: [
     {
       kind: 'clawd',
