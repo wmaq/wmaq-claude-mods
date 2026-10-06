@@ -8,13 +8,14 @@ the workflow's step 10).
 
 ### Where things stand
 
-0.10.0 is on `main`: automatic moves and history with cost per stage, the
-waiting toon, 38 scenes dealt like a deck and played in the area below
-the bar with Z layers and a dissolve at every change of picture, 5 idle
+0.11.0 is on `main`: automatic moves and history with cost per stage, 38
+scenes dealt like a deck and played in the area below the bar with Z
+layers and a dissolve at every change of picture, Clawd's pop-ups for the
+work at hand and a task count on the bar, four waiting scenes, 5 idle
 routines with a prop show-off and a celebration, Done after a merge,
 per-project settings, and the frame tool (`tools/frames/`) for checking
-the drawing from a cloud session. Phases 1 to 3 of the plan below, 4a
-and 4b are done. History:
+the drawing from a cloud session. Phases 1 to 3 of the plan below and 4a
+to 4d are done. History:
 `stage-toons/CHANGELOG.md`. Sources for what comes next: the research
 report (`docs/research/2026-10-04-stage-toons-improvement-ideas.md`, ideas
 #1-#30) and the code review (`docs/reviews/2026-10-04-code-review.md`).
@@ -75,6 +76,15 @@ Leftovers the plan schedules are listed in their phase instead.
   the idle routine. A paint loop that gives up on refused blits clears
   the band's `requestId` without waiting, so a render landing in that
   instant has its new `requestId` cleared until the redraw it asked for.
+- **Clawd follows the work (4c):** a background agent's spinner could
+  count as the main one for a moment (the agent joins the roster only
+  after its `tool.call` returns), showing its puffs or dots on Clawd; not
+  seen in the local test with three agents twice. The frame tool's
+  `--what` takes the label as given, so its sheets don't show the
+  git-options trimming (the kit tests do). The `#3` and numeric-id
+  fallbacks in `tasks.ts` are dead weight now that the result shapes are
+  known. Stamp's and the ladder's high-head rule were checked on sheets
+  only (fishing live).
 
 ### The plan after the frame tool (agreed 2026-10-04)
 
@@ -100,27 +110,16 @@ Decided in the discussion:
 The phases run in order; each feature takes the full workflow, spec and
 plan included. (Phases 1 and 2, the polish pass and the hook wins, shipped
 in 0.7.0; phase 3, "done" after a merge, in 0.8.0; 4a, Clawd in one
-place, in 0.9.0; 4b, smoother scenes, in 0.10.0.)
+place, in 0.9.0; 4b, smoother scenes, in 0.10.0; 4c, Clawd follows the
+work, and 4d, more waiting scenes, together in 0.11.0.)
 
 **Phase 4: richer art.** Split into five sub-phases (the person, 2026-10-05),
 run in this order. Each is its own release, tested and merged before the
 next starts, in a thread and branch of its own. 4a, the stage scenes in
-the area below the bar, shipped in 0.9.0, and 4b, smoother scenes (Z
-layers, the dissolve, scene clocks), in 0.10.0: 4c to 4e draw into the
-canvas they settled.
-
-**4c, Clawd follows the work.**
-- **Clawd's pose follows the spinner's mode** (#15): thinking, responding,
-  tool use.
-- **Phases inside a stage** (#20): overlays for testing, building, git and
-  search; `{what}` labels on props (the file or command last touched);
-  speech bubbles with fixed lines. Generalises the failure reaction.
-- **Progress inside a stage** (#21): N of M plan boxes ticked, under
-  Develop.
-
-**4d, more waiting scenes.**
-- **More waiting scenes** (#27): the helpers building, rowing, ...,
-  picked at random like a stage's scenes, under the seat log's rules.
+the area below the bar, shipped in 0.9.0; 4b, smoother scenes (Z
+layers, the dissolve, scene clocks), in 0.10.0; 4c, Clawd follows the
+work (#15, #20, #21), and 4d, more waiting scenes (#27), in 0.11.0. 4e is
+what remains.
 
 **4e, a wider canvas.**
 - **A width-adaptive canvas** (#25): the toon, the idle box and the demo

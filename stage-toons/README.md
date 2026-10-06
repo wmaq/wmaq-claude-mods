@@ -169,6 +169,12 @@ While Claude keeps a task list, the bar counts it after the stage:
 a finished list goes at the next turn's start). On a narrow bar the
 feature goes first, then the count.
 
+The count comes from Claude Code's own task tools (`TaskCreate`,
+`TaskUpdate`, `TodoWrite`), which Claude Code provides by default only on
+older models (Opus up to 4.7, Sonnet up to 4.6, Haiku 4.5). On newer
+models, start Claude Code with `CLAUDE_CODE_ENABLE_TODO_TOOLS=1` to see
+it; without the tools there is no count, and nothing else changes.
+
 `/stage bubbles off` turns the pop-ups off (the icons, labels, puffs and
 bubbles) for every project; the scenes, the reactions and the tasks count
 stay. `/stage demo work` plays them all, 3 s a step, even while they are

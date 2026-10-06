@@ -6,6 +6,33 @@ release (departures from the spec, review findings, live checks) are in its
 spec and plan under `docs/superpowers/`, the hand-offs in `docs/handoffs/`
 and the git history.
 
+## 0.11.0 (2026-10-06)
+
+Roadmap phases 4c and 4d, built by a cloud session overnight and tested
+locally together, all nine checks passing. Specs and plans:
+`docs/superpowers/specs/2026-10-05-stage-toons-clawd-follows-the-work-design.md`,
+`docs/superpowers/plans/2026-10-05-stage-toons-clawd-follows-the-work.md`,
+`docs/superpowers/specs/2026-10-06-stage-toons-more-waiting-scenes-design.md`,
+`docs/superpowers/plans/2026-10-06-stage-toons-more-waiting-scenes.md`.
+Hand-offs: `docs/handoffs/2026-10-06-stage-toons-clawd-follows-the-work.md`,
+`docs/handoffs/2026-10-06-stage-toons-more-waiting-scenes.md`, and the
+combined checklist `docs/handoffs/2026-10-06-stage-toons-4c-4d-test-checklist.md`.
+- **Clawd follows the work (4c):** over the stage's scene, thought puffs
+  while Claude thinks, a badge and label for the tool at work, typing
+  dots while it answers, and fixed lines at moments (`All green!`,
+  `Red tests.`, `Committed!`, `All done!`, `Hi, Fable!`). `/stage
+  bubbles [on|off]` (on by default, also a workflow-file setting) and
+  `/stage demo work`.
+- **The task count on the bar** (`3 of 8 tasks`, with a `✓` when all are
+  done). It needs Claude Code's task tools, which newer models get only
+  with `CLAUDE_CODE_ENABLE_TODO_TOOLS=1` (found in the local test; the
+  README says so); checked live in a session started that way.
+- **More waiting scenes (4d):** the waiting toon is one of laptops,
+  building, rowing and conveyor, dealt from a deck for each wait and kept
+  through it. `/stage demo waiting [scene]`.
+- The frame tool draws the layer (`scene --mode/--phase/--what/--say`,
+  `demo-work`) and the waiting scenes (`waiting --scene/--demo`).
+
 ## 0.10.0 (2026-10-06)
 
 Roadmap phase 4b, smoother scenes, built by a cloud session from the
