@@ -11,6 +11,7 @@ import { BUILDING } from './building'
 import type { WaitingSceneId } from './deal'
 import { HELPER_COLORS, type WaitingCtx, type WaitingScene } from './draw'
 import { LAPTOPS } from './laptops'
+import { ROWING } from './rowing'
 import { AREA_W, clawdWalking, clawdX, type Helper, helperAt, type SeatLog } from './seats'
 
 export { FALLBACK_WAITING, isWaitingScene, WAITING_SCENE_IDS, type WaitingSceneId } from './deal'
@@ -26,6 +27,7 @@ export const STEAM = C.glass
 export const WAITING_SCENES: Record<WaitingSceneId, WaitingScene> = {
   laptops: LAPTOPS,
   building: BUILDING,
+  rowing: ROWING,
 }
 
 // A walking helper's top row: it stands on the bottom row.

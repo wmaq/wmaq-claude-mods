@@ -7,6 +7,7 @@ import { C, FLAG } from '../scenes/kit'
 import { CUP, HELPER_COLORS, WAITING_SCENE_IDS, waitingFrame } from '.'
 import { COURSE_S, WALL, wallAt } from './building'
 import { waitingDemoAt } from './demo'
+import { bobAt, OAR, SPLASH, strokeAt, WATER } from './rowing'
 import { EMPTY_LOG, seat, seatedAt, type SeatLog } from './seats'
 
 const T = 100_000
@@ -79,4 +80,21 @@ test("building: a helper's wall stops when it gets up, stands while it walks out
   expect(high(waitingFrame(gone, leftAt + 400, 'building'))).toBe(before)
   expect(high(waitingFrame(gone, leftAt + 1000, 'building'))).toBe(before)
   expect(inSeat(waitingFrame(gone, leftAt + 2000, 'building'), WALL, 0)).toEqual([])
+})
+
+test('rowing: water and the boat, the oars stroking together, a splash at the end of the pull, the bob', () => {
+  expect([strokeAt(0), strokeAt(0.8), strokeAt(1.6)]).toEqual([0, 1, 0])
+  expect([bobAt(0.2), bobAt(0.6), bobAt(1.7)]).toEqual([-1, 0, -1])
+  const log = seated(['sonnet', 'haiku'])
+  const at = (s: number) => waitingFrame(log, T + s * 1000, 'rowing')
+  expect(where(at(6.6), WATER).every(p => p.y >= 12 && p.x >= 16)).toBe(true)
+  // Forward at 6.0 s of the period: the oar's tip right of its helper; back at 6.75 s, left.
+  const tip = (b: PixelBuffer, seat: number) => where(b, OAR).filter(p => p.y === 13 && p.x >= 16 + 8 * seat && p.x < 26 + 8 * seat)[0]?.x
+  expect(tip(at(6.1), 0)).toBe(25)
+  expect(tip(at(6.8), 0)).toBe(20)
+  expect(where(at(6.8), SPLASH).filter(p => p.y === 13)).toEqual([])
+  expect(where(at(7.4), SPLASH).filter(p => p.y === 13).map(p => p.x)).toEqual([20, 28])
+  // The boat's gunwale a row higher while it bobs.
+  const gunwale = (b: PixelBuffer) => Math.min(...where(b, C.woodDark).filter(p => p.x === 46).map(p => p.y))
+  expect([gunwale(at(6.2)), gunwale(at(6.7))]).toEqual([10, 11])
 })
