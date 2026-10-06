@@ -1,10 +1,10 @@
 import { expect, test } from 'claude-code/testing'
 
 import { fillRect, getPixel } from './pixels'
-import { renderScene, type Scene, type SceneId, STAGE_H, STAGE_W } from './scene'
+import { CLAWD_TOP, renderScene, type Scene, type SceneId, STAGE_H, STAGE_W } from './scene'
 import { REACTIONS, SCENES } from './scenes'
 import { C } from './scenes/kit'
-import { type Cast, composeFrame, TOON_ROWS } from './toon'
+import { type Cast, composeFrame, heroOnScreen, TOON_ROWS } from './toon'
 
 const solid = (id: SceneId, color: number): Scene => ({ id, loop: 1, focusX: 24, actors: [], backdrop: b => fillRect(b, 0, 0, STAGE_W, STAGE_H, color) })
 const exploding: Scene = {
@@ -79,4 +79,22 @@ test("a scene's camera crops where it points, and holds on the scene's focus whi
   const left = (reaction: { id: 'failure'; t: number } | null) => getPixel(composeFrame({ base: 'spec', time: 0, reaction }, 24, cast), 0, STAGE_H - 1)
   expect(left(null)).toBe(24 + 1)
   expect(left({ id: 'failure', t: 0.7 })).toBe(0 + 1)
+})
+
+test("a shot's mood shows on the hero when no reaction gives one; a reaction's wins", () => {
+  const cast = castWith({})
+  const shot = { base: 'workbench', time: 1, reaction: null }
+  const plain = composeFrame(shot, 48, cast)
+  const think = composeFrame({ ...shot, mood: 'think' as const }, 48, cast)
+  expect([...think.px]).not.toEqual([...plain.px])
+  const failing = { ...shot, reaction: { id: 'failure' as const, t: 0.1 } }
+  expect([...composeFrame({ ...failing, mood: 'think' as const }, 48, cast).px]).toEqual([...composeFrame(failing, 48, cast).px])
+})
+
+test("the hero's head on screen: its stage column less where the raster starts, by the camera a reaction holds", () => {
+  const cast = castWith({})
+  // Workbench's hero stands at column 5, its focus at 26.
+  expect(heroOnScreen({ base: 'workbench', time: 0, reaction: null }, 48, cast)).toEqual({ x: 12, y: CLAWD_TOP })
+  expect(heroOnScreen({ base: 'workbench', time: 0, reaction: null }, 30, cast)).toEqual({ x: 12 - 11, y: CLAWD_TOP })
+  expect(heroOnScreen({ base: 'workbench', time: 0, reaction: { id: 'advance', t: 0 } }, 30, cast).x).toBe(1)
 })

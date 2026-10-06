@@ -4,7 +4,8 @@
 
 import type { Shot } from './director'
 import { createBuffer, type PixelBuffer } from './pixels'
-import { crop, FALLBACK_SCENE, focusAt, heroAt, type Mood, overlay, type ReactionId, type ReactionSpec, renderSeamed, type Scene, type SceneId, STAGE_H, STAGE_W } from './scene'
+import type { Point } from './pixels'
+import { crop, cropStart, FALLBACK_SCENE, focusAt, heroAt, type Mood, overlay, type ReactionId, type ReactionSpec, renderSeamed, type Scene, type SceneId, STAGE_H, STAGE_W } from './scene'
 
 export const TOON_ROWS = STAGE_H / 2
 
@@ -15,9 +16,25 @@ export type Cast = {
   onBreak: (id: SceneId, error: unknown) => void
 }
 
+const sceneIn = (cast: Cast, id: SceneId): Scene => (cast.broken.has(id) ? undefined : cast.scenes[id]) ?? cast.scenes[FALLBACK_SCENE]!
+
+// The column a shot's camera keeps in view: a reaction plays around the
+// hero, so a camera that panned away holds still on the scene's own focus
+// while it lasts.
+const focusOf = (shot: Shot, scene: Scene): number => (shot.reaction ? scene.focusX : focusAt(scene, shot.time))
+
+// Where the hero's head is in a raster of this width: its centre column and
+// top row.
+export function heroOnScreen(shot: Shot, width: number, cast: Cast): Point {
+  const scene = sceneIn(cast, shot.base)
+  const head = heroAt(scene, shot.time)
+
+  return { x: head.x - cropStart(STAGE_W, focusOf(shot, scene), width), y: head.y }
+}
+
 export function composeFrame(shot: Shot, width: number, cast: Cast): PixelBuffer {
   const time = shot.time
-  const sceneOf = (id: SceneId) => (cast.broken.has(id) ? undefined : cast.scenes[id]) ?? cast.scenes[FALLBACK_SCENE]!
+  const sceneOf = (id: SceneId) => sceneIn(cast, id)
   const full = (id: SceneId, mood: Mood): PixelBuffer => {
     try {
       return renderSeamed(sceneOf(id), time, mood)
@@ -32,7 +49,7 @@ export function composeFrame(shot: Shot, width: number, cast: Cast): PixelBuffer
   }
   const reaction = shot.reaction ? cast.reactions[shot.reaction.id] : null
   const reactionT = shot.reaction?.t ?? 0
-  let frame = full(shot.base, reaction?.mood?.(reactionT) ?? null)
+  let frame = full(shot.base, reaction?.mood?.(reactionT) ?? shot.mood ?? null)
   if (reaction) {
     const layer = createBuffer(STAGE_W, STAGE_H)
     try {
@@ -43,9 +60,5 @@ export function composeFrame(shot: Shot, width: number, cast: Cast): PixelBuffer
     frame = overlay(frame, layer)
   }
 
-  // A reaction plays around the hero: a camera that panned away holds still
-  // on the scene's own focus while it lasts.
-  const base = sceneOf(shot.base)
-
-  return crop(frame, reaction ? base.focusX : focusAt(base, time), width)
+  return crop(frame, focusOf(shot, sceneOf(shot.base)), width)
 }

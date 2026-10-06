@@ -2,7 +2,7 @@
 // every change takes the time it happens at, and tick settles what has run
 // its course. The area dissolves from one scene into the next (frames.ts).
 
-import { FABLE_SCENE, type ReactionId, type SceneId } from './scene'
+import { FABLE_SCENE, type Mood, type ReactionId, type SceneId } from './scene'
 
 export const REACTION_MS: Record<ReactionId, number> = { failure: 2500, advance: 3000, 'fable-arrives': 2000, 'fable-leaves': 2000 }
 
@@ -17,11 +17,13 @@ export type Director = {
   reaction: { id: ReactionId; at: number } | null
 }
 
-// time: seconds on the base scene's own clock.
+// time: seconds on the base scene's own clock. mood: the hero's look when
+// no reaction gives one (eyes up while Claude thinks).
 export type Shot = {
   base: SceneId
   time: number
   reaction: { id: ReactionId; t: number } | null
+  mood?: Mood
 }
 
 const isFable = (id: ReactionId) => id === 'fable-arrives' || id === 'fable-leaves'

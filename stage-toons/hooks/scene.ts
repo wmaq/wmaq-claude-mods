@@ -17,7 +17,9 @@ export type SceneId = string
 export const FABLE_SCENE: LibraryScene = 'fable-audit'
 export const FALLBACK_SCENE: LibraryScene = 'standing'
 export type ReactionId = 'failure' | 'advance' | 'fable-arrives' | 'fable-leaves'
-export type Mood = 'flinch' | 'jump' | null
+// How the hero looks over the scene's own look: a reaction's flinch or
+// jump, or eyes turned up while Claude thinks.
+export type Mood = 'flinch' | 'jump' | 'think' | null
 
 export type Sprite = { palette: Record<string, number>; frames: string[][] }
 export type Paint = (b: PixelBuffer, t: number) => void
@@ -107,6 +109,7 @@ export function renderFull(scene: Scene, time: number, mood: Mood = null, backgr
     const look = actor.look(t)
     if (actor.isHero && mood === 'jump') drawClawd(b, p.x, p.y - 2, { ...look, pose: 'jump', arms: { left: 'up', right: 'up' } })
     else if (actor.isHero && mood === 'flinch') drawClawd(b, p.x + (Math.floor(time * 20) % 2 === 0 ? 1 : -1), p.y, { ...look, eyes: 'closed', arms: { left: 'out', right: 'out' } })
+    else if (actor.isHero && mood === 'think') drawClawd(b, p.x, p.y, { ...look, look: { x: look.look?.x ?? 0, y: -1 } })
     else drawClawd(b, p.x, p.y, look)
   }
   scene.front?.(b, t)
@@ -126,11 +129,16 @@ export function heroAt(scene: Scene, time: number): Point {
   return { x: Math.round(p.x) + 7, y: Math.round(p.y) }
 }
 
+// The stage's column a raster of this width starts at, cut around focusX
+// (negative: the stage centred in a wider raster).
+export const cropStart = (fullWidth: number, focusX: number, width: number): number =>
+  width >= fullWidth ? -Math.floor((width - fullWidth) / 2) : Math.max(0, Math.min(fullWidth - width, Math.round(focusX - width / 2)))
+
 // The stage cut to the raster's width around focusX, or centred in a wider
 // raster.
 export function crop(full: PixelBuffer, focusX: number, width: number): PixelBuffer {
   const out = createBuffer(width, full.h)
-  const left = width >= full.w ? -Math.floor((width - full.w) / 2) : Math.max(0, Math.min(full.w - width, Math.round(focusX - width / 2)))
+  const left = cropStart(full.w, focusX, width)
   for (let y = 0; y < full.h; y++) {
     for (let x = 0; x < width; x++) {
       const sx = x + left

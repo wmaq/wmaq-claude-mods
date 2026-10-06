@@ -1,8 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 
-import { CLAWD_ORANGE } from './clawd'
+import { CLAWD_ORANGE, EYE_DARK } from './clawd'
 import { createBuffer, drawText, EMPTY, fillRect, getPixel, glyphAt, setPixel } from './pixels'
-import { CLAWD_TOP, cellThreshold, crop, dissolve, drawSprite, FADE_MS, heroAt, LOOP_LAST_S, overlay, renderFull, renderScene, renderSeamed, type Scene, type Sprite, STAGE_H, STAGE_W } from './scene'
+import { CLAWD_TOP, cellThreshold, crop, cropStart, dissolve, drawSprite, FADE_MS, heroAt, LOOP_LAST_S, overlay, renderFull, renderScene, renderSeamed, type Scene, type Sprite, STAGE_H, STAGE_W } from './scene'
 
 const dot: Sprite = { palette: { x: 0x111111, y: 0x222222 }, frames: [['x.'], ['.y']] }
 
@@ -235,4 +235,21 @@ test("overlay keeps the base's characters where the top draws nothing, and the t
   expect(glyphAt(out, 1, 0)).toBe(null)
   expect(glyphAt(out, 2, 0)).toEqual({ cp: 0x7a, fg: 0x222222 })
   expect(glyphAt(base, 2, 0)).toEqual({ cp: 0x63, fg: 0x111111 })
+})
+
+test("thinking, the hero's eyes turn up; the rest of the scene's look stays", () => {
+  const eyesIn = (b: ReturnType<typeof renderFull>, y: number) => Array.from({ length: STAGE_W }, (_, x) => getPixel(b, x, y)).filter(c => c === EYE_DARK).length
+  const still = renderFull(scene, 0)
+  const think = renderFull(scene, 0, 'think')
+  expect(eyesIn(still, CLAWD_TOP + 1)).toBe(0)
+  expect(eyesIn(think, CLAWD_TOP + 1)).toBe(2)
+  expect(eyesIn(think, CLAWD_TOP + 3)).toBe(0)
+  expect(getPixel(think, 22, CLAWD_TOP)).toBe(CLAWD_ORANGE)
+})
+
+test('cropStart is where crop cuts: around the focus, clamped, or centring a wider raster', () => {
+  expect(cropStart(48, 24, 30)).toBe(9)
+  expect(cropStart(48, 2, 30)).toBe(0)
+  expect(cropStart(48, 47, 30)).toBe(18)
+  expect(cropStart(48, 24, 52)).toBe(-2)
 })
