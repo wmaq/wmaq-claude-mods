@@ -72,8 +72,8 @@ test('demoFor builds the demo a /stage demo command asks for, and names it', () 
     demo: { kind: 'idle', at: 7, seconds: 3 },
     label: `${IDLE_IDS.length} idle routines, the celebration, the show-off and the doze`,
   })
-  expect(demoFor({ kind: 'demo-waiting', scene: null }, DEFAULT_WORKFLOW, 7)).toEqual({ demo: { kind: 'waiting', at: 7, scene: 'laptops' }, label: 'the waiting toon: laptops' })
-  expect(demoFor({ kind: 'demo-waiting', scene: 'rowing' }, DEFAULT_WORKFLOW, 7, undefined, 'rowing')).toEqual({ demo: { kind: 'waiting', at: 7, scene: 'rowing' }, label: 'the waiting toon: rowing' })
+  expect(demoFor({ kind: 'demo-waiting', scene: null }, DEFAULT_WORKFLOW, 7)).toEqual({ demo: { kind: 'waiting', at: 7, scene: 'laptops', columns: 48 }, label: 'the waiting toon: laptops' })
+  expect(demoFor({ kind: 'demo-waiting', scene: 'rowing' }, DEFAULT_WORKFLOW, 7, undefined, 'rowing')).toEqual({ demo: { kind: 'waiting', at: 7, scene: 'rowing', columns: 48 }, label: 'the waiting toon: rowing' })
 })
 
 test('a band not drawn yet has room for the demo', () => {

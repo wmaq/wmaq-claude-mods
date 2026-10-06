@@ -7,7 +7,7 @@ import { fillRect, type PixelBuffer, setPixel } from '../pixels'
 import { drawSprite } from '../scene'
 import { C, FLAG } from '../scenes/kit'
 import { drawStanding, HELPER_COLORS, type WaitingCtx, type WaitingScene, workTime } from './draw'
-import { type Helper, SEAT_X } from './seats'
+import { type Helper, seatX } from './seats'
 
 export const COURSE_S = 1.5
 export const COURSES = 5
@@ -46,7 +46,7 @@ function drawCourse(b: PixelBuffer, x: number, k: number) {
 function drawWalls(b: PixelBuffer, { helpers, now }: WaitingCtx) {
   for (const h of helpers) {
     if (h.pose === 'walk-in') continue
-    const x = SEAT_X[h.entry.seat]!
+    const x = seatX(h.entry.seat)
     const wall = wallAt(workTime(h, now))
     for (let k = 0; k < wall.courses; k++) drawCourse(b, x, k)
     if (wall.hasFlag) drawSprite(b, FLAG, 0, x + 2, 0)

@@ -180,7 +180,7 @@ test('the area polls only before its first frame while it knows of no agents', a
 test('a demo that is over ends the loop, clears the demo and asks for a redraw', async () => {
   const mod = createMod()
   awake(mod)
-  mod.demo = { kind: 'waiting', at: START, scene: 'laptops' }
+  mod.demo = { kind: 'waiting', at: START, scene: 'laptops', columns: 48 }
   const site = mounted(mod, true)
   const { ports, blits, counts } = fake(mod, { cells: () => null })
   animate(ports, mod, site)

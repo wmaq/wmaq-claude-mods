@@ -895,7 +895,8 @@ export const register: Register = on => {
       // scene asked for, or the next one dealt.
       const deal = mod.waiting.deal
       const waiting = cmd.kind === 'demo-waiting' ? (cmd.scene ?? takeWaiting(mod, now)) : undefined
-      const { demo, label } = demoFor(cmd, mod.workflow, now, mod.director.scene, waiting)
+      // The waiting demo's walks are worked out at the area's width now.
+      const { demo, label } = demoFor(cmd, mod.workflow, now, mod.director.scene, waiting, mod.band.columns)
       // The bar's lines with the demo's line under it, at the band's width.
       const barLines = bandLayout(mod.workflow, before, false, mod.lastBand?.columns ?? 100, 'demo', countOf(await read($, tasksAtom))).length
       const text = startDemo(mod, demo, label, now, await read($, hiddenAtom), barLines)

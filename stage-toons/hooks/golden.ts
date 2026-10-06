@@ -83,7 +83,7 @@ export function goldenHashes(): Record<string, string> {
   for (const scene of WAITING_SCENE_IDS) {
     out[`waiting:${scene}`] = fnv1a(sample(waiting(scene, ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-fable-5-1']), times(16, 500)))
     const demo = waiting(scene, [])
-    demo.demo = { kind: 'waiting', at: 0, scene }
+    demo.demo = { kind: 'waiting', at: 0, scene, columns: 48 }
     out[`waiting-demo:${scene}`] = fnv1a(sample(demo, times(25, 1000)))
   }
   const work = createMod()

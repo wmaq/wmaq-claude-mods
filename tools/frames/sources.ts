@@ -119,6 +119,10 @@ function waitingMod(agents: readonly string[], scene: WaitingSceneId = FALLBACK_
 // drawn at time 0: the helpers sit down as it first sees them, and a
 // working scene comes on then.
 function areaFrames(mod: Mod, size: AreaSize, times: readonly number[], before?: (t: number) => void): string[] {
+  // The band's area at this size, as the band's hook sets it: the waiting
+  // toon seats its helpers by it.
+  mod.band.columns = size.columns
+  mod.band.rows = size.rows
   before?.(0)
   areaCells(mod, size, 0, quiet)
 
@@ -152,7 +156,7 @@ export function waitingFrames(agents: readonly string[] | 'demo', times: readonl
   known('waiting scene', scene, WAITING_SCENE_IDS)
   if (agents !== 'demo' && agents.length === 0) throw new Error('waiting needs --agents (for example --agents fable,sonnet) or --demo')
   const mod = waitingMod(agents === 'demo' ? [] : agents, scene as WaitingSceneId)
-  if (agents === 'demo') mod.demo = { kind: 'waiting', at: 0, scene: scene as WaitingSceneId }
+  if (agents === 'demo') mod.demo = { kind: 'waiting', at: 0, scene: scene as WaitingSceneId, columns: size.columns }
 
   return areaFrames(mod, size, times).map(cells => cellsCanvas(cells, size))
 }

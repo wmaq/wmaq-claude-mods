@@ -12,11 +12,11 @@ import { createDirector, type Director, react, type Shot, tick } from './directo
 import { CELEBRATE, IDLE_IDS, SHOW_OFF_DEMO, SHOW_OFF_PREFIX } from './idle'
 import type { Mod } from './mod'
 import type { Phase } from './phase'
-import { FABLE_SCENE, FALLBACK_SCENE, type SceneId } from './scene'
+import { FABLE_SCENE, FALLBACK_SCENE, type SceneId, STAGE_W } from './scene'
 import { DEMO_ORDER } from './scenes'
 import { TOON_ROWS } from './toon'
 import { FALLBACK_WAITING, WAITING_SCENE_IDS, type WaitingSceneId } from './waiting/deal'
-import { WAITING_DEMO_MS } from './waiting/demo'
+import { waitingDemoMs } from './waiting/demo'
 import { type Activity, createActivity, type LineMoment, lineOf, said, settleActivity, type SpinnerMode, toolStarted, withMode } from './work'
 import { allStages, stageOf } from './workflow'
 
@@ -28,7 +28,8 @@ export const WORK_DEMO_SECONDS = 3
 export type Demo =
   | { kind: 'scenes'; at: number; seconds: number; scenes: readonly SceneId[] }
   | { kind: 'idle'; at: number; seconds: number }
-  | { kind: 'waiting'; at: number; scene: WaitingSceneId }
+  // columns: the area's width when it started, which sets its length.
+  | { kind: 'waiting'; at: number; scene: WaitingSceneId; columns: number }
   | { kind: 'work'; at: number; seconds: number; scene: SceneId }
 // The scene showing, as a shot, and how long it has shown.
 export type DemoFrame = { index: number; shot: Shot; sceneMs: number }
@@ -65,7 +66,7 @@ export const demoLength = (demo: Demo): number =>
 // Which item plays at a moment and for how long it has, or null once the
 // demo is over.
 export function demoStep(demo: Demo, now: number): { index: number; ms: number } | null {
-  const length = demo.kind === 'waiting' ? WAITING_DEMO_MS : demo.seconds * 1000
+  const length = demo.kind === 'waiting' ? waitingDemoMs(demo.columns) : demo.seconds * 1000
   const elapsed = Math.max(0, now - demo.at)
   const index = Math.floor(elapsed / length)
 
@@ -154,12 +155,13 @@ export function demoFor(
   now: number,
   scene: SceneId = FALLBACK_SCENE,
   waiting: WaitingSceneId = FALLBACK_WAITING,
+  columns = STAGE_W,
 ): { demo: Demo; label: string } {
   if (cmd.kind === 'demo-work') return { demo: { kind: 'work', at: now, seconds: cmd.seconds, scene }, label: `what Clawd shows while Claude works, over ${scene}, in ${WORK_STEPS.length} steps` }
   const stage = cmd.kind === 'demo' && cmd.stage !== null ? stageOf(w, cmd.stage) : undefined
   const demo: Demo =
     cmd.kind === 'demo-waiting'
-      ? { kind: 'waiting', at: now, scene: waiting }
+      ? { kind: 'waiting', at: now, scene: waiting, columns }
       : cmd.kind === 'demo-idle'
         ? { kind: 'idle', at: now, seconds: cmd.seconds }
         : { kind: 'scenes', at: now, seconds: cmd.seconds, scenes: stage?.scenes ?? DEMO_ORDER }
@@ -190,7 +192,7 @@ export function startDemo(mod: Mod, demo: Demo, label: string, now: number, isHi
   const isRestart = mod.demo !== null && demoStep(mod.demo, now) !== null
   mod.demo = demo
   const playing = `${isRestart ? 'Restarting the demo: p' : 'P'}laying`
-  if (demo.kind === 'waiting') return `${playing} ${label} (about ${Math.round(WAITING_DEMO_MS / 1000)} s). /stage demo waiting <${WAITING_SCENE_IDS.join(' | ')}> plays one. /stage demo stop ends it.`
+  if (demo.kind === 'waiting') return `${playing} ${label} (about ${Math.round(waitingDemoMs(demo.columns) / 1000)} s). /stage demo waiting <${WAITING_SCENE_IDS.join(' | ')}> plays one. /stage demo stop ends it.`
   const total = demoLength(demo) * demo.seconds
   const length = total < 60 ? 'under a minute' : `about ${Math.round(total / 60)} min`
 

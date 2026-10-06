@@ -48,7 +48,7 @@ test('the stage scene while Claude works: the same state at the same time gives 
 
 test('a demo plays over the stage scene while Claude works', () => {
   const demo = (mod: Mod) => {
-    mod.demo = { kind: 'waiting', at: START, scene: 'laptops' }
+    mod.demo = { kind: 'waiting', at: START, scene: 'laptops', columns: 48 }
   }
   const demoWorking = (mod: Mod) => {
     demo(mod)
@@ -117,7 +117,7 @@ test('each picture has a name that changes when the picture does', () => {
   mod.demo = { kind: 'idle', at: START + DOZE_MS + 6000, seconds: 2 }
   frame(mod, START + DOZE_MS + 8500)
   expect(mod.shown?.name).toBe(`demo:${START + DOZE_MS + 6000}:1:nyan`)
-  mod.demo = { kind: 'waiting', at: START + DOZE_MS + 9000, scene: 'laptops' }
+  mod.demo = { kind: 'waiting', at: START + DOZE_MS + 9000, scene: 'laptops', columns: 48 }
   frame(mod, START + DOZE_MS + 9500)
   expect(mod.shown?.name).toBe(`demo:${START + DOZE_MS + 9000}:waiting`)
 })

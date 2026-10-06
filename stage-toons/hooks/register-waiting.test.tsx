@@ -65,7 +65,8 @@ test("an agent's own turn ending sends its helper off at once, before any poll",
   expect(shows(lastArea(world), 'sonnet')).toBe(true)
   // The list still says running: the turn's end is taken over it.
   await endTurn($, 'agent-1')
-  await clock.advance(1_800)
+  // Its hop, then its walk out to the 99-column area's edge at 48 pixels a second.
+  await clock.advance(2_100)
   expect(shows(lastArea(world), 'sonnet')).toBe(false)
 })
 

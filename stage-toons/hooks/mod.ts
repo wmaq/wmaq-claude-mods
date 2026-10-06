@@ -223,7 +223,7 @@ export const PAST_MS = 5000
 // scene, one that ended restarts the idle clock where it ended.
 export function reseat(mod: Mod, now: number) {
   const before = mod.seats
-  const { log, endedAt } = seat(before, mod.roster, now, isWaitingShown(mod))
+  const { log, endedAt } = seat(before, mod.roster, now, isWaitingShown(mod), mod.band.columns)
   mod.seats = log
   if (log.since !== mod.waiting.since) {
     mod.waiting = { ...mod.waiting, since: log.since, past: [] }

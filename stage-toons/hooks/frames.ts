@@ -131,7 +131,7 @@ function pictureOf(mod: Mod, now: number, log: Log): Picture | null {
   }
   if (demo?.kind === 'waiting') {
     if (!demoStep(demo, now)) return null
-    const at = waitingDemoAt(demo.at, now)
+    const at = waitingDemoAt(demo.at, now, demo.columns)
 
     return 'log' in at ? waitingPicture(`demo:${demo.at}:waiting`, at.log, demo.scene) : routinePicture(mod, `demo:${demo.at}:idle`, mod.idle, now - at.idleMs, log)
   }
