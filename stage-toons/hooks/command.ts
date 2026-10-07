@@ -2,8 +2,9 @@
 
 import type { Progress, StageDef, StageId, WidthSetting, Workflow, WorkflowSettings } from '../types'
 import { ruleText } from './auto'
-import { DEMO_MAX, DEMO_MIN, DEMO_SECONDS, WORK_DEMO_SECONDS } from './demo'
+import { DEMO_MAX, DEMO_MIN, DEMO_SECONDS, DJ_DEMO_SECONDS, WORK_DEMO_SECONDS } from './demo'
 import { ago, LOG_DEFAULT } from './history'
+import { type Music, trackLine } from './nowplaying'
 import { applyMove, backStage, describe, HISTORY_MAX, nextStage, parseStage, stageLabel } from './stages'
 import { isWaitingScene, WAITING_SCENE_IDS, type WaitingSceneId } from './waiting/deal'
 import { DEFAULT_WIDTH, parseWidth, WIDTH_MAX, widthSettingWords } from './width'
@@ -21,6 +22,7 @@ export type Command =
   | { kind: 'demo-idle'; seconds: number }
   | { kind: 'demo-work'; seconds: number }
   | { kind: 'demo-waiting'; scene: WaitingSceneId | null }
+  | { kind: 'demo-dj'; seconds: number }
   | { kind: 'demo-stop' }
   | { kind: 'workflow' }
   | { kind: 'workflow-init' }
@@ -28,6 +30,7 @@ export type Command =
   | { kind: 'auto'; isOn: boolean | null }
   | { kind: 'bubbles'; isOn: boolean | null }
   | { kind: 'calm'; isOn: boolean | null }
+  | { kind: 'dj'; isOn: boolean | null }
   | { kind: 'width'; width: WidthSetting | null }
   | { kind: 'width-usage' }
   | { kind: 'log'; count: number }
@@ -42,7 +45,7 @@ export function usage(w: Workflow): string {
   const stages = [...w.track.map((s, i) => `${i + 1} ${s.id}`), DONE_ID, ...w.side.map(s => (s === zero ? `0 ${s.id}` : s.id))]
 
   return [
-    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work] [seconds] | demo waiting [scene] | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | calm [on | off] | width [<n> | full] | log [n] | time | help]',
+    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work | dj] [seconds] | demo waiting [scene] | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | calm [on | off] | dj [on | off] | width [<n> | full] | log [n] | time | help]',
     '  /stage                  show the current stage and the recent moves',
     `  /stage 5, /stage plan   move to a stage${zero ? ` (0 or ? for ${zero.label})` : ''}`,
     '  /stage next, /stage back',
@@ -53,10 +56,12 @@ export function usage(w: Workflow): string {
     `  /stage demo [<stage> | idle] [seconds]  play every scene, one stage's scenes, or the idle routines, ${DEMO_SECONDS} s each (${DEMO_MIN} to ${DEMO_MAX}); /stage demo stop ends it`,
     `  /stage demo waiting [scene]  play the toon shown while Claude waits on agents, about 25 s, in one of its scenes (${WAITING_SCENE_IDS.join(', ')}), or the next one dealt`,
     `  /stage demo work [seconds]  play what Clawd shows while Claude works: thinking, each kind of tool, his lines, ${WORK_DEMO_SECONDS} s each`,
+    `  /stage demo dj [seconds]  play Clawd DJ: a long title, a track change, two helpers dancing, ${DJ_DEMO_SECONDS} s`,
     '  /stage workflow [init | reload]  show the workflow; write the default to .claude/stage-toons.json; read the file again',
     "  /stage auto [on | off]  show the workflow's rules for moving the stage by itself; turn them on or off",
     "  /stage bubbles [on | off]  whether Clawd's pop-ups show: what Claude is doing over his head, and what he says",
     '  /stage calm [on | off]  whether the cartoons hold still, changing only when something happens',
+    "  /stage dj [on | off]    Clawd DJ: while Spotify plays, Clawd at the decks and the track's name (Windows)",
     `  /stage width [<n> | full]  how wide the cartoons may grow under the bar (${DEFAULT_WIDTH} columns by default, ${WIDTH_MAX} at most)`,
     `  /stage log [n]          the last n moves (${LOG_DEFAULT}; up to ${HISTORY_MAX}) with how long each stage lasted`,
     '  /stage time             time per feature and per stage, wall-clock and Claude working',
@@ -74,7 +79,7 @@ export function parseCommand(w: Workflow, args: string): Command {
   if (word === 'feature') return tail ? { kind: 'feature', name: tail } : { kind: 'usage' }
   if (word === 'message') return tail ? { kind: 'message', text: tail } : { kind: 'usage' }
   if (word === 'demo') return parseDemo(w, tail.toLowerCase())
-  if (word === 'auto' || word === 'bubbles' || word === 'calm') {
+  if (word === 'auto' || word === 'bubbles' || word === 'calm' || word === 'dj') {
     const sub = tail.toLowerCase()
     if (sub === '') return { kind: word, isOn: null }
 
@@ -130,7 +135,7 @@ function secondsOf(word: string | undefined, fallback = DEMO_SECONDS): number | 
   return seconds >= DEMO_MIN && seconds <= DEMO_MAX ? seconds : null
 }
 
-// demo [<stage id> | idle | work] [seconds], demo waiting [scene], or demo stop. A bare
+// demo [<stage id> | idle | work | dj] [seconds], demo waiting [scene], or demo stop. A bare
 // number is the seconds: stages are named by id only.
 function parseDemo(w: Workflow, arg: string): Command {
   const [first, second, ...rest] = arg === '' ? [] : arg.split(/\s+/)
@@ -146,9 +151,10 @@ function parseDemo(w: Workflow, arg: string): Command {
 
     return seconds === null ? { kind: 'usage' } : { kind: 'demo', seconds, stage: null }
   }
-  const seconds = secondsOf(second, first === 'work' ? WORK_DEMO_SECONDS : DEMO_SECONDS)
+  const seconds = secondsOf(second, first === 'work' ? WORK_DEMO_SECONDS : first === 'dj' ? DJ_DEMO_SECONDS : DEMO_SECONDS)
   if (seconds === null) return { kind: 'usage' }
   if (first === 'idle') return { kind: 'demo-idle', seconds }
+  if (first === 'dj') return { kind: 'demo-dj', seconds }
   if (first === 'work') return { kind: 'demo-work', seconds }
 
   return stageIds(w).includes(first) ? { kind: 'demo', seconds, stage: first } : { kind: 'usage' }
@@ -252,6 +258,17 @@ export function calmText(isOn: boolean, fileCalm?: boolean): string {
     : 'Calm mode is off: the cartoons move. /stage calm on holds them still.'
 
   return fileCalm === undefined ? state : `${state} This project's workflow file starts it ${fileCalm ? 'on' : 'off'}.`
+}
+
+// /stage dj's answer: whether DJ mode is on, and what the last read
+// heard. The track goes to the person only (the answer's text, never
+// Claude's context).
+export const DJ_NEEDS_WINDOWS = "DJ mode needs Claude Code in a Windows terminal: it reads Spotify through Windows' media session."
+export function djText(isOn: boolean, music: Music): string {
+  if (!isOn) return "DJ mode is off. /stage dj on: while Spotify plays, Clawd DJs and the track's name shows."
+  if (music.isPlaying && music.track) return `DJ mode on: ${trackLine(music.track)}`
+
+  return 'DJ mode on: waiting for Spotify to play. /stage dj off turns it off.'
 }
 
 // What a demo's answer adds while calm mode is on.

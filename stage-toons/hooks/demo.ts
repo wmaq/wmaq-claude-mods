@@ -1,6 +1,7 @@
 // /stage demo: the library's scenes, one stage's scenes, or the idle
 // routines, each for so many seconds, or the waiting toon's script, or the
-// work layer's steps over the stage's scene, so the cartoons can be seen
+// work layer's steps over the stage's scene, or Clawd DJ's script, so the
+// cartoons can be seen
 // while Claude is idle. What shows at a moment is
 // worked out from the demo and the time alone (the area dissolves from one
 // step into the next); startDemo is the one function that sets mod.demo.
@@ -12,11 +13,14 @@ import { createDirector, type Director, react, type Shot, tick } from './directo
 import { CELEBRATE, IDLE_IDS, SHOW_OFF_DEMO, SHOW_OFF_PREFIX } from './idle'
 import type { Mod } from './mod'
 import type { Phase } from './phase'
+import type { NowPlaying } from './nowplaying'
 import { FABLE_SCENE, FALLBACK_SCENE, type SceneId, STAGE_W } from './scene'
 import { DEMO_ORDER } from './scenes'
+import { djSpots } from './scenes/dj'
 import { TOON_ROWS } from './toon'
 import { FALLBACK_WAITING, WAITING_SCENE_IDS, type WaitingSceneId } from './waiting/deal'
 import { waitingDemoMs } from './waiting/demo'
+import { AREA_W, type SeatEntry, type SeatLog } from './waiting/seats'
 import { type Activity, createActivity, type LineMoment, lineOf, said, settleActivity, type SpinnerMode, toolStarted, withMode } from './work'
 import { allStages, stageOf } from './workflow'
 
@@ -24,6 +28,7 @@ export const DEMO_SECONDS = 10
 export const DEMO_MIN = 2
 export const DEMO_MAX = 60
 export const WORK_DEMO_SECONDS = 3
+export const DJ_DEMO_SECONDS = 20
 
 export type Demo =
   | { kind: 'scenes'; at: number; seconds: number; scenes: readonly SceneId[] }
@@ -31,6 +36,7 @@ export type Demo =
   // columns: the area's width when it started, which sets its length.
   | { kind: 'waiting'; at: number; scene: WaitingSceneId; columns: number }
   | { kind: 'work'; at: number; seconds: number; scene: SceneId }
+  | { kind: 'dj'; at: number; seconds: number }
 // The scene showing, as a shot, and how long it has shown.
 export type DemoFrame = { index: number; shot: Shot; sceneMs: number }
 // The idle demo's step: a routine, or the doze (null) after them all.
@@ -146,11 +152,44 @@ export const idleDemoLine = (f: IdleDemoFrame): string => `Idle demo ${f.index +
 
 export const waitingDemoLine = (scene: WaitingSceneId): string => `Waiting demo: ${scene} · /stage demo stop ends it`
 
+// /stage demo dj: Clawd at the decks whatever Spotify says. A long track
+// (its title scrolls in the box), another from DJ_DEMO_CHANGE_MS (the
+// record swap; letters beyond ASCII), and two helpers dancing, walking in
+// half a second apart.
+export const DJ_DEMO_TRACKS: readonly NowPlaying[] = [
+  { artist: 'Daft Punk', title: 'Harder, Better, Faster, Stronger', isPlaying: true },
+  { artist: 'Clawd & the Toons', title: 'Łąka, Кино, Café', isPlaying: true },
+]
+export const DJ_DEMO_CHANGE_MS = 8000
+const DJ_DEMO_CAST: readonly Pick<SeatEntry, 'agentId' | 'kind'>[] = [
+  { agentId: 'demo-opus', kind: 'opus' },
+  { agentId: 'demo-fable', kind: 'fable' },
+]
+
+export type DjDemoFrame = { track: NowPlaying; changedAt: number; dancers: SeatLog }
+
+// The DJ demo at a moment, on an area this wide: the track, when it
+// changed, and the dancers (as many as the floor has spots for).
+export function djDemoAt(demo: Extract<Demo, { kind: 'dj' }>, now: number, columns: number): DjDemoFrame {
+  const changedAt = demo.at + DJ_DEMO_CHANGE_MS
+  const spots = djSpots(columns)
+  const edge = Math.max(AREA_W, columns)
+  const entries: SeatEntry[] = DJ_DEMO_CAST.slice(0, spots.count).map((c, seat) => ({ ...c, seat, arrivedAt: demo.at + seat * 500, leftAt: null, edge, x: spots.x(seat) }))
+
+  return {
+    track: now < changedAt ? DJ_DEMO_TRACKS[0]! : DJ_DEMO_TRACKS[1]!,
+    changedAt,
+    dancers: { entries, queue: [], since: demo.at, until: null, walk: null, seats: spots.count },
+  }
+}
+
+export const djDemoLine = (): string => 'DJ demo: Clawd at the decks · /stage demo stop ends it'
+
 // The demo a /stage demo command asks for, and what its answer calls it.
 // scene: the stage's, which the work demo plays under its layer; waiting:
 // the waiting scene the waiting demo plays.
 export function demoFor(
-  cmd: Extract<Command, { kind: 'demo' | 'demo-idle' | 'demo-waiting' | 'demo-work' }>,
+  cmd: Extract<Command, { kind: 'demo' | 'demo-idle' | 'demo-waiting' | 'demo-work' | 'demo-dj' }>,
   w: Workflow,
   now: number,
   scene: SceneId = FALLBACK_SCENE,
@@ -158,6 +197,7 @@ export function demoFor(
   columns = STAGE_W,
 ): { demo: Demo; label: string } {
   if (cmd.kind === 'demo-work') return { demo: { kind: 'work', at: now, seconds: cmd.seconds, scene }, label: `what Clawd shows while Claude works, over ${scene}, in ${WORK_STEPS.length} steps` }
+  if (cmd.kind === 'demo-dj') return { demo: { kind: 'dj', at: now, seconds: cmd.seconds }, label: 'Clawd DJ' }
   const stage = cmd.kind === 'demo' && cmd.stage !== null ? stageOf(w, cmd.stage) : undefined
   const demo: Demo =
     cmd.kind === 'demo-waiting'
@@ -193,6 +233,7 @@ export function startDemo(mod: Mod, demo: Demo, label: string, now: number, isHi
   mod.demo = demo
   const playing = `${isRestart ? 'Restarting the demo: p' : 'P'}laying`
   if (demo.kind === 'waiting') return `${playing} ${label} (about ${Math.round(waitingDemoMs(demo.columns) / 1000)} s). /stage demo waiting <${WAITING_SCENE_IDS.join(' | ')}> plays one. /stage demo stop ends it.`
+  if (demo.kind === 'dj') return `${playing} ${label} for ${demo.seconds} s: a long title, a track change, two helpers dancing. /stage demo stop ends it.`
   const total = demoLength(demo) * demo.seconds
   const length = total < 60 ? 'under a minute' : `about ${Math.round(total / 60)} min`
 

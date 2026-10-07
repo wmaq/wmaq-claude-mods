@@ -148,7 +148,7 @@ test('every error is listed with its path', () => {
   expect(errorsOf({ track: [stage('plan', { label: 'x'.repeat(21) })] })).toEqual(['track[0].label: 21 characters, at most 20'])
   expect(errorsOf({ track: [stage('Plan')] })).toEqual(['track[0].id "Plan": lowercase letters, digits and dashes, starting with a letter'])
   expect(errorsOf({ track: [stage('next')] })).toEqual([
-    `track[0].id "next" is one of /stage's words (next, back, hide, demo, feature, message, workflow, auto, bubbles, calm, width, log, time, help, done)`,
+    `track[0].id "next" is one of /stage's words (next, back, hide, demo, feature, message, workflow, auto, bubbles, calm, dj, width, log, time, help, done)`,
   ])
   expect(errorsOf({ track: [stage('plan'), stage('plan')] })).toEqual(['track[1].id "plan" is used twice'])
   expect(errorsOf({ track: [stage('plan')], side: [stage('plan')] })).toEqual(['side[0].id "plan" is used twice'])
@@ -216,7 +216,7 @@ test('every workflow has Done past its track; no stage may be called done', () =
   expect(rank(W, 'done')).toBe(-1)
   expect(stageIds(W).indexOf('done')).toBe(W.track.length)
   expect(errorsOf({ track: [stage('done')] })).toEqual([
-    `track[0].id "done" is one of /stage's words (next, back, hide, demo, feature, message, workflow, auto, bubbles, calm, width, log, time, help, done)`,
+    `track[0].id "done" is one of /stage's words (next, back, hide, demo, feature, message, workflow, auto, bubbles, calm, dj, width, log, time, help, done)`,
   ])
 })
 
