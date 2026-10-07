@@ -2,13 +2,15 @@ import { expect, test } from 'claude-code/testing'
 
 import { CLAWD_ORANGE, FABLE_VIOLET } from './clawd'
 import { EMPTY, getPixel, type PixelBuffer } from './pixels'
-import { LOOP_LAST_S, renderFull, type Scene, STAGE_W } from './scene'
+import { renderFull, type Scene, STAGE_W } from './scene'
 import { SCENES } from './scenes'
 import { C } from './scenes/kit'
 import { CHALK } from './scenes/light-bulbs'
 
+// scroll and sticky-notes, reworked across the whole width in phase 6c, are
+// held by scene-polish.test.ts and scene-polish-6c.test.ts.
 const WINGED = [
-  'light-bulbs', 'mystery-box', 'proofread-page', 'proofread-checklist', 'red-pen', 'scroll', 'scales', 'stepping-stones', 'sticky-notes', 'thought-clouds', 'treasure-map',
+  'light-bulbs', 'mystery-box', 'proofread-page', 'proofread-checklist', 'red-pen', 'scales', 'stepping-stones', 'thought-clouds', 'treasure-map',
 ]
 const scene = (id: string): Scene => SCENES[id]!
 // A scene on an area of that size, its background on the same unwrapped time.
@@ -58,20 +60,19 @@ test('standing stays bare: nothing right of the core at any width', () => {
   for (const columns of [120, 200]) for (const t of moments(scene('standing'))) expect(wings(draw('standing', t, columns))).toEqual([])
 })
 
-test('the sets that run on reach the edge at 200 columns with no gap: the stream, the sea, the desk, the rack', () => {
+test('the sets that run on reach the edge at 200 columns with no gap: the stream, the sea, the desk', () => {
   const runs: [string, number, number[]][] = [
     ['stepping-stones', STAGE_W, [12, 13]],
     ['treasure-map', STAGE_W, [12, 13]],
     ['proofread-page', 50, [9]],
     ['proofread-checklist', 50, [9]],
-    ['scroll', 50, [8, 13]],
   ]
   for (const [id, from, rows] of runs) {
     const b = draw(id, 1, 200)
     for (const y of rows) for (let x = from; x < 200; x++) expect(at(b, x, y)).not.toBe(EMPTY)
   }
   // And the wings that repeat reach the area's last 8 columns.
-  for (const id of ['light-bulbs', 'red-pen', 'scales', 'scroll', 'stepping-stones', 'treasure-map', 'proofread-page']) {
+  for (const id of ['light-bulbs', 'red-pen', 'scales', 'stepping-stones', 'treasure-map', 'proofread-page']) {
     expect(wings(draw(id, 1, 200)).some(p => Number(p.split(',')[0]) >= 192)).toBe(true)
   }
 })
@@ -88,12 +89,6 @@ test('every loop is seamless across the wings at 120 columns: the step over the 
     expect(step(s.loop)).toBeLessThanOrEqual(Math.max(...inside))
     expect(step(2 * s.loop)).toBeLessThanOrEqual(Math.max(...inside))
   }
-})
-
-test("sticky-notes fades at its loop point: the second board is the same at its held last moment and at the new start", () => {
-  const s = scene('sticky-notes')
-  expect(wings(draw('sticky-notes', s.loop - LOOP_LAST_S, 120))).toEqual(wings(draw('sticky-notes', 0, 120)))
-  expect(wings(draw('sticky-notes', 0, 120)).length).toBeGreaterThan(0)
 })
 
 // The wings' pixels as [x, y, colour], y in the core's coordinates.
@@ -224,11 +219,8 @@ test('scales: a shelf in the wings holds sets of brass weights, smallest to larg
   for (const t of [0, 2.6, 5.9]) expect(wings(draw('scales', t, 200))).toEqual(wings(b))
 })
 
-test('scroll and treasure-map: the scroll and the map unroll as far as ever on a wide area', () => {
-  // Fully open: the scroll's roll ends at column 46, the map's roller at 45; the wings start past a gap.
-  const scrollAt = draw('scroll', 5.6, 200)
-  expect(at(scrollAt, 46, 12)).toBe(C.paperShade)
-  expect(at(scrollAt, 47, 12)).toBe(EMPTY)
+test('treasure-map: the map unrolls as far as ever on a wide area', () => {
+  // Fully open: the map's roller ends at column 45; the wings start past a gap.
   const map = draw('treasure-map', 4, 200)
   expect(at(map, 45, 5)).toBe(C.woodDark)
   expect(at(map, 46, 5)).toBe(EMPTY)

@@ -72,7 +72,7 @@ test("the auditor's question mark shows whole", () => {
 
 // Scenes whose hero walks on through the loop and the fade at its loop
 // point brings back to the start.
-const WALKS_ON = ['bricklaying']
+const WALKS_ON = ['bricklaying', 'sticky-notes']
 
 test('every loop is seamless: the hero ends where it began, or the fade brings him back', () => {
   for (const scene of SCENE_LIST.filter(s => !WALKS_ON.includes(s.id))) {
@@ -140,7 +140,7 @@ test('batch 1, part 1: each new scene shows what it is about', () => {
   expect(has('stargazing', C.gray, 1)).toBeGreaterThan(4)
   // Notes go up on the board, five by the end.
   expect(has('sticky-notes', C.blue, 1.5)).toBe(0)
-  expect(has('sticky-notes', C.blue, 2.5)).toBe(9)
+  expect(has('sticky-notes', C.blue, 3)).toBe(9)
   // The plan's lines are drawn out on the blue board.
   expect(has('blueprint', C.white, 0.5)).toBeLessThan(has('blueprint', C.white, 4.9))
   // Mistakes are circled in red, then ticked in green.

@@ -10,9 +10,13 @@ import { C, STAR_LAYERS } from './scenes/kit'
 import { LAYERS as ROAD_LAYERS } from './scenes/road-trip'
 import { popOf } from './scenes/rocket'
 
-// Phase 6b's scenes: reworked (road-trip, bricklaying, flashlight) or new
-// (rocket).
-const PHASE = ['road-trip', 'bricklaying', 'flashlight', 'rocket']
+// The scene polish's scenes: 6b's reworked (road-trip, bricklaying,
+// flashlight) or new (rocket), and 6c's reworked or new (victory-lap,
+// bowling).
+const PHASE = [
+  'road-trip', 'bricklaying', 'flashlight', 'rocket',
+  'writing-desk', 'sticky-notes', 'scroll',
+]
 const scene = (id: string): Scene => SCENES[id]!
 const SIZES: AreaSize[] = [{ columns: 48, rows: 7 }, { columns: 120, rows: 7 }, { columns: 200, rows: 9 }]
 const moments = (s: Scene, every = 0.1) => Array.from({ length: Math.round(s.loop / every) }, (_, i) => i * every)
