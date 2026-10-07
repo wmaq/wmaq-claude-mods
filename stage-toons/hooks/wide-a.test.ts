@@ -2,9 +2,10 @@ import { expect, test } from 'claude-code/testing'
 
 import { CLAWD_ORANGE } from './clawd'
 import { EMPTY, getPixel, type PixelBuffer } from './pixels'
-import { type AreaSize, renderFull, renderSeamed, type Scene } from './scene'
+import { type AreaSize, heroAt, renderFull, renderSeamed, type Scene } from './scene'
 import { SCENES } from './scenes'
 import { C, STAR_LAYERS } from './scenes/kit'
+import { LAYERS as ROAD_LAYERS } from './scenes/road-trip'
 
 // The wide sets of bricklaying, crash-test, fireworks, fishing, flashlight,
 // recycling, road-trip and stamp (phase 4e). Pixels are read in core
@@ -36,15 +37,21 @@ test('every scene of the group draws at any size without throwing, at exactly th
   }
 })
 
-test("bricklaying: the finished wall slides out at the real edge in the same 1.5 s", () => {
-  const left = (b: PixelBuffer) => Math.min(...columnsOf(b, C.brick))
-  expect(left(draw('bricklaying', 10.5))).toBe(26)
-  // Halfway through the slide, halfway to the edge: 174 / 2 on 200 columns, 22 / 2 on 48.
-  expect(left(draw('bricklaying', 11.25))).toBe(26 + 87)
-  expect(left(draw('bricklaying', 11.25, { columns: 48, rows: 7 }))).toBe(26 + 11)
-  // Near the end it reaches the last 8 columns, and is out by the loop's end.
-  expect(columnsOf(draw('bricklaying', 11.9), C.brick).some(x => x >= 192)).toBe(true)
-  expect(left(draw('bricklaying', 11.99))).toBeGreaterThanOrEqual(198)
+test("bricklaying: the wall runs from 6 to Clawd's width and two short of the edge, at most 150 columns, and Clawd walks along it", () => {
+  // The wall's last column (its mortar), in core columns, once it is whole.
+  const end = (size: AreaSize) => {
+    const b = draw('bricklaying', 13.6, size)
+
+    return Math.max(...columnsOf(b, C.mortar)) - (b.ox ?? 0)
+  }
+  expect(end({ columns: 48, rows: 7 })).toBe(6 + 6 * 4 + 1)
+  expect(end(MID)).toBe(6 + 24 * 4 + 1)
+  expect(end({ columns: 512, rows: 9 })).toBe(6 + 37 * 4 + 1)
+  // Clawd stands just past the wall's growing end: he walks right with it.
+  const scene = SCENES.bricklaying!
+  expect(heroAt(scene, 1, MID).x).toBe(23)
+  expect(heroAt(scene, 13.4, MID).x).toBe(111)
+  expect(heroAt(scene, 13.4, { columns: 48, rows: 7 }).x).toBe(40)
 })
 
 test('crash-test: the wall carries on as bricks to the edge, column 47 only past 48 columns', () => {
@@ -131,16 +138,18 @@ test('fishing: now and then a fish jumps out of the water in the wings, in an ar
   expect(dry).toHaveLength(0)
 })
 
-test('flashlight: past column 47 the beam narrows to nothing over 12 columns', () => {
-  for (const t of [0, 1.5, 3, 5.25]) {
-    const b = draw('flashlight', t)
-    const height = (x: number) => Array.from({ length: b.h }, (_, y) => getPixel(b, x + (b.ox ?? 0), y)).filter(c => c === C.beam).length
-    expect(height(48)).toBeGreaterThan(0)
-    for (let x = 48; x < 59; x++) expect(height(x)).toBeLessThanOrEqual(height(x - 1))
-    for (let x = 59; x < 200; x++) expect(height(x)).toBe(0)
-  }
-  // Pointing up, the beam's tip is still in the air at 120 columns: it reaches column 57.
-  expect(columnsOf(draw('flashlight', 0, MID), C.beam).at(-1)).toBeGreaterThanOrEqual(57)
+test('flashlight: the pool sweeps out to 9 short of the edge, up to 150 columns on, and the dark wall stays empty', () => {
+  // At its farthest (3.4 s) the pool's lit wall reaches near the far point.
+  const lit = (size: AreaSize) => Math.max(...columnsOf(draw('flashlight', 3.4, size), C.beam))
+  expect(lit(MID)).toBeGreaterThanOrEqual(111 - 7)
+  expect(lit(MID)).toBeLessThan(120)
+  expect(lit(WIDE)).toBeGreaterThanOrEqual(180 - 7)
+  expect(lit(WIDE)).toBeLessThan(190)
+  // Between the shelves (row 2) the unlit back wall is the terminal's own
+  // background: nothing is drawn there away from the light.
+  const b = draw('flashlight', 0.5, MID)
+  expect(gaps(b, 2, 60, 120)).toHaveLength(60)
+  expect(gaps(draw('flashlight', 3.4, MID), 2, 60, 120).length).toBeLessThan(60)
 })
 
 test('recycling: past 50 columns the missed ball rolls against a second bin and lies there', () => {
@@ -190,15 +199,23 @@ test('recycling: past the second bin, sorting bins to the edge, 14 columns apart
   for (let x = 113; x < 120; x++) for (let y = 0; y < 14; y++) expect(at(mid, x, y)).toBe(EMPTY)
 })
 
-test('road-trip: the road winds to the edge, flags standing past the core from the start; still through the fade', () => {
+test('road-trip: the road and the fence run to the edge, the near layer scrolling 6 columns a second, the far ones slower', () => {
   const b = draw('road-trip', 0)
-  const roadY = (x: number) => 11 + Math.round(Math.sin((x - 18) / 5) * 1.5)
-  for (let x = 18; x < 200; x += 2) expect(at(b, x, roadY(x))).toBe(C.road)
-  for (let x = 48; x < 200; x += 7) expect(at(b, x + 1, roadY(x) - 4)).toBe(C.red)
-  // The wings are the same at the held last moment and the new start.
-  const held = renderFull(scene('road-trip'), 7.95, null, 7.95, MID)
-  const start = renderFull(scene('road-trip'), 8, null, 8, MID)
-  expect(region(held, 48)).toBe(region(start, 48))
+  expect(gaps(b, 13, 0, 200)).toEqual([])
+  expect(gaps(b, 10, 0, 200)).toEqual([])
+  // One second on, the road's dashes are 6 columns further left (from
+  // column 30, clear of Clawd's feet).
+  const road = (t: number, shift: number) => Array.from({ length: 150 }, (_, x) => at(draw('road-trip', t), 30 + x + shift, 13)).join(',')
+  expect(road(0, 0)).toBe(road(1, -6))
+  // Each layer is slower the further off it is.
+  const speeds = [ROAD_LAYERS.clouds, ROAD_LAYERS.mountains, ROAD_LAYERS.hills, ROAD_LAYERS.near].map(l => l.speed)
+  expect([...speeds].sort((p, q) => p - q)).toEqual(speeds)
+  // Every layer is behind Clawd: nothing of it covers him, at any moment.
+  const bare: Scene = { ...scene('road-trip'), background: undefined }
+  for (let t = 0; t < 4; t += 0.25) {
+    const orange = (s: Scene) => [...renderFull(s, t, null, t, MID).px].filter(c => c === CLAWD_ORANGE).length
+    expect(orange(scene('road-trip'))).toBe(orange(bare))
+  }
 })
 
 test('stamp: the desk runs to the edge, legs every 25 columns; a page every 24 columns from the stamp to the edge', () => {

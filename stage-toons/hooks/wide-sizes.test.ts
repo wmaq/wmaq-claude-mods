@@ -132,14 +132,18 @@ function wingsDiffer(a: PixelBuffer, b: PixelBuffer): number {
 
 // Scenes whose wings go on through the loop point by design rather than by a
 // fixed step: thought-clouds' drift on unwrapped time (its own test), the
-// fading scenes' (their held last moment dissolves into the start), and
+// fading scenes' (their held last moment dissolves into the start; the
+// phase's own are measured over the whole area in scene-polish.test.ts), and
 // recycling's missed ball, which lies by the bin until the loop ends.
 const UNSTEPPED = (s: Scene) => s.id === 'thought-clouds' || s.id === 'recycling' || s.fadesAtLoop === true
 
 for (const columns of [120, 200]) {
   test(`every loop is seamless across the wings at ${columns} columns: the step over the loop point is no bigger than any other`, () => {
     for (const s of Object.values(SCENES).filter(s => !UNSTEPPED(s))) {
-      const draw = (time: number) => renderFull(s, time, null, time, { columns, rows: 9 })
+      // The background held still: it drifts on unwrapped time, so it never
+      // jumps at the loop point (a scrolling layer's steps fall where they
+      // fall); the rule is the loop's.
+      const draw = (time: number) => renderFull(s, time, null, 0, { columns, rows: 9 })
       // Every 0.05 s through the loop, so every step a wing takes is among them.
       const frames = Array.from({ length: Math.round(s.loop / 0.05) }, (_, i) => draw(0.025 + i * 0.05))
       const inside = Math.max(0, ...frames.slice(1).map((b, i) => wingsDiffer(frames[i]!, b)))

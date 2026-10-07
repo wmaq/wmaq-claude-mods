@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { CLAWD_ORANGE, EYE_DARK, FABLE_VIOLET } from './clawd'
-import { createBuffer, type PixelBuffer } from './pixels'
+import { createBuffer, getPixel, type PixelBuffer } from './pixels'
 import { CLAWD_TOP, focusAt, heroAt, renderFull, renderScene, type Scene, STAGE_H, STAGE_W } from './scene'
 import { REACTIONS, SCENES, STAGE_SCENES } from './scenes'
 import { DEFAULT_WORKFLOW } from './workflow'
@@ -23,18 +23,19 @@ const SCENE_LIST: Scene[] = Object.values(SCENES)
 
 const count = (b: PixelBuffer, color: number) => [...b.px].filter(c => c === color).length
 
-test('every scene renders at every moment, width and mood without throwing', () => {
-  for (const scene of SCENE_LIST) {
-    for (const width of [24, 30, 48]) {
+// One test a width, each well inside the kit's 5 s on a loaded machine.
+for (const width of [24, 30, 48]) {
+  test(`every scene renders at every moment and mood at ${width} columns without throwing`, () => {
+    for (const scene of SCENE_LIST) {
       for (let t = 0; t <= 30; t += 0.1) {
         const b = renderScene(scene, t, width)
         expect(b.w).toBe(width)
         expect(b.h).toBe(STAGE_H)
       }
+      for (const mood of ['jump', 'flinch'] as const) renderFull(scene, 1.3, mood)
     }
-    for (const mood of ['jump', 'flinch'] as const) renderFull(scene, 1.3, mood)
-  }
-})
+  })
+}
 
 test('Clawd is on stage throughout every scene', () => {
   for (const scene of SCENE_LIST) {
@@ -69,8 +70,12 @@ test("the auditor's question mark shows whole", () => {
   expect(goldOf(renderFull(SCENES['fable-audit']!, 1))).toHaveLength(5)
 })
 
-test('every loop is seamless: the hero ends where it began', () => {
-  for (const scene of SCENE_LIST) {
+// Scenes whose hero walks on through the loop and the fade at its loop
+// point brings back to the start.
+const WALKS_ON = ['bricklaying']
+
+test('every loop is seamless: the hero ends where it began, or the fade brings him back', () => {
+  for (const scene of SCENE_LIST.filter(s => !WALKS_ON.includes(s.id))) {
     const start = heroAt(scene, 0)
     const end = heroAt(scene, scene.loop - 1 / 12)
     expect(Math.abs(start.x - end.x) + Math.abs(start.y - end.y)).toBeLessThanOrEqual(2)
@@ -171,10 +176,10 @@ test('batch 1, part 3: each new scene shows what it is about', () => {
   expect([...renderFull(SCENES['waiting-bench']!, 0.1).px]).not.toEqual([...renderFull(SCENES['waiting-bench']!, 0.6).px])
   // The dirty stack shrinks as the clean one grows.
   expect(has('dishes', C.white, 0.5)).toBeLessThan(has('dishes', C.white, 4.5))
-  // The beam finds the bug: it shows red only while lit.
-  expect(has('flashlight', C.red, 0.5)).toBe(0)
-  // The lit bug alone is 4 red pixels.
-  expect(has('flashlight', C.red, 3.5)).toBeGreaterThan(3)
+  // The beam finds the bug: its back shows red only once the light is on it.
+  const bugBack = (t: number) => getPixel(renderFull(SCENES.flashlight!, t), 39, 11)
+  expect(bugBack(0.5)).not.toBe(C.red)
+  expect(bugBack(6.5)).toBe(C.red)
   expect(has('flashlight', C.beam, 1)).toBeGreaterThan(20)
   // A boot, then a fish.
   expect(has('fishing', C.darkGray, 3.5)).toBeGreaterThan(5)
@@ -234,7 +239,7 @@ test('batch 2: at 30 columns, the narrowest the demo plays at, the crop still sh
 
 test('batch 2: no scene jumps at its loop point', () => {
   const changed = (a: PixelBuffer, b: PixelBuffer) => [...a.px].filter((c, i) => c !== b.px[i]).length
-  for (const id of [...BATCH_2, 'dishes', 'bricklaying']) {
+  for (const id of [...BATCH_2, 'dishes']) {
     const scene = SCENES[id]!
     expect(changed(renderFull(scene, scene.loop - 0.02), renderFull(scene, 0.02))).toBeLessThan(30)
   }
@@ -373,13 +378,17 @@ test("polish: crash-test's camera shows the wall and the bang in a narrow toon, 
   }
 })
 
-test('polish: the dishes and the wall clear away before their loops start again', () => {
+test('polish: the dishes clear away before their loop starts again; the wall grows to its end, then fades', () => {
   // All five dishes clean, then none in view as the dirty ones drop in.
   expect(has('dishes', C.white, 5.05) - has('dishes', C.white, 5.6)).toBeGreaterThanOrEqual(20)
-  // The finished wall slides right, off the stage.
+  // The wall grows from column 6, bay by bay, and stands whole by 13.5 s; the
+  // fade at the loop point clears it (scenes with fadesAtLoop).
   const bricks = (t: number) => at('bricklaying', C.brick, t)
-  expect(Math.min(...bricks(10.2).map(p => p.x))).toBeLessThan(Math.min(...bricks(11.5).map(p => p.x)))
-  expect(bricks(11.99).length).toBeLessThan(bricks(10.2).length / 4)
+  expect(bricks(0.1)).toHaveLength(0)
+  expect(bricks(4).length).toBeLessThan(bricks(9).length)
+  expect(Math.min(...bricks(13.6).map(p => p.x))).toBe(6)
+  expect(bricks(15.9)).toEqual(bricks(13.6))
+  expect(SCENES.bricklaying!.fadesAtLoop).toBe(true)
 })
 
 test("polish: a scene's camera moves a few columns a frame at most, and is back at its focus at the loop point", () => {
@@ -391,7 +400,7 @@ test("polish: a scene's camera moves a few columns a frame at most, and is back 
       expect(Math.abs(now - last)).toBeLessThanOrEqual(6)
       last = now
     }
-    expect(focusAt(scene, scene.loop - 0.001)).toBe(scene.focusX)
+    if (!WALKS_ON.includes(scene.id)) expect(focusAt(scene, scene.loop - 0.001)).toBe(scene.focusX)
   }
 })
 
@@ -432,8 +441,10 @@ test('the starfield: each depth in its colour, drifting left at its own speed, w
 
 test('stargazing and fireworks have a drifting night sky behind them, and only they among the scenes', () => {
   // thought-clouds' background is its wings' clouds, and waiting-bench's its
-  // wings' ticket display, drawn only right of column 48: no sky behind the core.
-  const withSky = Object.values(SCENES).filter(s => s.background !== undefined && s.id !== 'thought-clouds' && s.id !== 'waiting-bench').map(s => s.id)
+  // wings' ticket display, drawn only right of column 48: no sky behind the
+  // core. road-trip's and bricklaying's are their scrolling scenery.
+  const NOT_SKIES = ['thought-clouds', 'waiting-bench', 'road-trip', 'bricklaying']
+  const withSky = Object.values(SCENES).filter(s => s.background !== undefined && !NOT_SKIES.includes(s.id)).map(s => s.id)
   expect(withSky.sort()).toEqual(['fireworks', 'stargazing'])
   for (const id of withSky) {
     const scene = SCENES[id]!

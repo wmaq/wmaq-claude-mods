@@ -372,6 +372,14 @@ fireworks. `/stage demo` plays them all, and a 38th, fable-audit, which
 plays while a Fable subagent runs rather than for a stage; `/stage
 workflow` shows the current workflow and its scenes.
 
+Some scenes have scenery in layers across the whole area: road-trip's
+hills and mountains go by at their own speeds, bricklaying has a city
+behind it, and flashlight's torch shows a storeroom in the dark. Far
+layers fade towards a dark grey (`#1e1e1e`), the usual dark terminal
+background; on a light or a very different one they show as dim shapes
+in a slightly different grey. The dark of flashlight's room is the
+terminal's own background, on any theme.
+
 Limits: 1 to 15 track stages, up to 5 side stages; ids are lowercase
 letters, digits and dashes, and not one of `/stage`'s words (`next`,
 `back`, `hide`, `demo`, `feature`, `message`, `workflow`, `auto`,

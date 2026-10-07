@@ -1,14 +1,15 @@
-// 0.11.0's pictures at 48 x 7, as golden.ts hashes them (generated on
-// 0.11.0 before phase 4e changed anything), but for three changed on
-// purpose after the person's test: writing-desk's stack stands on the
-// desk, waiting-bench's clock has a rim and ticks, and nyan flies on a
-// navy sky.
+// The pictures at 48 x 7, as golden.ts hashes them. Most are 0.11.0's
+// (generated on 0.11.0 before phase 4e changed anything), but for three
+// changed on purpose after the person's test: writing-desk's stack stands
+// on the desk, waiting-bench's clock has a rim and ticks, and nyan flies
+// on a navy sky. Phase 6b's (scene polish) recorded the scenes it reworked
+// or added: road-trip, bricklaying and flashlight.
 
 export const GOLDEN: Record<string, string> = {
-  'scene:road-trip': 'bfa6cb07',
-  'scene:road-trip:failure': 'c3bba9a4',
-  'scene:road-trip:advance': '8aa258d8',
-  'scene:road-trip:auditing': '78cedfa0',
+  'scene:road-trip': 'ee8f6ae1',
+  'scene:road-trip:failure': 'd52437e8',
+  'scene:road-trip:advance': '3708be26',
+  'scene:road-trip:auditing': '07d4cefe',
   'scene:light-bulbs': 'e5fe5de2',
   'scene:light-bulbs:failure': '66b15f51',
   'scene:light-bulbs:advance': '79e2cc37',
@@ -29,10 +30,10 @@ export const GOLDEN: Record<string, string> = {
   'scene:proofread-checklist:failure': '85d2c432',
   'scene:proofread-checklist:advance': '3a3062c6',
   'scene:proofread-checklist:auditing': '67b5e61c',
-  'scene:bricklaying': '13f9bfeb',
-  'scene:bricklaying:failure': 'f9d519f8',
-  'scene:bricklaying:advance': '3d41c860',
-  'scene:bricklaying:auditing': 'c3095395',
+  'scene:bricklaying': '71638c51',
+  'scene:bricklaying:failure': '46811449',
+  'scene:bricklaying:advance': '797a5653',
+  'scene:bricklaying:auditing': '7d312899',
   'scene:test-tubes': 'd86c8837',
   'scene:test-tubes:failure': 'bd740fc7',
   'scene:test-tubes:advance': 'b169a5c6',
@@ -101,10 +102,10 @@ export const GOLDEN: Record<string, string> = {
   'scene:dishes:failure': '7a5d0821',
   'scene:dishes:advance': '9391204e',
   'scene:dishes:auditing': 'dab0bc03',
-  'scene:flashlight': 'e0650e72',
-  'scene:flashlight:failure': '29288493',
-  'scene:flashlight:advance': '4b04fa93',
-  'scene:flashlight:auditing': 'bf1520fc',
+  'scene:flashlight': 'eaefadbc',
+  'scene:flashlight:failure': 'be5de592',
+  'scene:flashlight:advance': '58ac6ca8',
+  'scene:flashlight:auditing': '2187ce90',
   'scene:fishing': '966adb3e',
   'scene:fishing:failure': 'c447371d',
   'scene:fishing:advance': '80d68ad6',

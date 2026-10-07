@@ -1,8 +1,9 @@
-// 0.11.0's pictures as hashes, for the tests that hold a 48-column,
-// 7-row area to them (phase 4e: on that size every picture draws exactly
-// as it did). goldenHashes() samples each picture through areaCells, as the
-// paint loop composes it, and hashes its frames; golden-table.ts holds the
-// hashes 0.11.0 gave. A test-only module: the hooks never import it.
+// The pictures as hashes, for the tests that hold a 48-column, 7-row area
+// to them (phase 4e: on that size every picture draws exactly as it did).
+// goldenHashes() samples each picture through areaCells, as the paint loop
+// composes it, and hashes its frames; golden-table.ts holds the hashes,
+// most of them 0.11.0's, and says which release gave the rest. A test-only
+// module: the hooks never import it.
 
 import { spawned } from './agents'
 import { createDirector, react, withAuditing } from './director'
