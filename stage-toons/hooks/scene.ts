@@ -5,7 +5,7 @@
 // on a narrower one the core is cropped to the raster's width.
 
 import { type ClawdLook, drawClawd } from './clawd'
-import { createBuffer, EMPTY, type PixelBuffer, type Point, setPixel, type TextLayer } from './pixels'
+import { createBuffer, EMPTY, type PixelBuffer, type Point, rightOf, setPixel, type TextLayer, topOf } from './pixels'
 import type { LibraryScene } from './scenes'
 
 export const STAGE_W = 48
@@ -30,6 +30,21 @@ export function areaBuffer(size: AreaSize, coreX = 0): PixelBuffer {
 
   return createBuffer(w, h, ox, oy)
 }
+
+// The area's edges in the core's coordinates: its first column (0 or less),
+// the column past its last, and its top row (0 or less). An actor is given
+// it, so a walk can reach the right edge however wide the area is.
+export type Area = { left: number; right: number; top: number }
+
+// The area a buffer covers.
+export const areaOf = (b: PixelBuffer): Area => ({ left: 0 - (b.ox ?? 0), right: rightOf(b), top: topOf(b) })
+
+// The area of a size, as areaBuffer would draw it.
+export function areaFor(size: AreaSize, coreX = 0): Area {
+  const { w, ox, oy } = areaShape(size, coreX)
+
+  return { left: 0 - ox, right: w - ox, top: 0 - oy }
+}
 // Clawd's top row when it stands on the stage's bottom row.
 export const CLAWD_TOP = 6
 
@@ -51,15 +66,18 @@ export type Paint = (b: PixelBuffer, t: number) => void
 // function of the loop's time moves it, from behind Clawd to in front.
 export type Depth = number | ((t: number) => number)
 
-// A prop draws where it likes, at a depth like any actor.
+// A prop draws where it likes, at a depth like any actor. A sprite's or a
+// Clawd's at, look and frame are given the loop's time and the area; most
+// ignore the area (a function with fewer parameters fits).
 export type Actor =
-  | { kind: 'sprite'; sprite: Sprite; frame: (t: number) => number; at: (t: number) => Point; z?: Depth }
-  | { kind: 'clawd'; look: (t: number) => Partial<ClawdLook>; at: (t: number) => Point; isHero?: boolean; z?: Depth }
+  | { kind: 'sprite'; sprite: Sprite; frame: (t: number, area: Area) => number; at: (t: number, area: Area) => Point; z?: Depth }
+  | { kind: 'clawd'; look: (t: number, area: Area) => Partial<ClawdLook>; at: (t: number, area: Area) => Point; isHero?: boolean; z?: Depth }
   | { kind: 'prop'; draw: Paint; z?: Depth }
 
 // A looping scene: t runs from 0 to loop seconds. focusX is the column kept
 // in view when the raster is narrower than the stage; focus, when given,
-// moves it with the action instead (a camera that pans). coreX, when given,
+// moves it with the action instead (a camera that pans; it is given the
+// area, as the actors are, to follow a walk across it). coreX, when given,
 // is where the core starts on a wider area (0, the left, when not).
 // Everything is drawn in the core's coordinates: rightOf(b) and topOf(b)
 // say where the area's edges are, for a set that runs on to them. A frame paints the
@@ -76,7 +94,7 @@ export type Scene = {
   loop: number
   still?: number
   focusX: number
-  focus?: (t: number) => number
+  focus?: (t: number, area: Area) => number
   coreX?: number
   background?: Paint
   backdrop?: Paint
@@ -128,6 +146,7 @@ const byDepth = (actors: readonly Actor[], t: number): Actor[] =>
 export function renderFull(scene: Scene, time: number, mood: Mood = null, backgroundTime = time, size: AreaSize = STAGE_SIZE): PixelBuffer {
   const t = loopTime(scene, time)
   const b = areaBuffer(size, scene.coreX)
+  const area = areaOf(b)
   scene.background?.(b, backgroundTime)
   scene.backdrop?.(b, t)
   for (const actor of byDepth(scene.actors, t)) {
@@ -135,12 +154,12 @@ export function renderFull(scene: Scene, time: number, mood: Mood = null, backgr
       actor.draw(b, t)
       continue
     }
-    const p = actor.at(t)
+    const p = actor.at(t, area)
     if (actor.kind === 'sprite') {
-      drawSprite(b, actor.sprite, actor.frame(t), p.x, p.y)
+      drawSprite(b, actor.sprite, actor.frame(t, area), p.x, p.y)
       continue
     }
-    const look = actor.look(t)
+    const look = actor.look(t, area)
     if (actor.isHero && mood === 'jump') drawClawd(b, p.x, p.y - 2, { ...look, pose: 'jump', arms: { left: 'up', right: 'up' } })
     else if (actor.isHero && mood === 'flinch') drawClawd(b, p.x + (Math.floor(time * 20) % 2 === 0 ? 1 : -1), p.y, { ...look, eyes: 'closed', arms: { left: 'out', right: 'out' } })
     else if (actor.isHero && mood === 'think') drawClawd(b, p.x, p.y, { ...look, look: { x: look.look?.x ?? 0, y: -1 } })
@@ -151,14 +170,17 @@ export function renderFull(scene: Scene, time: number, mood: Mood = null, backgr
   return b
 }
 
-// The column a narrow raster keeps in view at a moment.
-export const focusAt = (scene: Scene, time: number): number => scene.focus?.(loopTime(scene, time)) ?? scene.focusX
+// The column a narrow raster keeps in view at a moment, on an area of this
+// size.
+export const focusAt = (scene: Scene, time: number, size: AreaSize = STAGE_SIZE): number =>
+  scene.focus?.(loopTime(scene, time), areaFor(size, scene.coreX)) ?? scene.focusX
 
-// Where the hero's head is: its centre column and top row.
-export function heroAt(scene: Scene, time: number): Point {
+// Where the hero's head is on an area of this size: its centre column and
+// top row.
+export function heroAt(scene: Scene, time: number, size: AreaSize = STAGE_SIZE): Point {
   const hero = scene.actors.find((a): a is Extract<Actor, { kind: 'clawd' }> => a.kind === 'clawd' && a.isHero === true)
   if (!hero) return { x: scene.focusX, y: CLAWD_TOP }
-  const p = hero.at(loopTime(scene, time))
+  const p = hero.at(loopTime(scene, time), areaFor(size, scene.coreX))
 
   return { x: Math.round(p.x) + 7, y: Math.round(p.y) }
 }
@@ -254,4 +276,4 @@ export function renderSeamed(scene: Scene, time: number, mood: Mood = null, size
 }
 
 export const renderScene = (scene: Scene, time: number, width: number, mood: Mood = null, rows = STAGE_SIZE.rows): PixelBuffer =>
-  crop(renderSeamed(scene, time, mood, { columns: width, rows }), focusAt(scene, time), width)
+  crop(renderSeamed(scene, time, mood, { columns: width, rows }), focusAt(scene, time, { columns: width, rows }), width)

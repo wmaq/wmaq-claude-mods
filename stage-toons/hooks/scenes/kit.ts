@@ -5,7 +5,7 @@
 // topOf(b) are the area's edges, for a set that runs on to them.
 
 import { fillRect, type PixelBuffer, type Point, rightOf, setPixel, topOf } from '../pixels'
-import type { Sprite } from '../scene'
+import type { Area, Sprite } from '../scene'
 
 export const C = {
   ink: 0x2a1610,
@@ -49,6 +49,12 @@ export const blinking = (t: number, seed = 0): boolean => (t + seed) % 3.1 < 0.1
 export const wave = (t: number, period: number): number => Math.sin((t / period) * Math.PI * 2)
 export const lerp = (a: number, b: number, k: number): number => a + (b - a) * Math.max(0, Math.min(1, k))
 export const still = (x: number, y: number) => (): Point => ({ x, y })
+// How many columns a walk or a flight from column from covers on an area:
+// up to max, stopping margin columns short of the right edge (Clawd's
+// width and two, by default), never below 0. A scene's pace stays the same
+// past max, and its set carries on still. On 48 columns a walk from 16
+// ends at 32, inside the core.
+export const reach = (area: Area, from: number, max: number, margin = 16): number => Math.max(0, Math.min(area.right - margin, from + max) - from)
 // A straight line of pixels from (x0, y0) to (x1, y1), both ends included.
 export function line(b: PixelBuffer, x0: number, y0: number, x1: number, y1: number, color: number): void {
   const n = Math.max(1, Math.round(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))))
