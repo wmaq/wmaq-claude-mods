@@ -264,8 +264,10 @@ export function calmText(isOn: boolean, fileCalm?: boolean): string {
 // heard. The track goes to the person only (the answer's text, never
 // Claude's context).
 export const DJ_NEEDS_WINDOWS = "DJ mode needs Claude Code in a Windows terminal: it reads Spotify through Windows' media session."
-export function djText(isOn: boolean, music: Music): string {
+// isBroken: the DJ picture failed this load, and the usual cartoons show.
+export function djText(isOn: boolean, music: Music, isBroken = false): string {
   if (!isOn) return "DJ mode is off. /stage dj on: while Spotify plays, Clawd DJs and the track's name shows."
+  if (isBroken) return 'DJ mode on, but the DJ picture failed this session (the debug log says why): the usual cartoons show. /stage dj on tries again.'
   if (music.isPlaying && music.track) return `DJ mode on: ${trackLine(music.track)}`
 
   return 'DJ mode on: waiting for Spotify to play. /stage dj off turns it off.'

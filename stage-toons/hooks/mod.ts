@@ -9,7 +9,7 @@ import { COMMAND, toolNameFor } from './prompt'
 import type { Demo } from './demo'
 import { createDirector, type Director } from './director'
 import { type Cost, type EntryKey, NO_COST } from './history'
-import { type Music, NO_MUSIC, type ReadFailure } from './nowplaying'
+import { type Music, NO_MUSIC, type PollState, type ReadFailure } from './nowplaying'
 import { DEEP_SLEEP_MS, DOZE_MS } from './idle'
 import type { PixelBuffer } from './pixels'
 import { storeKey } from './progress'
@@ -242,6 +242,11 @@ export const createMod = (): Mod => ({
 // Whether the area plays the DJ picture (a demo aside): DJ mode on,
 // Spotify playing, and the picture not broken this load.
 export const isDjOn = (mod: Mod): boolean => mod.isDj && mod.music.isPlaying && !mod.isDjBroken
+
+// What the poll's pace reads (nowplaying.ts's nextDelay): whether the area
+// shows, whether it sleeps, and whether the DJ picture plays (a broken one
+// doesn't, so the reads slow down with the area asleep).
+export const djPollState = (mod: Mod): PollState => ({ isAreaShown: mod.band.requestId !== undefined, isAsleep: mod.band.isAsleep, isPlaying: isDjOn(mod) })
 
 // The dance floor moved on to now: the helpers of the agents at work get
 // spots on it while the DJ picture shows (working or not); the waiting

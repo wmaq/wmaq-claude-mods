@@ -4,7 +4,7 @@ import { EMPTY_ROSTER, type Roster, spawned } from './agents'
 import { createDirector } from './director'
 import { areaCells } from './frames'
 import { DEEP_SLEEP_MS, DOZE_MS } from './idle'
-import { CALM_FRAME_MS, createMod, frameMs, isDeepAsleep, isDjOn, type Mod, QUICK_MS, redance } from './mod'
+import { CALM_FRAME_MS, createMod, djPollState, frameMs, isDeepAsleep, isDjOn, type Mod, QUICK_MS, redance } from './mod'
 import { heard, NO_MUSIC, type NowPlaying } from './nowplaying'
 import { HELPER_COLORS } from './waiting'
 import { EMPTY_LOG } from './waiting/seats'
@@ -72,6 +72,16 @@ test('the DJ picture is a quick picture: never the idle pace, never deep asleep'
   const silent = djMod(false)
   expect(frameMs(silent, late)).toBe(333)
   expect(isDeepAsleep(silent, late)).toBe(true)
+})
+
+test('the poll is paced by what the area shows: a broken DJ picture counts as nothing playing, so Clawd may sleep to slow reads', () => {
+  const mod = djMod()
+  expect(djPollState(mod)).toEqual({ isAreaShown: true, isAsleep: false, isPlaying: true })
+  mod.isDjBroken = true
+  expect(djPollState(mod).isPlaying).toBe(false)
+  mod.band.requestId = undefined
+  mod.band.isAsleep = true
+  expect(djPollState(mod)).toEqual({ isAreaShown: false, isAsleep: true, isPlaying: false })
 })
 
 test('the dance floor: the helpers of the agents at work take spots while the DJ picture shows, working or not', () => {

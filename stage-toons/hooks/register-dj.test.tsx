@@ -14,11 +14,12 @@ const PAUSED = '{"status":"Paused","artist":"Linkin Park","title":"Figure.09"}'
 
 // Windows' media session as powershell.exe answers it: what the script
 // prints, its exit code, or a failure to run at all; every read counted.
-type Spotify = { stdout: string; exitCode: number; isFailing: boolean; argv: (readonly string[])[] }
+type Spotify = { stdout: string; exitCode: number; isFailing: boolean; argv: (readonly string[])[]; timeouts: (number | undefined)[] }
 function spotify(on: On): Spotify {
-  const s: Spotify = { stdout: PLAYING, exitCode: 0, isFailing: false, argv: [] }
+  const s: Spotify = { stdout: PLAYING, exitCode: 0, isFailing: false, argv: [], timeouts: [] }
   on('process.run', ($, e) => {
     s.argv.push(e.argv)
+    s.timeouts.push(e.init?.timeoutMs)
     if (s.isFailing) throw new Error('powershell.exe could not start')
 
     return { value: { exitCode: s.exitCode, stdout: s.stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
@@ -67,6 +68,19 @@ test("DJ mode is off by default; /stage dj on reads Spotify at once, names the t
   expect(text(await runStage($, 'dj'))).toBe(FIGURE_LINE)
   expect(text(await runStage($, 'dj off'))).toBe(OFF)
   expect(world.store.dj).toBe(false)
+})
+
+test("/stage dj on's own read may take 4 s (the command's hook has 10 s in all), the poll's 10 s; the answers are the person's alone", async ($, on) => {
+  const { clock } = engine(on)
+  const s = spotify(on)
+  await $.session.start(START)
+  await mountBand($)
+  const answer = (await runStage($, 'dj on')) as { text?: string; context?: unknown }
+  expect(answer.text).toBe(FIGURE_LINE)
+  expect(answer.context).toBe(undefined)
+  expect(((await runStage($, 'dj')) as { context?: unknown }).context).toBe(undefined)
+  await clock.advance(5100)
+  expect(s.timeouts).toEqual([4000, 10_000])
 })
 
 test('with nothing playing, DJ mode waits for Spotify', async ($, on) => {

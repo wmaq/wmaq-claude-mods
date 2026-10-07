@@ -107,6 +107,9 @@ export const isNewTrack = (before: Music, after: Music): boolean =>
 export const POLL_MS = 5000
 export const SLOW_POLL_MS = 30_000
 export const READ_TIMEOUT_MS = 10_000
+// /stage dj on reads in its own hook, whose budget (10 s) the read must not
+// spend: it may take this long, and the poll catches up after it.
+export const COMMAND_READ_MS = 4000
 
 export type PollState = { isAreaShown: boolean; isAsleep: boolean; isPlaying: boolean }
 

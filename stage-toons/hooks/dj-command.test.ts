@@ -28,6 +28,10 @@ test("/stage dj's answer: off, waiting for Spotify, or the track playing", () =>
   expect(djText(false, NO_MUSIC)).toBe("DJ mode is off. /stage dj on: while Spotify plays, Clawd DJs and the track's name shows.")
   expect(djText(true, NO_MUSIC)).toBe('DJ mode on: waiting for Spotify to play. /stage dj off turns it off.')
   expect(djText(true, heard(NO_MUSIC, FIGURE))).toBe('DJ mode on: ♪ Linkin Park – Figure.09')
+  // The DJ picture broke this session: the usual cartoons show, and the
+  // answer says so rather than naming a track that isn't drawn.
+  expect(djText(true, heard(NO_MUSIC, FIGURE), true)).toBe('DJ mode on, but the DJ picture failed this session (the debug log says why): the usual cartoons show. /stage dj on tries again.')
+  expect(djText(false, NO_MUSIC, true)).toBe("DJ mode is off. /stage dj on: while Spotify plays, Clawd DJs and the track's name shows.")
 })
 
 test('the DJ demo: a long title, the second track from 8 s, two dancers where the floor has room', () => {

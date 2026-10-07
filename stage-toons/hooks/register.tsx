@@ -20,11 +20,11 @@ import { createDirector, react, restarted, withAuditing, withScene } from './dir
 import { areaCells, type Log } from './frames'
 import { CELEBRATE, pickIdle } from './idle'
 import { idleForMove } from './keepsake'
-import { createMod, endDemo, type Mod, queued, reseat, takeWaiting } from './mod'
+import { createMod, djPollState, endDemo, type Mod, queued, reseat, takeWaiting } from './mod'
 import { animate, type Ports } from './paint'
 import { dealCard } from './deck'
 import { addCost, type Cost, costText, creditAt, currentEntry, logText, NO_COST, timeText, tokensOf } from './history'
-import { ARGV, heard, isNewTrack, nextDelay, NO_MUSIC, type NowPlaying, outcomeOf, READ_TIMEOUT_MS, type ReadFailure, trackText } from './nowplaying'
+import { ARGV, COMMAND_READ_MS, heard, isNewTrack, nextDelay, NO_MUSIC, type NowPlaying, outcomeOf, READ_TIMEOUT_MS, type ReadFailure, trackText } from './nowplaying'
 import { momentOf, phaseOf, whatOf } from './phase'
 import { type KV, loadProgress, PRUNE_EVERY_MS, saveProgress, staleKeys, storeKey, validate } from './progress'
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolSchema, workflowText } from './prompt'
@@ -460,13 +460,14 @@ const canDj = (mod: Mod): boolean => mod.isWindows && mod.surface === 'terminal'
 // One read of what Spotify plays: the track, or null for nothing playing.
 // A failed read counts as nothing playing; each kind is logged once per
 // load, with its exit code but never its output (it may name what other
-// apps play).
-async function readMusic($: EngineInterface, mod: Mod): Promise<NowPlaying | null> {
+// apps play). timeoutMs: how long it may take (the poll's 10 s; a
+// command's own read less, inside its hook's budget).
+async function readMusic($: EngineInterface, mod: Mod, timeoutMs = READ_TIMEOUT_MS): Promise<NowPlaying | null> {
   let track: NowPlaying | null = null
   let failure: ReadFailure | null = null
   let detail = ''
   try {
-    const result = await $.process.run([...ARGV], { timeoutMs: READ_TIMEOUT_MS })
+    const result = await $.process.run([...ARGV], { timeoutMs })
     const outcome = outcomeOf(result)
     track = outcome.track
     failure = outcome.failure
@@ -504,7 +505,7 @@ function startPoll($: EngineInterface, mod: Mod, hasRead: boolean) {
   void (async () => {
     let isFirst = !hasRead
     while (mod.isDj && mod.djLoop === token) {
-      if (!isFirst) await $.clock.sleep(nextDelay({ isAreaShown: mod.band.requestId !== undefined, isAsleep: mod.band.isAsleep, isPlaying: mod.music.isPlaying }))
+      if (!isFirst) await $.clock.sleep(nextDelay(djPollState(mod)))
       isFirst = false
       if (!mod.isDj || mod.djLoop !== token) break
       const id = await read($, loadAtom)
@@ -521,10 +522,16 @@ function startPoll($: EngineInterface, mod: Mod, hasRead: boolean) {
 }
 
 // /stage dj on or off, kept for every project; its answer. Turning it on
-// reads Spotify at once, so the answer names the track, then polls.
+// gives a DJ picture that failed another try, and reads Spotify at once
+// (within COMMAND_READ_MS, so the answer comes inside the hook's budget),
+// so the answer names the track, then polls.
 async function setDj($: EngineInterface, mod: Mod, isOn: boolean): Promise<string> {
   if (isOn && !canDj(mod)) return DJ_NEEDS_WINDOWS
   mod.isDj = isOn
+  if (isOn && mod.isDjBroken) {
+    mod.isDjBroken = false
+    $.ui.invalidate('ui.render')
+  }
   await update($, djAtom, () => isOn)
   try {
     await $.store.set(DJ_KEY, isOn)
@@ -537,11 +544,11 @@ async function setDj($: EngineInterface, mod: Mod, isOn: boolean): Promise<strin
     mod.djChangedAt = null
     $.ui.invalidate('ui.render')
   } else if (mod.djLoop === null) {
-    await hearMusic($, mod, await readMusic($, mod))
+    await hearMusic($, mod, await readMusic($, mod, COMMAND_READ_MS))
     startPoll($, mod, true)
   }
 
-  return djText(mod.isDj, mod.music)
+  return djText(mod.isDj, mod.music, mod.isDjBroken)
 }
 
 async function setAuditing($: EngineInterface, mod: Mod, isAuditing: boolean) {
@@ -1027,7 +1034,7 @@ export const register: Register = on => {
 
       return { text: calmText(mod.isCalm, (await read($, workflowAtom))?.settings?.calm) }
     }
-    if (cmd.kind === 'dj') return { text: cmd.isOn !== null ? await setDj($, mod, cmd.isOn) : mod.isDj && !canDj(mod) ? DJ_NEEDS_WINDOWS : djText(mod.isDj, mod.music) }
+    if (cmd.kind === 'dj') return { text: cmd.isOn !== null ? await setDj($, mod, cmd.isOn) : mod.isDj && !canDj(mod) ? DJ_NEEDS_WINDOWS : djText(mod.isDj, mod.music, mod.isDjBroken) }
     if (cmd.kind === 'width') {
       if (cmd.width !== null) await setWidth($, mod, cmd.width)
       const room = mod.lastBand === null ? null : Math.min(mod.lastBand.columns - 1, WIDTH_MAX)
