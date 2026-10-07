@@ -29,6 +29,7 @@ test('writing-desk: stacks every 14 columns from 28 along the desk to the edge, 
   expect(sheets(6)).toBeLessThan(sheets(12.5))
 })
 
+// heroAt gives the centre of Clawd's head: his left column plus 7.
 test('sticky-notes: Clawd walks the board to its far end, the notes going up behind him', () => {
   const s = scene('sticky-notes')
   expect(heroAt(s, 0, MID).x).toBe(13)
@@ -131,9 +132,35 @@ test('bug-net: the bug flits ahead of Clawd, never over him, and is netted on th
   expect(Math.min(...bug(8.5))).toBeGreaterThan(90)
 })
 
+test('victory-lap: Clawd runs the lap with the trophy to the far end and back, cheering at each end', () => {
+  const s = scene('victory-lap')
+  expect(heroAt(s, 0, MID).x).toBe(11)
+  expect(heroAt(s, 6.6, MID).x).toBe(107)
+  expect(heroAt(s, 6.6, { columns: 48, rows: 7 }).x).toBe(35)
+  expect(heroAt(s, 13.9, MID).x).toBe(11)
+  // The trophy (the only gold) stays in his claws: within 11 columns of his head's centre.
+  for (const t of [0, 3, 6.6, 10, 13.5]) {
+    const gold = xs(draw('victory-lap', t), C.gold)
+    const head = heroAt(s, t, MID).x
+    expect(`${t}: ${gold.length > 0 && gold.every(x => Math.abs(x - head) <= 11)}`).toBe(`${t}: true`)
+  }
+})
+
+test('bowling: the ball rolls the lane to the pins at the far end, which fall, and a green tick lights', () => {
+  const ball = (t: number) => Math.min(...where(draw('bowling', t), C.blue).filter(p => p.y >= 10).map(p => p.x))
+  expect(ball(1.5)).toBeLessThan(ball(2.5))
+  expect(ball(3.5)).toBeGreaterThan(90)
+  // The pins at the far end: standing, their heads on row 9; knocked down, lying on rows 11 to 13.
+  const pinTop = (t: number) => Math.min(...where(draw('bowling', t), C.white).filter(p => p.x > 90).map(p => p.y))
+  expect(pinTop(1)).toBe(9)
+  expect(pinTop(6)).toBeGreaterThanOrEqual(11)
+  expect(where(draw('bowling', 1), C.green)).toHaveLength(0)
+  expect(where(draw('bowling', 6), C.green).length).toBeGreaterThan(0)
+})
+
 test('at 30 columns the crop keeps Clawd whole through the loop (crash-test follows its car there)', () => {
   const cast: Cast = { scenes: SCENES, reactions: REACTIONS, broken: new Set(), onBreak: () => undefined }
-  const ids = ['writing-desk', 'sticky-notes', 'scroll', 'proofread-page', 'proofread-checklist', 'stamp', 'dice', 'bug-net']
+  const ids = ['writing-desk', 'sticky-notes', 'scroll', 'proofread-page', 'proofread-checklist', 'stamp', 'dice', 'bug-net', 'victory-lap', 'bowling']
   for (const id of ids) {
     for (let t = 0; t < scene(id).loop; t += 0.1) {
       const head = heroOnScreen({ base: id, time: t, reaction: null }, { columns: 30, rows: 7 }, cast)

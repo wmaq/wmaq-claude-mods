@@ -53,7 +53,7 @@ export const DEFAULT_WORKFLOW: Workflow = {
       scenes: ['bricklaying', 'terminal', 'workbench'],
       auto: [{ skill: 'superpowers:executing-plans' }, { skill: 'superpowers:subagent-driven-development' }],
     },
-    { id: 'claude-test', label: 'Claude testing', message: 'Claude is testing the work', when: 'Claude verifies the work', scenes: ['test-tubes', 'control-panel', 'crash-test'] },
+    { id: 'claude-test', label: 'Claude testing', message: 'Claude is testing the work', when: 'Claude verifies the work', scenes: ['test-tubes', 'control-panel', 'crash-test', 'bowling'] },
     { id: 'user-test', label: 'Your testing', message: 'Over to you for testing', when: 'the user tests it', scenes: ['gift', 'waiting-bench', 'cake'] },
     { id: 'cleanup', label: 'Cleanup', message: 'Cleaning up leftovers, chores and docs', when: 'leftovers, chores, docs', scenes: ['sweeping', 'dishes', 'recycling'], auto: [{ skill: 'superpowers:finishing-a-development-branch' }] },
   ],
@@ -61,7 +61,7 @@ export const DEFAULT_WORKFLOW: Workflow = {
     { id: 'debugging', label: 'Debugging', message: 'Hunting a bug', when: 'finding and fixing a bug, at any point', scenes: ['bug-hunt', 'flashlight', 'bug-net'], auto: [{ skill: 'superpowers:systematic-debugging' }] },
     { id: 'other', label: 'Other', message: 'Work outside the usual stages', when: 'work that fits none of the stages', scenes: ['mystery-box', 'fishing', 'dice'] },
   ],
-  done: { message: DONE_MESSAGE, scenes: ['fireworks', 'rocket'], auto: MERGE_RULES },
+  done: { message: DONE_MESSAGE, scenes: ['fireworks', 'rocket', 'victory-lap'], auto: MERGE_RULES },
 } satisfies { track: readonly DefaultStage[]; side: readonly DefaultStage[]; done: DoneDef & { scenes: readonly LibraryScene[] } }
 
 export const stageIds = (w: Workflow): string[] => allStages(w).map(s => s.id)

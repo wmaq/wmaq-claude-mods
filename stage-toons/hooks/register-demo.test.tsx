@@ -70,7 +70,7 @@ test('/stage demo plays the whole library', async ($, on) => {
   engine(on)
   await $.session.start(START)
   await mountBand($)
-  expect(text(await runStage($, 'demo'))).toBe('Playing 39 scenes, 10 s each (about 7 min). /stage demo stop ends it.')
+  expect(text(await runStage($, 'demo'))).toBe('Playing 41 scenes, 10 s each (about 7 min). /stage demo stop ends it.')
 })
 
 test('/stage demo work plays the layer over the stage\'s scene, step by step, then ends', async ($, on) => {

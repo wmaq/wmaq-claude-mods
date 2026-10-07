@@ -168,8 +168,8 @@ test('--calm draws calm mode: the same frame over time; the demos refuse it', ()
 
 test('stills draws one frame per picture, captioned with its id; it needs a kind', () => {
   const out = join(dir, 'stills.png')
-  // 40 pictures (39 library scenes and standing), 2 to a row (120 columns is wide): 20 rows of tiles.
-  assert.deepEqual(main(['stills', 'scenes', '--out', out]), { path: out, width: (2 * (120 + 1) + 1) * 8, height: (20 * (9 + 1 + 1) + 1) * 16 })
+  // 42 pictures (41 library scenes and standing), 2 to a row (120 columns is wide): 21 rows of tiles.
+  assert.deepEqual(main(['stills', 'scenes', '--out', out]), { path: out, width: (2 * (120 + 1) + 1) * 8, height: (21 * (9 + 1 + 1) + 1) * 16 })
   // 5 routines, the celebration, 10 show-offs and the doze; 4 waiting scenes; at 48 columns, 4 to a row.
   assert.equal(main(['stills', 'idle', '--columns', '48', '--out', out]).height, (5 * (9 + 1 + 1) + 1) * 16)
   assert.equal(main(['stills', 'waiting', '--columns', '48', '--rows', '7', '--out', out]).height, (1 * (7 + 1 + 1) + 1) * 16)

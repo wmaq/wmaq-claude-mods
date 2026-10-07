@@ -3,7 +3,10 @@
 // changed on purpose after the person's test: writing-desk's stack stands
 // on the desk, waiting-bench's clock has a rim and ticks, and nyan flies
 // on a navy sky. Phase 6b's (scene polish) recorded the scenes it reworked
-// or added: road-trip, bricklaying, flashlight and rocket.
+// or added: road-trip, bricklaying, flashlight and rocket. Phase 6c's
+// recorded the next eleven: writing-desk, sticky-notes, scroll, the two
+// proofreads, stamp, crash-test, dice, bug-net, victory-lap and bowling,
+// and again bricklaying and flashlight (6b's leftovers).
 
 export const GOLDEN: Record<string, string> = {
   'scene:road-trip': 'ee8f6ae1',
@@ -166,6 +169,14 @@ export const GOLDEN: Record<string, string> = {
   'scene:rocket:failure': '9f31fd76',
   'scene:rocket:advance': 'd8349f00',
   'scene:rocket:auditing': 'fe0b8784',
+  'scene:victory-lap': 'bed22052',
+  'scene:victory-lap:failure': '7b89be89',
+  'scene:victory-lap:advance': '0253332a',
+  'scene:victory-lap:auditing': 'c766054a',
+  'scene:bowling': 'd40e5ee5',
+  'scene:bowling:failure': '094ae962',
+  'scene:bowling:advance': 'b31f499f',
+  'scene:bowling:auditing': '3f8992f9',
   'idle:classic': 'df056e17',
   'idle:nyan': 'e667fd6d',
   'idle:coffee': '2463edfd',

@@ -16,7 +16,7 @@ const LIBRARY = [
   'treasure-map', 'thought-clouds', 'scroll', 'stamp',
   'ladder', 'scales', 'workbench', 'crash-test',
   'cake', 'recycling', 'bug-net', 'dice',
-  'fireworks', 'rocket',
+  'fireworks', 'rocket', 'victory-lap', 'bowling',
 ]
 
 const SCENE_LIST: Scene[] = Object.values(SCENES)
@@ -203,8 +203,9 @@ test('the kit never uses Clawd orange or Fable violet', () => {
   for (const color of Object.values(C)) expect([CLAWD_ORANGE, FABLE_VIOLET]).not.toContain(color)
 })
 
-test('every default stage has three scenes after batch 2', () => {
-  for (const s of [...DEFAULT_WORKFLOW.track, ...DEFAULT_WORKFLOW.side]) expect(s.scenes).toHaveLength(3)
+test('every default stage has three scenes after batch 2, Claude testing four with bowling', () => {
+  for (const s of [...DEFAULT_WORKFLOW.track, ...DEFAULT_WORKFLOW.side]) expect(s.scenes).toHaveLength(s.id === 'claude-test' ? 4 : 3)
+  expect(DEFAULT_WORKFLOW.track.find(s => s.id === 'claude-test')!.scenes[3]).toBe('bowling')
 })
 
 test('every default stage lists its batch-2 scene third', () => {

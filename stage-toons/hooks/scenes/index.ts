@@ -6,6 +6,7 @@ import { FABLE_SCENE, type Scene, type SceneId } from '../scene'
 import { allStages } from '../track'
 import { DEFAULT_WORKFLOW } from '../workflow'
 import { blueprint } from './blueprint'
+import { bowling } from './bowling'
 import { bricklaying } from './bricklaying'
 import { bugHunt } from './bug-hunt'
 import { bugNet } from './bug-net'
@@ -41,6 +42,7 @@ import { terminal } from './terminal'
 import { testTubes } from './test-tubes'
 import { thoughtClouds } from './thought-clouds'
 import { treasureMap } from './treasure-map'
+import { victoryLap } from './victory-lap'
 import { waitingBench } from './waiting-bench'
 import { workbench } from './workbench'
 import { writingDesk } from './writing-desk'
@@ -88,6 +90,8 @@ const LIBRARY = {
   dice,
   fireworks,
   rocket,
+  'victory-lap': victoryLap,
+  bowling,
 } satisfies Record<SceneId, Scene>
 
 // A scene's name in the library, checked by tsc: what the default workflow

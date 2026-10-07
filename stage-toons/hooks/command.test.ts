@@ -104,9 +104,9 @@ test('the workflow summary says where it came from and lists the stages with the
   expect(lines).toContain(`  7 develop: Develop (${W.track[6]!.scenes.join(', ')}) · auto: skill superpowers:executing-plans; skill superpowers:subagent-driven-development`)
   expect(lines).toContain(`  0 other: Other (${W.side[1]!.scenes.join(', ')})`)
   const two = { track: [{ ...W.track[0]!, scenes: ['road-trip', 'gift'] }], side: [] }
-  expect(workflowSummary(two, 'file').split('\n')).toEqual(['Workflow: from .claude/stage-toons.json', 'Track:', '  1 roadmap: Roadmap (road-trip, gift)', 'Past the track:', '  done: Done (fireworks, rocket)'])
+  expect(workflowSummary(two, 'file').split('\n')).toEqual(['Workflow: from .claude/stage-toons.json', 'Track:', '  1 roadmap: Roadmap (road-trip, gift)', 'Past the track:', '  done: Done (fireworks, rocket, victory-lap)'])
   const done = lines.find(line => line.startsWith('  done: '))
-  expect(done?.startsWith('  done: Done (fireworks, rocket) · auto: bash ')).toBe(true)
+  expect(done?.startsWith('  done: Done (fireworks, rocket, victory-lap) · auto: bash ')).toBe(true)
   expect(done?.endsWith(' from user-test, cleanup')).toBe(true)
   expect(lines.indexOf('Past the track:')).toBe(lines.indexOf('Side:') - 2)
 })
