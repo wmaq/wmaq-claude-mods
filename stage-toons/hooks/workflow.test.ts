@@ -122,7 +122,7 @@ test("a file's bubbles sets whether Clawd's pop-ups show; anything but true or f
 
 test('what init writes holds neither auto nor hide; it holds Done', () => {
   expect(Object.keys(JSON.parse(workflowJson(W)))).toEqual(['track', 'side', 'done'])
-  expect(JSON.parse(workflowJson(W)).done).toEqual({ message: 'Merged and done', scenes: ['fireworks'], auto: W.done!.auto })
+  expect(JSON.parse(workflowJson(W)).done).toEqual({ message: 'Merged and done', scenes: ['fireworks', 'rocket'], auto: W.done!.auto })
 })
 
 test('a byte-order mark and Windows line endings are fine', () => {
@@ -210,7 +210,7 @@ test('a file that gives any stage an "auto" list, even an empty one, keeps its o
 })
 
 test('every workflow has Done past its track; no stage may be called done', () => {
-  expect(stageOf(SMALL, 'done')).toMatchObject({ id: 'done', label: 'Done', message: 'Merged and done', when: 'merged to main: the feature is finished', scenes: ['fireworks'] })
+  expect(stageOf(SMALL, 'done')).toMatchObject({ id: 'done', label: 'Done', message: 'Merged and done', when: 'merged to main: the feature is finished', scenes: ['fireworks', 'rocket'] })
   expect(stageOf(SMALL, 'done')?.auto).toBeUndefined()
   expect(isTrack(W, 'done')).toBe(false)
   expect(rank(W, 'done')).toBe(-1)
@@ -247,9 +247,9 @@ test("a file's done section sets Done's message, scenes and rules; each mistake 
 test("a file that lists no rules gets Done's default rules, cut to its stages", () => {
   const cut = W.done!.auto!.map(rule => ({ ...rule, from: ['cleanup'] }))
   const r = parse({ track: [stage('plan'), stage('cleanup')] })
-  expect('workflow' in r && r.workflow.done).toEqual({ message: 'Merged and done', scenes: ['fireworks'], auto: cut })
+  expect('workflow' in r && r.workflow.done).toEqual({ message: 'Merged and done', scenes: ['fireworks', 'rocket'], auto: cut })
   const own = parse({ track: [stage('cleanup')], done: { message: 'Shipped' } })
-  expect('workflow' in own && own.workflow.done).toEqual({ message: 'Shipped', scenes: ['fireworks'], auto: cut })
+  expect('workflow' in own && own.workflow.done).toEqual({ message: 'Shipped', scenes: ['fireworks', 'rocket'], auto: cut })
   // With neither Your testing nor Cleanup, no rule is left.
   const bare = parse({ track: [stage('plan')] })
   expect('workflow' in bare && bare.workflow.done).toBeUndefined()

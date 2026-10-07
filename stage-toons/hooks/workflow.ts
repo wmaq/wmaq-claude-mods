@@ -61,7 +61,7 @@ export const DEFAULT_WORKFLOW: Workflow = {
     { id: 'debugging', label: 'Debugging', message: 'Hunting a bug', when: 'finding and fixing a bug, at any point', scenes: ['bug-hunt', 'flashlight', 'bug-net'], auto: [{ skill: 'superpowers:systematic-debugging' }] },
     { id: 'other', label: 'Other', message: 'Work outside the usual stages', when: 'work that fits none of the stages', scenes: ['mystery-box', 'fishing', 'dice'] },
   ],
-  done: { message: DONE_MESSAGE, scenes: ['fireworks'], auto: MERGE_RULES },
+  done: { message: DONE_MESSAGE, scenes: ['fireworks', 'rocket'], auto: MERGE_RULES },
 } satisfies { track: readonly DefaultStage[]; side: readonly DefaultStage[]; done: DoneDef & { scenes: readonly LibraryScene[] } }
 
 export const stageIds = (w: Workflow): string[] => allStages(w).map(s => s.id)

@@ -6,11 +6,13 @@ import { EMPTY, getPixel, type PixelBuffer } from './pixels'
 import { type AreaSize, areaFor, heroAt, renderFull, renderScene, renderSeamed, type Scene, stillOf } from './scene'
 import { SCENES } from './scenes'
 import { LAYERS as BRICK_LAYERS } from './scenes/bricklaying'
-import { STAR_LAYERS } from './scenes/kit'
+import { C, STAR_LAYERS } from './scenes/kit'
 import { LAYERS as ROAD_LAYERS } from './scenes/road-trip'
+import { popOf } from './scenes/rocket'
 
-// Phase 6b's scenes: reworked (road-trip, bricklaying, flashlight).
-const PHASE = ['road-trip', 'bricklaying', 'flashlight']
+// Phase 6b's scenes: reworked (road-trip, bricklaying, flashlight) or new
+// (rocket).
+const PHASE = ['road-trip', 'bricklaying', 'flashlight', 'rocket']
 const scene = (id: string): Scene => SCENES[id]!
 const SIZES: AreaSize[] = [{ columns: 48, rows: 7 }, { columns: 120, rows: 7 }, { columns: 200, rows: 9 }]
 const moments = (s: Scene, every = 0.1) => Array.from({ length: Math.round(s.loop / every) }, (_, i) => i * every)
@@ -113,4 +115,13 @@ test("the quiet rules: behind Clawd every layer is dimmer than he is, and no lay
       }
     }
   }
+})
+
+test('the rocket pops 8 short of the edge, at most 150 columns on from its pad, high in the sky', () => {
+  expect(popOf(areaFor({ columns: 48, rows: 7 }))).toEqual({ x: 40, y: 5 })
+  expect(popOf(areaFor({ columns: 120, rows: 9 }))).toEqual({ x: 112, y: 1 })
+  expect(popOf(areaFor({ columns: 512, rows: 9 })).x).toBe(175)
+  // The flash at the pop is white, round where it pops.
+  const b = renderFull(scene('rocket'), 4.85, null, 4.85, { columns: 120, rows: 9 })
+  expect(getPixel(b, 112, 1 + 4)).toBe(C.white)
 })

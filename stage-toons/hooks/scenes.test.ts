@@ -16,7 +16,7 @@ const LIBRARY = [
   'treasure-map', 'thought-clouds', 'scroll', 'stamp',
   'ladder', 'scales', 'workbench', 'crash-test',
   'cake', 'recycling', 'bug-net', 'dice',
-  'fireworks',
+  'fireworks', 'rocket',
 ]
 
 const SCENE_LIST: Scene[] = Object.values(SCENES)
@@ -439,13 +439,13 @@ test('the starfield: each depth in its colour, drifting left at its own speed, w
   expect(lit(0, 'near').length + lit(0.25, 'near').length).toBe(near)
 })
 
-test('stargazing and fireworks have a drifting night sky behind them, and only they among the scenes', () => {
+test('stargazing, fireworks and the rocket have a drifting night sky behind them, and only they among the scenes', () => {
   // thought-clouds' background is its wings' clouds, and waiting-bench's its
   // wings' ticket display, drawn only right of column 48: no sky behind the
   // core. road-trip's and bricklaying's are their scrolling scenery.
   const NOT_SKIES = ['thought-clouds', 'waiting-bench', 'road-trip', 'bricklaying']
   const withSky = Object.values(SCENES).filter(s => s.background !== undefined && !NOT_SKIES.includes(s.id)).map(s => s.id)
-  expect(withSky.sort()).toEqual(['fireworks', 'stargazing'])
+  expect(withSky.sort()).toEqual(['fireworks', 'rocket', 'stargazing'])
   for (const id of withSky) {
     const scene = SCENES[id]!
     const grey = (time: number) => [...renderFull(scene, time).px].filter(c => c === C.darkGray).length

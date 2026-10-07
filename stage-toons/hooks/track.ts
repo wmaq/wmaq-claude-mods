@@ -9,7 +9,7 @@ import type { Progress, StageDef, StageId, Workflow } from '../types'
 // message, scenes and rules.
 export const DONE_ID = 'done'
 export const DONE_MESSAGE = 'Merged and done'
-export const DONE_SCENES: readonly string[] = ['fireworks']
+export const DONE_SCENES: readonly string[] = ['fireworks', 'rocket']
 
 export const isDone = (id: StageId | null): boolean => id === DONE_ID
 

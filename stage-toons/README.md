@@ -47,7 +47,8 @@ stage the work returns to:
 
 Past the last stage is **Done**: the feature is merged, finished. The
 whole track lights up, the bar reads `✓ Done · <feature>` with "Merged and
-done" under it, Clawd gets the confetti, and the fireworks scene plays:
+done" under it, Clawd gets the confetti, and one of Done's scenes plays
+(fireworks, or a rocket):
 
 ```
  ●━●━●━●━●━●━●━●━●━●  ✓ Done · login
@@ -239,7 +240,7 @@ demo's next step), it dissolves into it over half a second, cell by cell.
 A scene starts from its beginning each time it comes on, and a scene that
 builds something up dissolves back to its start when it loops.
 
-`/stage demo` plays all 38 scenes of the library in turn below the bar,
+`/stage demo` plays all 39 scenes of the library in turn below the bar,
 each named with the stage that plays it, so you can see them without
 waiting for the work to reach each stage. `/stage demo plan` plays only the
 scenes of one stage, `/stage demo idle` the idle routines and
@@ -359,7 +360,8 @@ repeats, never the same twice in a row. The
 older `"scene": "bug-hunt"` still works. A workflow file keeps its own
 lists: a file written by `/stage workflow init` before 0.4.1 names two
 scenes per stage, so add the new ones to it (or delete the file to use the
-default) to see them.
+default) to see them. In the same way, a file written before the rocket
+came lists `fireworks` alone in its `done` scenes: add `rocket` there.
 
 Scenes: road-trip, light-bulbs, writing-desk, proofread-page,
 stepping-stones, proofread-checklist, bricklaying, test-tubes, gift,
@@ -368,9 +370,9 @@ default stage: stargazing, sticky-notes, blueprint, red-pen, dominoes,
 clipboard, terminal, control-panel, waiting-bench, dishes, flashlight,
 fishing; treasure-map, thought-clouds, scroll, stamp, ladder, scales,
 workbench, crash-test, cake, recycling, bug-net, dice; and Done's,
-fireworks. `/stage demo` plays them all, and a 38th, fable-audit, which
-plays while a Fable subagent runs rather than for a stage; `/stage
-workflow` shows the current workflow and its scenes.
+fireworks and rocket. `/stage demo` plays them all, and a 39th,
+fable-audit, which plays while a Fable subagent runs rather than for a
+stage; `/stage workflow` shows the current workflow and its scenes.
 
 Some scenes have scenery in layers across the whole area: road-trip's
 hills and mountains go by at their own speeds, bricklaying has a city

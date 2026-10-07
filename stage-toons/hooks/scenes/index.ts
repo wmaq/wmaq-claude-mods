@@ -28,6 +28,7 @@ import { proofreadChecklist, proofreadPage } from './proofread'
 import { recycling } from './recycling'
 import { redPen } from './red-pen'
 import { roadTrip } from './road-trip'
+import { rocket } from './rocket'
 import { scales } from './scales'
 import { scroll } from './scroll'
 import { stamp } from './stamp'
@@ -86,6 +87,7 @@ const LIBRARY = {
   'bug-net': bugNet,
   dice,
   fireworks,
+  rocket,
 } satisfies Record<SceneId, Scene>
 
 // A scene's name in the library, checked by tsc: what the default workflow

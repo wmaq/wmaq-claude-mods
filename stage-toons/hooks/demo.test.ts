@@ -14,8 +14,8 @@ const after = (ms: number, demo: Demo = library) => demoAt(demo, demo.at + ms)
 test("the library demo plays the default workflow's scenes stage by stage, then Fable", () => {
   expect(DEMO_ORDER.slice(0, 4)).toEqual(['road-trip', 'stargazing', 'treasure-map', 'light-bulbs'])
   expect(DEMO_ORDER.at(-1)).toBe('fable-audit')
-  expect(DEMO_ORDER).toHaveLength(38)
-  expect(DEMO_ORDER[DEMO_ORDER.indexOf('recycling') + 1]).toBe('fireworks')
+  expect(DEMO_ORDER).toHaveLength(39)
+  expect(DEMO_ORDER.slice(DEMO_ORDER.indexOf('recycling') + 1, DEMO_ORDER.indexOf('recycling') + 3)).toEqual(['fireworks', 'rocket'])
   for (const id of STAGE_SCENES) expect(DEMO_ORDER).toContain(id)
 })
 
@@ -23,8 +23,8 @@ test('each scene plays for its seconds, on its own clock from 0', () => {
   expect(after(0)).toMatchObject({ index: 0, sceneMs: 0, shot: { base: 'road-trip', time: 0, reaction: null } })
   expect(after(10_000)).toMatchObject({ index: 1, sceneMs: 0, shot: { base: 'stargazing', time: 0 } })
   expect(after(12_500)).toMatchObject({ index: 1, sceneMs: 2500, shot: { base: 'stargazing', time: 2.5, reaction: null } })
-  expect(after(379_999)).not.toBeNull()
-  expect(after(380_000)).toBeNull()
+  expect(after(389_999)).not.toBeNull()
+  expect(after(390_000)).toBeNull()
 })
 
 test("a stage's demo plays its scenes; its line names them by the first stage that lists them", () => {
@@ -32,8 +32,9 @@ test("a stage's demo plays its scenes; its line names them by the first stage th
   expect(demoLine(after(5_000, develop)!, develop, DEFAULT_WORKFLOW)).toBe('Demo 2/3: terminal (Develop) · /stage demo stop ends it')
   expect(demoLine(after(10_000, develop)!, develop, DEFAULT_WORKFLOW)).toBe('Demo 3/3: workbench (Develop) · /stage demo stop ends it')
   expect(after(15_000, develop)).toBeNull()
-  expect(demoLine(after(370_000)!, library, DEFAULT_WORKFLOW)).toBe('Demo 38/38: fable-audit (Fable reviewing) · /stage demo stop ends it')
-  expect(demoLine(after(300_000)!, library, DEFAULT_WORKFLOW)).toBe('Demo 31/38: fireworks (Done) · /stage demo stop ends it')
+  expect(demoLine(after(380_000)!, library, DEFAULT_WORKFLOW)).toBe('Demo 39/39: fable-audit (Fable reviewing) · /stage demo stop ends it')
+  expect(demoLine(after(300_000)!, library, DEFAULT_WORKFLOW)).toBe('Demo 31/39: fireworks (Done) · /stage demo stop ends it')
+  expect(demoLine(after(310_000)!, library, DEFAULT_WORKFLOW)).toBe('Demo 32/39: rocket (Done) · /stage demo stop ends it')
 })
 
 test('the idle demo plays each routine, the celebration, the show-off with each prop in turn, then the doze', () => {
