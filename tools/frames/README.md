@@ -61,8 +61,9 @@ mode on: a sheet then shows the same frame over time but for a change
 room. `--columns` takes a list (`--columns 48,80,120,200`): the sheet
 then has a row of frames per width, each width's frames at the same
 moments (4 of them unless `--count` says), to check a picture's wide set
-in one look. At `--columns 48 --rows 7` every picture draws as 0.11.0
-drew it.
+in one look. At `--columns 48 --rows 7` every picture draws as its
+golden hash records (0.11.0's, or phase 6b's for the four scenes it
+reworked or added).
 
 Common options: `--from MS` (0), `--every MS` (250), `--count N` (16),
 `--columns-per-row N` (4, or 2 when the frames are wider than 64

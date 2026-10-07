@@ -170,8 +170,10 @@ test('recycling: past 50 columns the third throw goes into a second bin; at 50 a
   expect(ball(5.95, { columns: 50, rows: 7 })).toBe(49)
   expect(ball(6.05, { columns: 50, rows: 7 })).toBe(null)
   // Clawd's eyes go wide at a miss only.
-  const eyesWide = (size: AreaSize) => JSON.stringify(heroAt(SCENES.recycling!, 4.5, size)) + [...draw('recycling', 4.5, size).px].filter(c => c === 0x2a1610).length
-  expect(eyesWide({ columns: 48, rows: 9 })).not.toBe(eyesWide(MID))
+  // Wide eyes draw 8 dark pixels, open ones 4: at 48 columns the third ball
+  // misses, past 50 it goes into the second bin.
+  const eyeInk = (size: AreaSize) => [...draw('recycling', 4.5, size).px].filter(c => c === 0x2a1610).length
+  expect([eyeInk({ columns: 48, rows: 9 }), eyeInk(MID)]).toEqual([8, 4])
 })
 
 test('recycling: past the second bin, sorting bins to the edge, 14 columns apart: paper, glass, plastic in turn', () => {

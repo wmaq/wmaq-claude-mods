@@ -52,6 +52,10 @@ test("the phase's scenes: at the still Clawd's eyes are open, on every size", ()
     for (const size of SIZES) {
       const b = renderFull(scene(id), stillOf(scene(id)), null, stillOf(scene(id)), size)
       expect(`${id}: ${[...b.px].filter(c => c === EYE_DARK).length >= 4}`).toBe(`${id}: true`)
+      // Not a blink either: a blink draws as many dark pixels as open eyes.
+      const hero = scene(id).actors.find(a => a.kind === 'clawd' && a.isHero)
+      const look = hero?.kind === 'clawd' ? hero.look?.(stillOf(scene(id)), areaFor(size)) : undefined
+      expect(`${id}: ${look === undefined || look.isBlinking === true || look.eyes === 'closed'}`).toBe(`${id}: false`)
     }
   }
 })
