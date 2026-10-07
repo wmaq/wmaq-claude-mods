@@ -271,11 +271,7 @@ test('batch 2, part 1: each new scene shows what it is about', () => {
   // The scroll unrolls along the floor, written as it goes.
   expect(has('scroll', C.paper, 0.5)).toBeLessThan(has('scroll', C.paper, 5))
   expect(has('scroll', C.ink, 0.5)).toBeLessThan(has('scroll', C.ink, 5))
-  // The page under the stamp has its line before the stamp comes down, and
-  // a green tick after.
-  expect(has('stamp', C.green, 1.1)).toBe(0)
-  expect(at('stamp', C.red, 1.2).every(p => p.y === 8)).toBe(true)
-  expect(has('stamp', C.green, 1.4)).toBe(4)
+  // stamp, reworked in phase 6c: scene-polish-6c.test.ts.
 })
 
 test('batch 2, part 2: each new scene shows what it is about', () => {
@@ -332,19 +328,6 @@ test('the kit draws a line with both ends and every pixel between', () => {
   expect(px).toContainEqual([1, 1])
   expect(px).toContainEqual([5, 3])
   expect(px).toHaveLength(5)
-})
-
-test('polish: Clawd holds the stamp by its knob, standing on his crate and squatting to stamp', () => {
-  // Standing (0.5 s), the claw reaches column 21 of row 4, and the knob
-  // starts at 22 on the same row; squatting (1.2 s), both are two rows lower.
-  for (const [t, row] of [[0.5, 4], [1.2, 6]] as const) {
-    const b = renderFull(SCENES.stamp!, t)
-    expect(b.px[row * b.w + 21]).toBe(CLAWD_ORANGE)
-    expect(b.px[row * b.w + 22]).toBe(C.woodDark)
-  }
-  // His feet stand on the crate, clear of the desk beside it.
-  expect(at('stamp', CLAWD_ORANGE, 0.5).every(p => p.y <= 9)).toBe(true)
-  expect(at('stamp', C.wood, 0.5).filter(p => p.y === 12 && p.x > 18).every(p => p.x >= 20)).toBe(true)
 })
 
 test("polish: the quill's shaft runs from Clawd's claw to its nib on the scroll", () => {

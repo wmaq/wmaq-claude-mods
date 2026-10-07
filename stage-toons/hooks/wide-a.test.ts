@@ -222,19 +222,3 @@ test('road-trip: the road and the fence run to the edge, the near layer scrollin
     expect(orange(scene('road-trip'))).toBe(orange(bare))
   }
 })
-
-test('stamp: the desk runs to the edge, legs every 25 columns; a page every 24 columns from the stamp to the edge', () => {
-  const b = draw('stamp', 0)
-  expect(gaps(b, 12, 20, 200)).toEqual([])
-  const legs = columnsOf(b, C.woodDark).filter(x => x >= 46)
-  expect(legs.filter(x => at(b, x, 13) === C.woodDark)).toEqual([46, 71, 96, 121, 146, 171, 196])
-  for (let t = 0; t < 4.5; t += 0.05) {
-    const frame = draw('stamp', t)
-    const paper = columnsOf(frame, C.paper).filter(x => at(frame, x, 9) === C.paper || at(frame, x, 11) === C.paper)
-    // Pages come in from the edge: always one within the last 24 columns, and none more than 24 apart.
-    expect(paper.at(-1)!).toBeGreaterThanOrEqual(200 - 24)
-    for (let i = 1; i < paper.length; i++) expect(paper[i]! - paper[i - 1]!).toBeLessThanOrEqual(19)
-  }
-  // Seamless: the wings at the loop's end are the wings at its start.
-  expect(region(draw('stamp', 4.4999, MID), 48)).toBe(region(draw('stamp', 0, MID), 48))
-})

@@ -7,11 +7,10 @@ import { SCENES } from './scenes'
 import { C } from './scenes/kit'
 import { CHALK } from './scenes/light-bulbs'
 
-// scroll and sticky-notes, reworked across the whole width in phase 6c, are
-// held by scene-polish.test.ts and scene-polish-6c.test.ts.
-const WINGED = [
-  'light-bulbs', 'mystery-box', 'proofread-page', 'proofread-checklist', 'red-pen', 'scales', 'stepping-stones', 'thought-clouds', 'treasure-map',
-]
+// proofread-page, proofread-checklist, scroll and sticky-notes, reworked
+// across the whole width in phase 6c, are held by scene-polish.test.ts and
+// scene-polish-6c.test.ts.
+const WINGED = ['light-bulbs', 'mystery-box', 'red-pen', 'scales', 'stepping-stones', 'thought-clouds', 'treasure-map']
 const scene = (id: string): Scene => SCENES[id]!
 // A scene on an area of that size, its background on the same unwrapped time.
 const draw = (id: string, time: number, columns: number, rows = 9) => renderFull(scene(id), time, null, time, { columns, rows })
@@ -60,19 +59,17 @@ test('standing stays bare: nothing right of the core at any width', () => {
   for (const columns of [120, 200]) for (const t of moments(scene('standing'))) expect(wings(draw('standing', t, columns))).toEqual([])
 })
 
-test('the sets that run on reach the edge at 200 columns with no gap: the stream, the sea, the desk', () => {
+test('the sets that run on reach the edge at 200 columns with no gap: the stream, the sea', () => {
   const runs: [string, number, number[]][] = [
     ['stepping-stones', STAGE_W, [12, 13]],
     ['treasure-map', STAGE_W, [12, 13]],
-    ['proofread-page', 50, [9]],
-    ['proofread-checklist', 50, [9]],
   ]
   for (const [id, from, rows] of runs) {
     const b = draw(id, 1, 200)
     for (const y of rows) for (let x = from; x < 200; x++) expect(at(b, x, y)).not.toBe(EMPTY)
   }
   // And the wings that repeat reach the area's last 8 columns.
-  for (const id of ['light-bulbs', 'red-pen', 'scales', 'stepping-stones', 'treasure-map', 'proofread-page']) {
+  for (const id of ['light-bulbs', 'red-pen', 'scales', 'stepping-stones', 'treasure-map']) {
     expect(wings(draw(id, 1, 200)).some(p => Number(p.split(',')[0]) >= 192)).toBe(true)
   }
 })

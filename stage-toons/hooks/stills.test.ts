@@ -8,7 +8,7 @@ import { SCENES } from './scenes'
 // The stills: the moment calm mode holds each picture at.
 // Scenes whose hero's head is above the layer's room at every moment on a
 // 7-row area (the 8- and 9-row areas' headroom gives it room there).
-const HIGH_HEADS = ['fishing', 'stamp', 'waiting-bench']
+const HIGH_HEADS = ['fishing', 'waiting-bench']
 
 test("every library scene and idle routine has a still within its loop", () => {
   for (const [id, scene] of Object.entries(SCENES)) {

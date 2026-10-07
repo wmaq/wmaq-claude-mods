@@ -15,7 +15,7 @@ import { popOf } from './scenes/rocket'
 // bowling).
 const PHASE = [
   'road-trip', 'bricklaying', 'flashlight', 'rocket',
-  'writing-desk', 'sticky-notes', 'scroll',
+  'writing-desk', 'sticky-notes', 'scroll', 'proofread-page', 'proofread-checklist', 'stamp',
 ]
 const scene = (id: string): Scene => SCENES[id]!
 const SIZES: AreaSize[] = [{ columns: 48, rows: 7 }, { columns: 120, rows: 7 }, { columns: 200, rows: 9 }]

@@ -262,22 +262,24 @@ test("the layer shows over the stage's scene while Claude works: a tool's badge 
   expect(rowText(mod.shown!.draw(START + 1200, STAGE_SIZE), 1)).toBe('')
 })
 
-test("a head a little high keeps the bubble alone: stamp's crate; higher, nothing, and no eyes up", () => {
+test("a head a little high keeps the bubble alone: waiting-bench's seat; higher, nothing, and no eyes up", () => {
+  // On the bench his head is at pixel row 3: the bubble shows, the badge
+  // and the label don't.
   const busy = said(toolStarted(createActivity(), 'tu-1', 'edit', 'a.ts'), 'Saved it.', START + 900)
-  const stamp = liveMod()
-  stamp.isBandWorking = true
-  stamp.director = createDirector('stamp', false)
-  stamp.activity = busy
-  frame(stamp, START + 1000)
-  const b = stamp.shown!.draw(START + 1000, STAGE_SIZE)
+  const bench = liveMod()
+  bench.isBandWorking = true
+  bench.director = createDirector('waiting-bench', false)
+  bench.activity = busy
+  frame(bench, START + 1000)
+  const b = bench.shown!.draw(START + 1000, STAGE_SIZE)
   expect(rowText(b, 0)).toBe('Saved it.')
   expect(rowText(b, 1)).toBe('')
-  expect(has(b, C.gold)).toBe(false)
-  // His head reaches pixel row 2 there: the bubble keeps off it, no tail.
-  expect(has(b, C.paper)).toBe(true)
-  let paperBelow = false
-  for (let x = 0; x < b.w; x++) if (getPixel(b, x, 2) === C.paper) paperBelow = true
-  expect(paperBelow).toBe(false)
+  const alone = liveMod()
+  alone.isBandWorking = true
+  alone.director = createDirector('waiting-bench', false)
+  frame(alone, START + 1000)
+  const gold = (p: PixelBuffer) => [...p.px].filter(c => c === C.gold).length
+  expect(gold(b)).toBe(gold(alone.shown!.draw(START + 1000, STAGE_SIZE)))
   // Fishing's seat: nothing at all, and thinking leaves his eyes as the scene has them.
   const plain = liveMod()
   plain.isBandWorking = true

@@ -49,9 +49,35 @@ test('scroll: it unrolls to near the edge, then rolls back up to Clawd', () => {
   expect(end(9.99)).toBeLessThan(26)
 })
 
+test('proofread: a tray at the far end, pages slid in to Clawd, a pile growing at the left; the page ticked, the checklist ticked box by box', () => {
+  for (const id of ['proofread-page', 'proofread-checklist']) {
+    const tray = xs(draw(id, 0.05), C.paper, C.paperShade).filter(x => x >= 100)
+    expect({ id, tray: tray.length > 0 }).toEqual({ id, tray: true })
+    const pile = (t: number) => where(draw(id, t), C.paper, C.paperShade).filter(p => p.x < 12).length
+    expect({ id, grows: pile(0.05) < pile(11.3) }).toEqual({ id, grows: true })
+  }
+  const green = (id: string, t: number) => where(draw(id, t), C.green).length
+  // The first page: lifted at 1.8 s, checked to 3.1 s.
+  expect(green('proofread-page', 1.85)).toBe(0)
+  expect(green('proofread-page', 3.05)).toBeGreaterThan(0)
+  expect(green('proofread-checklist', 1.85)).toBeLessThan(green('proofread-checklist', 2.6))
+  expect(green('proofread-checklist', 2.6)).toBeLessThan(green('proofread-checklist', 3.05))
+})
+
+test('stamp: the pages past Clawd carry the red seal down the belt to the edge; the ones coming in are blank', () => {
+  for (let t = 0; t < scene('stamp').loop; t += 0.25) {
+    const red = where(draw('stamp', t), C.red)
+    // Seals on the belt's pages (rows 8 to 10) well past Clawd, short of the
+    // out-bin, whose rim has its own red marks: at least two pages' worth.
+    expect(`${t}: ${red.filter(p => p.y >= 8 && p.y <= 10 && p.x > 40 && p.x < 100).length >= 12}`).toBe(`${t}: true`)
+    // Coming in from the left, behind and before Clawd (from column 19): no seal.
+    expect(red.every(p => p.x >= 19)).toBe(true)
+  }
+})
+
 test('at 30 columns the crop keeps Clawd whole through the loop (crash-test follows its car there)', () => {
   const cast: Cast = { scenes: SCENES, reactions: REACTIONS, broken: new Set(), onBreak: () => undefined }
-  const ids = ['writing-desk', 'sticky-notes', 'scroll']
+  const ids = ['writing-desk', 'sticky-notes', 'scroll', 'proofread-page', 'proofread-checklist', 'stamp']
   for (const id of ids) {
     for (let t = 0; t < scene(id).loop; t += 0.1) {
       const head = heroOnScreen({ base: id, time: t, reaction: null }, { columns: 30, rows: 7 }, cast)
