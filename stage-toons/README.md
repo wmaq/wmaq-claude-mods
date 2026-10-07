@@ -85,6 +85,7 @@ You can move it yourself with `/stage`:
 | `/stage demo [<stage> \| idle] [seconds]` | Play every scene, one stage's scenes (by id), or the idle routines, 10 s each (2 to 60); a bare number is the seconds |
 | `/stage demo waiting [scene]` | Play the waiting toon with pretend agents (about 25 s): the next of its four scenes, or the one named (`laptops`, `building`, `rowing`, `conveyor`) |
 | `/stage demo work [seconds]` | Play what Clawd shows while Claude works (thinking, each kind of tool, his lines), 3 s a step |
+| `/stage demo dj [seconds]` | Play Clawd DJ (20 s): a long title, a track change, two helpers dancing |
 | `/stage demo stop` | End the demo |
 | `/stage workflow` | Show the workflow, where it came from, and each stage's scenes |
 | `/stage workflow init` | Write the default workflow to `.claude/stage-toons.json` to edit |
@@ -92,6 +93,7 @@ You can move it yourself with `/stage`:
 | `/stage auto [on \| off]` | Show the rules that move the stage by itself; turn them on or off |
 | `/stage bubbles [on \| off]` | Whether Clawd's pop-ups show: what Claude is doing over his head, and what he says |
 | `/stage calm [on \| off]` | Whether the cartoons hold still, changing only when something happens (off by default) |
+| `/stage dj [on \| off]` | Clawd DJ: while Spotify plays, Clawd at the decks and the track's name (Windows; off by default) |
 | `/stage width [<n> \| full]` | How wide the cartoons may grow under the bar: up to n columns (120 by default; 48 to 512), or the band's whole width |
 | `/stage log [n]` | The last n moves (15; up to 200) with how long each stage lasted |
 | `/stage time` | Time per feature and per stage |
@@ -244,8 +246,9 @@ builds something up dissolves back to its start when it loops.
 each named with the stage that plays it, so you can see them without
 waiting for the work to reach each stage. `/stage demo plan` plays only the
 scenes of one stage, `/stage demo idle` the idle routines and
-`/stage demo waiting` the waiting toon and `/stage demo work` what Clawd
-shows while Claude works. A new prompt ends the demo.
+`/stage demo waiting` the waiting toon, `/stage demo work` what Clawd
+shows while Claude works and `/stage demo dj` Clawd DJ. A new prompt ends
+the demo.
 
 ## Calm mode
 
@@ -268,6 +271,28 @@ stills come back when they end. `/stage calm off` brings the motion
 back. With it on, the area looks for a change twice a second, and
 sends the terminal a new frame only when something changed (and the
 same one every 2 s, to learn that the area still shows).
+
+## Clawd DJ
+
+`/stage dj on` (Windows, in the terminal) has Clawd DJ while Spotify
+plays, for every project: behind a booth with two turntables, in
+headphones, bobbing to a 120 BPM beat (the media session gives no
+tempo), speakers thumping and a mirror ball over a dance floor. It plays
+on every stage, between turns and while agents work: their helpers come
+down to the dance floor and dance. Clawd's pop-ups show over his head as
+usual. From 72 columns a box over the floor names the track (a long
+title scrolls; calm mode holds it, cut with `~`), and a new track swaps
+the record. When Spotify pauses or closes, the usual cartoons come back
+a read later. `/stage dj` says what it last heard; `/stage dj off`
+stops it.
+
+It reads Spotify through Windows' media session with Windows PowerShell
+(`powershell.exe`, part of Windows): no Spotify account, app or token.
+A read takes about 0.3 s, every 5 s while the area shows and every 30 s
+while it doesn't or Clawd sleeps with nothing playing. The track stays
+in memory: it isn't saved, logged or sent to Claude. The box writes
+Latin letters (with accents, Polish ones too), Greek and Cyrillic;
+other characters show as `?`.
 
 ## Your own workflow
 
@@ -392,7 +417,7 @@ terminal's own background, on any theme.
 Limits: 1 to 15 track stages, up to 5 side stages; ids are lowercase
 letters, digits and dashes, and not one of `/stage`'s words (`next`,
 `back`, `hide`, `demo`, `feature`, `message`, `workflow`, `auto`,
-`bubbles`, `calm`, `width`, `log`, `time`, `help`, `done`). A mistake in the file is reported with where it
+`bubbles`, `calm`, `dj`, `width`, `log`, `time`, `help`, `done`). A mistake in the file is reported with where it
 is, and the session keeps a working workflow.
 
 ## Install
