@@ -149,6 +149,12 @@ canvas (#25), in 0.12.0, which finished phase 4, richer art.)
   unpolished on the wider canvas (props spread out, longer walks,
   compositions per width; the person chose the wider set in 4e and
   deferred this).
+  - 6b's leftovers, for 6c to fix as it passes (hand-off
+    `2026-10-07-stage-toons-scene-polish-6b.md`): under about 36
+    columns a reaction holds bricklaying's camera at its start, away
+    from Clawd mid-build; flashlight's pool shows flat-topped for a
+    moment on 7 rows (its sway reaches the top row); bricklaying's steps
+    at 48 columns come about once a second.
 - Maybe: an Svg rendition for the desktop app (#24), the only element
   known to reach the app; needs the person's devices to check first.
 
