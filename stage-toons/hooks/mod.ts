@@ -9,10 +9,12 @@ import { COMMAND, toolNameFor } from './prompt'
 import type { Demo } from './demo'
 import { createDirector, type Director } from './director'
 import { type Cost, type EntryKey, NO_COST } from './history'
+import { type Music, NO_MUSIC, type ReadFailure } from './nowplaying'
 import { DEEP_SLEEP_MS, DOZE_MS } from './idle'
 import type { PixelBuffer } from './pixels'
 import { storeKey } from './progress'
 import { type AreaSize, FADE_MS, type SceneId, STAGE_W } from './scene'
+import { djSpots } from './scenes/dj'
 import { type Cast, TOON_ROWS } from './toon'
 import { dealWaiting, FALLBACK_WAITING, NEW_DEAL, type WaitingDeal, type WaitingSceneId } from './waiting/deal'
 import { EMPTY_LOG, freesAt, seat, type SeatEntry, type SeatLog } from './waiting/seats'
@@ -65,7 +67,7 @@ export const QUICK_MS = 83
 
 export function frameMs(mod: Mod, now: number): number {
   if (mod.isCalm) return mod.demo !== null || isFading(mod, now) ? QUICK_MS : CALM_FRAME_MS
-  if (mod.isBandWorking || mod.demo !== null || (mod.seats.since !== null && !mod.isWaitingBroken) || isFading(mod, now)) return QUICK_MS
+  if (mod.isBandWorking || mod.demo !== null || isDjOn(mod) || (mod.seats.since !== null && !mod.isWaitingBroken) || isFading(mod, now)) return QUICK_MS
 
   return now - mod.idleSince >= DOZE_MS ? 333 : 166
 }
@@ -86,6 +88,7 @@ export const RESEND_MS = 2000
 export const isDeepAsleep = (mod: Mod, now: number): boolean =>
   !mod.isBandWorking &&
   mod.demo === null &&
+  !isDjOn(mod) &&
   (mod.seats.since === null || mod.isWaitingBroken) &&
   !isFading(mod, now) &&
   now - mod.idleSince >= DOZE_MS + (mod.isCalm ? 0 : DEEP_SLEEP_MS)
@@ -166,6 +169,20 @@ export type Mod = {
   turnTokens: Cost
   // Whether a newer version's progress is in the store: nothing is saved.
   isReadOnly: boolean
+  // Clawd DJ (/stage dj): whether it is on, what the reads of Spotify
+  // have heard, when a read last brought another track while one played,
+  // when the DJ picture last came on, the helpers on its dance floor,
+  // whether it threw (the normal pictures stand in for the load), the poll
+  // loop running (its token: a newer one ends it), and the kinds of failed
+  // read already logged.
+  isDj: boolean
+  music: Music
+  djChangedAt: number | null
+  djSince: number
+  dancers: SeatLog
+  isDjBroken: boolean
+  djLoop: string | null
+  djFailures: Set<ReadFailure>
   // Every move runs in turn on this queue.
   queue: Promise<unknown>
 }
@@ -211,8 +228,35 @@ export const createMod = (): Mod => ({
   workEntry: null,
   turnTokens: NO_COST,
   isReadOnly: false,
+  isDj: false,
+  music: NO_MUSIC,
+  djChangedAt: null,
+  djSince: 0,
+  dancers: EMPTY_LOG,
+  isDjBroken: false,
+  djLoop: null,
+  djFailures: new Set(),
   queue: Promise.resolve(),
 })
+
+// Whether the area plays the DJ picture (a demo aside): DJ mode on,
+// Spotify playing, and the picture not broken this load.
+export const isDjOn = (mod: Mod): boolean => mod.isDj && mod.music.isPlaying && !mod.isDjBroken
+
+// The dance floor moved on to now: the helpers of the agents at work get
+// spots on it while the DJ picture shows (working or not); the waiting
+// toon's seat log is left alone. Away from it, the floor empties. seat()
+// keeps its waiting-period bookkeeping (Clawd's walk, a second's walk back
+// after the last helper leaves, the period's end): the DJ picture draws
+// none of it, and the end is not the idle clock's (reseat's is).
+export function redance(mod: Mod, now: number, isShown: boolean) {
+  if (!isShown) {
+    mod.dancers = EMPTY_LOG
+
+    return
+  }
+  mod.dancers = seat(mod.dancers, mod.roster, now, true, mod.band.columns, djSpots(mod.band.columns)).log
+}
 
 // Runs a move after the moves before it, so each reads the progress the
 // last one left. A move that fails does not hold up the next.

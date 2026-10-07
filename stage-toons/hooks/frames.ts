@@ -5,17 +5,19 @@
 
 import type { IdleId } from '../types'
 import { cropLeft, placeIdle } from './area'
-import { demoAt, demoStep, idleDemoAt, workDemoAt } from './demo'
+import { demoAt, demoStep, djDemoAt, idleDemoAt, workDemoAt } from './demo'
 import { type Director, heldShot, restarted, type Shot, tick } from './director'
 import { drawLayer } from './layer'
 import { DEEP_SLEEP_MS, DOZE_MS, dozeFrame, idleBackground, routineFrame, routineStill } from './idle'
-import { isFading, type Mod, type Picture, reseat } from './mod'
-import { encodeCells, type PixelBuffer } from './pixels'
+import { isDjOn, isFading, type Mod, type Picture, redance, reseat } from './mod'
+import { trackText } from './nowplaying'
+import { encodeCells, type PixelBuffer, type Point } from './pixels'
 import { type AreaSize, dissolve, FADE_MS, stillOf } from './scene'
 import { REACTIONS, SCENES } from './scenes'
+import { djFrame, djHead, type DjInput } from './scenes/dj'
 import { type Cast, composeFrame, heroOnScreen, sceneIn } from './toon'
 import { FALLBACK_WAITING, waitingFrame, type WaitingSceneId } from './waiting'
-import { calmView } from './waiting/calm'
+import { calmView, isPresent } from './waiting/calm'
 import { waitingDemoAt } from './waiting/demo'
 import type { SeatLog } from './waiting/seats'
 import { type Activity, type Layer, layerAt, settleActivity } from './work'
@@ -46,6 +48,15 @@ export function sceneWithLayer(shot: Shot, size: AreaSize, cast: Cast, layer: La
   const head = heroOnScreen(shot, size, cast)
   const shown = layerAbove(layer, head.y)
   const frame = composeFrame(shown?.badge === 'thinking' ? { ...shot, mood: 'think' } : shot, size, cast)
+  if (shown) drawLayer(frame, shown, head.x, head.y > BUBBLE_CLEAR_Y)
+
+  return frame
+}
+
+// A frame with the layer over a head at this point, as much of it as fits
+// (layerAbove); no mood: the head's own look stays.
+function withLayer(frame: PixelBuffer, head: Point, layer: Layer | null): PixelBuffer {
+  const shown = layer === null ? null : layerAbove(layer, head.y)
   if (shown) drawLayer(frame, shown, head.x, head.y > BUBBLE_CLEAR_Y)
 
   return frame
@@ -108,6 +119,72 @@ const dozePicture = (name: string, since: number, isCalm = false): Picture =>
 
 const waitingPicture = (name: string, log: SeatLog, scene: WaitingSceneId): Picture => ({ name, draw: (now, size) => cropLeft(waitingFrame(log, now, scene, size), size) })
 
+// The DJ picture (Clawd DJ): the dj scene drawn from what the mod knows,
+// on its own clock since it came on. While Claude works the director moves
+// on as the stage's scene would have it (Fable's audit, the reactions'
+// lines) and Clawd's pop-ups show over his head; he stays at the decks (no
+// jump, flinch or eyes up). Moving, it is one picture, `dj`, through track
+// changes (the scene draws its own); calm, its still is named by the track
+// and the dancers present, so it is drawn again when either changes.
+function djPicture(mod: Mod, now: number): Picture {
+  if (!mod.shown?.name.startsWith('dj')) mod.djSince = now
+  let layer: Layer | null = null
+  if (mod.isBandWorking) {
+    mod.director = tick(mod.director, now)
+    const settled = layerFor(mod.activity, mod.director, mod.isBubbles, now, mod.isCalm)
+    mod.activity = settled.activity
+    layer = settled.layer
+  }
+  const { djSince: since, djChangedAt: changedAt, dancers, isCalm } = mod
+  const np = mod.music.track
+  // Inside each frame's drawing, so a track that can't be written fails
+  // there, where areaCells takes the picture down.
+  const input = (t: number): DjInput => ({
+    track: np ? trackText(np) : null,
+    time: (t - since) / 1000,
+    now: t,
+    trackTime: (t - Math.max(since, changedAt ?? -Infinity)) / 1000,
+    sinceChange: changedAt === null ? null : (t - changedAt) / 1000,
+    dancers,
+    isCalm,
+  })
+  let track: string | null = null
+  try {
+    track = np ? trackText(np) : null
+  } catch {
+    // Named without it: drawing it fails, where areaCells takes it down.
+  }
+  const present = dancers.entries.filter(e => isPresent(e, now)).map(e => e.agentId)
+  const name = isCalm ? `dj:calm:${track ?? ''}:${present.sort().join(',')}` : 'dj'
+
+  return { name, draw: (t, size) => withLayer(djFrame(input(t), size), djHead(input(t), size), layer) }
+}
+
+// /stage demo dj's picture: the demo's script on the DJ picture, from the
+// demo's start.
+function djDemoPicture(demo: { at: number; seconds: number; kind: 'dj' }): Picture {
+  return {
+    name: `demo:${demo.at}:dj`,
+    draw: (t, size) => {
+      const f = djDemoAt(demo, t, size.columns)
+      const isChanged = t >= f.changedAt
+
+      return djFrame(
+        {
+          track: trackText(f.track),
+          time: (t - demo.at) / 1000,
+          now: t,
+          trackTime: (t - (isChanged ? f.changedAt : demo.at)) / 1000,
+          sinceChange: isChanged ? (t - f.changedAt) / 1000 : null,
+          dancers: f.dancers,
+          isCalm: false,
+        },
+        size,
+      )
+    },
+  }
+}
+
 // What the area shows now, or null once the demo it plays is over: a demo,
 // else the stage's scene while Claude works, else the waiting toon while a
 // waiting period lasts, else the idle routine, else the doze. Each picture
@@ -146,6 +223,7 @@ function pictureOf(mod: Mod, now: number, log: Log): Picture | null {
       },
     }
   }
+  if (demo?.kind === 'dj') return demoStep(demo, now) && !mod.isDjBroken ? djDemoPicture(demo) : null
   if (demo?.kind === 'waiting') {
     if (!demoStep(demo, now)) return null
     const at = waitingDemoAt(demo.at, now, demo.columns)
@@ -153,6 +231,8 @@ function pictureOf(mod: Mod, now: number, log: Log): Picture | null {
     return 'log' in at ? waitingPicture(`demo:${demo.at}:waiting`, at.log, demo.scene) : routinePicture(mod, `demo:${demo.at}:idle`, mod.idle, now - at.idleMs, log)
   }
 
+  // While Spotify plays in DJ mode, the DJ picture, whatever else would show.
+  if (isDjOn(mod)) return djPicture(mod, now)
   // The stage's scene, with Fable's walk and the reactions, as a scene demo
   // is drawn: cropped by the scene's camera. Coming back to it from another
   // picture, it starts over.
@@ -199,6 +279,7 @@ function pictureOf(mod: Mod, now: number, log: Log): Picture | null {
 // dissolving the same old picture.
 export function areaCells(mod: Mod, size: AreaSize, now: number, log: Log): string | null {
   reseat(mod, now)
+  redance(mod, now, isDjOn(mod) && mod.demo === null)
   let picture = pictureOf(mod, now, log)
   // The demo is over: what was shown stays, to dissolve from next frame.
   if (picture === null) return null
@@ -212,6 +293,17 @@ export function areaCells(mod: Mod, size: AreaSize, now: number, log: Log): stri
       current = picture.draw(now, size)
       break
     } catch (error) {
+      // The DJ picture (or its demo) that throws gives way to the usual
+      // pictures for the rest of the load, its demo ending: a cut.
+      if (picture.name === 'dj' || picture.name.startsWith('dj:') || picture.name.endsWith(':dj')) {
+        mod.isDjBroken = true
+        log(`stage-toons: the DJ picture failed and was replaced by the usual pictures: ${String(error)}`)
+        const next = pictureOf(mod, now, log)
+        if (next === null) return null
+        picture = next
+        isCut = true
+        continue
+      }
       if (!picture.name.startsWith('waiting:')) throw error
       const { scene } = mod.waiting
       if (scene !== FALLBACK_WAITING) {
