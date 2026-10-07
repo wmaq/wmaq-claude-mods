@@ -179,7 +179,13 @@ and `/stage time` (#19; whether the app places plugin panes for a cloud
 session is unconfirmed); the Svg rendition (#24) for the desktop app (the only
 element known to reach it; needs the person's devices to check first),
 VS Code and mobile; #13 (un-defer `set_stage`: tokens on every request for
-one tool); #14 (a status line; off by default if ever built).
+one tool); #14 (a status line; off by default if ever built). From Clawd
+DJ's design (2026-10-07, the person): more players than Spotify (Windows'
+current media session, or a setting); Japanese, Chinese and Korean titles
+(wide characters) in the now-playing box; a `$.process.spawn` watcher in
+place of the poll (needs a probe of its life across a hot reload and
+`/clear`); macOS and Linux reads (osascript; playerctl over MPRIS), each
+needing a probe.
 
 **Dropped:** #29 (pet or drag Clawd with the pointer; the person,
 2026-10-05: not worth it in a terminal). **Ruled out** by the research:
