@@ -52,21 +52,63 @@ const textOf = (b: PixelBuffer): TextLayer => {
   return b.text
 }
 
+// The characters a Raster's cell takes for sure. It refuses the whole
+// picture for one that isn't a printable width-1 character of the Basic
+// Multilingual Plane, so text sticks to a list known to be: printable
+// ASCII; Latin-1's signs and letters (not the no-break space or the soft
+// hyphen) and Latin Extended-A and -B (Polish ł and ą among them); the
+// Greek and Cyrillic letters (no unassigned code points, no combining
+// marks); the dashes and quotes, the ellipsis, and the note.
+const GLYPH_RANGES: readonly (readonly [number, number])[] = [
+  [0x20, 0x7e],
+  [0xa1, 0xac],
+  [0xae, 0x24f],
+  [0x386, 0x386],
+  [0x388, 0x38a],
+  [0x38c, 0x38c],
+  [0x38e, 0x3a1],
+  [0x3a3, 0x3ce],
+  [0x400, 0x482],
+  [0x48a, 0x4ff],
+  [0x2010, 0x201f],
+  [0x2026, 0x2026],
+  [0x266a, 0x266a],
+]
+export const isRasterGlyph = (cp: number): boolean => GLYPH_RANGES.some(([from, to]) => cp >= from && cp <= to)
+const NO_BREAK_SPACE = 0xa0
+
 // Writes text from a cell on, one character a cell, in a colour: each
 // character over the cell's upper pixel, which is its background (the
-// lower pixel is not drawn). Only printable ASCII: anything else is a ?.
-// Cells outside the buffer are dropped.
+// lower pixel is not drawn). Composed first (NFC: an e and its accent
+// become one é); a no-break space is a space; a character the Raster may
+// not take (isRasterGlyph) is a ?, one per character (an emoji's two
+// halves are one). Cells outside the buffer are dropped.
 export function drawText(b: PixelBuffer, col: number, row: number, text: string, color: number): void {
   if (row < 0 || row >= cellRows(b)) return
   const layer = textOf(b)
-  for (let i = 0; i < text.length; i++) {
-    const x = col + i
-    if (x < 0 || x >= b.w) continue
-    const code = text.charCodeAt(i)
-    layer.cp[row * b.w + x] = code >= 0x20 && code <= 0x7e ? code : 0x3f
-    layer.fg[row * b.w + x] = color
+  let x = col
+  for (const ch of composed(text)) {
+    const cp = ch.codePointAt(0)!
+    const code = cp === NO_BREAK_SPACE ? 0x20 : cp
+    if (x >= 0 && x < b.w) {
+      layer.cp[row * b.w + x] = isRasterGlyph(code) ? code : 0x3f
+      layer.fg[row * b.w + x] = color
+    }
+    x++
   }
 }
+
+// The text composed (NFC), or as it is where the environment can't.
+function composed(text: string): string {
+  try {
+    return text.normalize('NFC')
+  } catch {
+    return text
+  }
+}
+
+// How many cells drawText takes for a text.
+export const textCells = (text: string): number => [...composed(text)].length
 
 // The character in a cell, or null.
 export function glyphAt(b: PixelBuffer, col: number, row: number): { cp: number; fg: number } | null {

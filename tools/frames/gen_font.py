@@ -5,6 +5,10 @@ import sys
 
 # ASCII, and the bar's other characters that unscii has.
 WANTED = list(range(0x20, 0x7F)) + [0x00B7, 0x2014, 0x2026, 0x2501, 0x2500, 0x25CF, 0x25C9, 0x25CB]
+# What Clawd DJ's box may show of a track's name (the mod's isRasterGlyph):
+# Latin-1, Latin Extended-A and -B, the Greek and Cyrillic letters, the
+# dashes, quotes and ellipsis, and the note; each where unscii has it.
+OPTIONAL = list(range(0xA1, 0x250)) + list(range(0x386, 0x3CF)) + list(range(0x400, 0x500)) + list(range(0x2010, 0x2020)) + [0x2026, 0x266A]
 
 # Drawn here in the same 8x16 grid (unscii lacks them): one byte a row,
 # the high bit the leftmost pixel.
@@ -22,7 +26,7 @@ with open(sys.argv[1], encoding='ascii') as f:
     for line in f:
         key, _, bits = line.strip().partition(':')
         cp = int(key, 16)
-        if cp in WANTED and len(bits) == 32:
+        if (cp in WANTED or cp in OPTIONAL) and len(bits) == 32:
             glyphs[cp] = bits.upper()
 missing = [hex(cp) for cp in WANTED if cp not in glyphs]
 if missing:

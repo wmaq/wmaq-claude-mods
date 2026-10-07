@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { base64, base64Loop, clearCell, createBuffer, drawText, EMPTY, encodeCells, fillRect, getPixel, glyphAt, hex, rightOf, setPixel, TERMINAL_DEFAULT, topOf, toWords } from './pixels'
+import { base64, base64Loop, clearCell, createBuffer, drawText, EMPTY, encodeCells, fillRect, getPixel, glyphAt, hex, isRasterGlyph, rightOf, setPixel, TERMINAL_DEFAULT, textCells, topOf, toWords } from './pixels'
 
 const decode = (cells: string) => new Uint32Array(Uint8Array.from(atob(cells), c => c.charCodeAt(0)).buffer)
 
@@ -77,14 +77,33 @@ test("a cell's character is drawn in its colour over the cell's upper pixel; its
   expect([...toWords(b)]).toEqual([0x48, 0x2a1610, 0xf2ead8, 0x69, 0x2a1610, TERMINAL_DEFAULT, 0x20, TERMINAL_DEFAULT, TERMINAL_DEFAULT])
 })
 
-test('text outside the buffer is dropped, and anything but printable ASCII is a question mark', () => {
+test('text outside the buffer is dropped, and a character the Raster may not take is a question mark', () => {
   const b = createBuffer(2, 4)
-  drawText(b, -1, 1, 'xé!', 0xffffff)
+  drawText(b, -1, 1, 'x日!', 0xffffff)
   drawText(b, 0, 2, 'nope', 0xffffff)
   expect(glyphAt(b, 0, 1)).toEqual({ cp: 0x3f, fg: 0xffffff })
   expect(glyphAt(b, 1, 1)).toEqual({ cp: 0x21, fg: 0xffffff })
   expect(glyphAt(b, 0, 0)).toBe(null)
   expect(b.text?.cp.filter(cp => cp !== 0).length).toBe(2)
+})
+
+test('letters beyond ASCII that take one cell are drawn: accented Latin, Polish, Greek, Cyrillic, dashes, the note', () => {
+  for (const ch of ['é', 'ł', 'Ł', 'ą', 'ß', 'Ω', 'Ж', 'ё', '–', '’', '…', '♪']) expect(isRasterGlyph(ch.codePointAt(0)!)).toBe(true)
+  // A control, the no-break space, the soft hyphen, an unassigned Greek
+  // code point, a Cyrillic combining mark, CJK, a fullwidth letter, an emoji.
+  for (const cp of [0x7f, 0x85, 0xa0, 0xad, 0x378, 0x483, 0x65e5, 0xff21, 0x1f3b5]) expect(isRasterGlyph(cp)).toBe(false)
+})
+
+test('drawText writes one character a cell, composed first: an e and its accent are one é, an emoji one ?', () => {
+  const text = `Łą${String.fromCodePoint(0x1f3b5)}日e${String.fromCharCode(0x301)}!`
+  const b = createBuffer(8, 2)
+  drawText(b, 0, 0, text, 0xffffff)
+  expect([...b.text!.cp.slice(0, 7)]).toEqual([0x141, 0x105, 0x3f, 0x3f, 0xe9, 0x21, 0])
+  expect(textCells(text)).toBe(6)
+  // A no-break space (common in track names: "Pt. 1") is a space.
+  const pt = createBuffer(8, 2)
+  drawText(pt, 0, 0, `Pt.${String.fromCharCode(0xa0)}1`, 0xffffff)
+  expect([...pt.text!.cp.slice(0, 5)]).toEqual([0x50, 0x74, 0x2e, 0x20, 0x31])
 })
 
 test("clearing a cell clears its two pixels and its character", () => {
