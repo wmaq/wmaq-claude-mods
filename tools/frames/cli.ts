@@ -27,8 +27,8 @@ const USAGE = `usage: npx -y tsx tools/frames/cli.ts <what> [options]
   idle <routine> [--doze]
   waiting --agents fable,sonnet,... [--scene id]
   waiting --demo [--scene id]
-  dj [--track "Artist - Title"] [--agents a,b] [--changed-at MS] [--working]
-  dj --demo
+  dj [--track "Artist - Title"] [--agents a,b] [--changed-at MS] [--working] [--party]
+  dj --demo [--party]
   band --stage <id> [--feature F] [--message M] [--columns N] [--max-rows N] [--width N|full]
        [--agents a,b] [--auditing] [--working] [--scene id] [--workflow file.json] [--idle routine]
        [--tasks done/total]
@@ -41,7 +41,7 @@ common: --from MS (0) --every MS (250; 500 for turn) --count N (16; 4 with sever
         --columns-per-row N (4; 2 for frames over 64 columns; a row per width with several --columns)
         --scale N (1) --out file.png`
 
-const FLAGS = new Set(['auditing', 'calm', 'demo', 'doze', 'working'])
+const FLAGS = new Set(['auditing', 'calm', 'demo', 'doze', 'party', 'working'])
 
 // The options each command takes, beside the common ones: anything else is
 // an error, so a mistyped option is not drawn with its default.
@@ -50,7 +50,7 @@ const OPTIONS: Record<string, readonly string[]> = {
   scene: ['reaction', 'auditing', 'width', 'columns', 'rows', 'mode', 'phase', 'what', 'say', 'calm'],
   idle: ['doze', 'columns', 'rows', 'calm'],
   waiting: ['agents', 'columns', 'rows', 'scene', 'demo', 'calm'],
-  dj: ['track', 'agents', 'changed-at', 'working', 'demo', 'columns', 'rows', 'calm'],
+  dj: ['track', 'agents', 'changed-at', 'working', 'demo', 'columns', 'rows', 'calm', 'party'],
   band: ['stage', 'feature', 'message', 'columns', 'max-rows', 'width', 'agents', 'auditing', 'working', 'scene', 'workflow', 'idle', 'tasks', 'calm'],
   turn: ['stage', 'scene', 'idle', 'start', 'end', 'columns', 'rows', 'calm'],
   'demo-work': ['stage', 'scene', 'seconds', 'workflow', 'columns', 'rows'],
@@ -220,6 +220,7 @@ function render(args: Args, times: readonly number[], columns: number): { frames
           working: opts.has('working'),
           calm: opts.has('calm'),
           demo: opts.has('demo'),
+          party: opts.has('party'),
         },
         times,
         size,

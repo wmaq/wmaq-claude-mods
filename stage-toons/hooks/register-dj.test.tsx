@@ -83,6 +83,24 @@ test("/stage dj on's own read may take 4 s (the command's hook has 10 s in all),
   expect(s.timeouts).toEqual([4000, 10_000])
 })
 
+test('/stage dj party is off by default; on, it is kept for every project and redraws the band', async ($, on) => {
+  const { world } = engine(on)
+  await $.session.start(START)
+  expect(text(await runStage($, 'dj party'))).toBe('DJ party lights off: the booth glows steady while Clawd bobs to the beat. /stage dj party on lights it up.')
+  const invalidations = world.invalidations
+  expect(text(await runStage($, 'dj party on'))).toBe('DJ party lights on: the speakers, the floor, the booth and the box light up with the beat. /stage dj party off calms them.')
+  expect(world.store['dj-party']).toBe(true)
+  expect(world.invalidations).toBeGreaterThan(invalidations)
+  await runStage($, 'dj party off')
+  expect(world.store['dj-party']).toBe(false)
+})
+
+test("the store's dj-party: true starts a session with the party lights on", async ($, on) => {
+  engine(on, { store: { 'dj-party': true } })
+  await $.session.start(START)
+  expect(text(await runStage($, 'dj party'))).toContain('DJ party lights on')
+})
+
 test('with nothing playing, DJ mode waits for Spotify', async ($, on) => {
   engine(on)
   const s = spotify(on)
@@ -195,4 +213,5 @@ test('/stage demo dj plays Clawd DJ with its line under the bar; dj is in the he
   expect(text(await runStage($, 'demo dj'))).toBe('Playing Clawd DJ for 20 s: a long title, a track change, two helpers dancing. /stage demo stop ends it.')
   expect(await bandText($)).toContain('DJ demo: Clawd at the decks · /stage demo stop ends it')
   expect(text(await runStage($, 'help'))).toContain("/stage dj [on | off]    Clawd DJ: while Spotify plays, Clawd at the decks and the track's name (Windows)")
+  expect(text(await runStage($, 'help'))).toContain("/stage dj party [on | off]  the DJ's full light show: speakers, floor, booth and box lighting up with the beat")
 })

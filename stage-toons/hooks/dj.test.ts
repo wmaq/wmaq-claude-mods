@@ -61,6 +61,20 @@ test('calm, the DJ picture is named by the track and the dancers present, so it 
   expect(shownAt(mod, START + 100)).toBe('dj:calm:Linkin Park - Figure.09:a1')
 })
 
+test('/stage dj party reaches the DJ picture and its demo: the lights change on the beat', () => {
+  const at = (isParty: boolean, demo: boolean) => {
+    const mod = djMod(true, mod => {
+      mod.isDjParty = isParty
+      if (demo) mod.demo = { kind: 'dj', at: START, seconds: 20 }
+    })
+    areaCells(mod, WIDE, START, quiet)
+
+    return areaCells(mod, WIDE, START + 1000, quiet)
+  }
+  expect(at(true, false)).not.toBe(at(false, false))
+  expect(at(true, true)).not.toBe(at(false, true))
+})
+
 test('the DJ picture is a quick picture: never the idle pace, never deep asleep', () => {
   const mod = djMod()
   const late = START + DOZE_MS + DEEP_SLEEP_MS + 1000

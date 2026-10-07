@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { djText, parseCommand, unknownText } from './command'
+import { djPartyText, djText, parseCommand, unknownText } from './command'
 import { demoFor, DJ_DEMO_CHANGE_MS, DJ_DEMO_SECONDS, DJ_DEMO_TRACKS, djDemoAt, startDemo } from './demo'
 import { createMod } from './mod'
 import { heard, NO_MUSIC, type NowPlaying } from './nowplaying'
@@ -16,12 +16,21 @@ test('/stage dj and /stage demo dj parse; dj is one of /stage\'s words', () => {
   expect(parseCommand(DEFAULT_WORKFLOW, 'DJ on')).toEqual({ kind: 'dj', isOn: true })
   expect(parseCommand(DEFAULT_WORKFLOW, 'dj off')).toEqual({ kind: 'dj', isOn: false })
   expect(parseCommand(DEFAULT_WORKFLOW, 'dj loud')).toEqual({ kind: 'usage' })
+  expect(parseCommand(DEFAULT_WORKFLOW, 'dj party')).toEqual({ kind: 'dj-party', isOn: null })
+  expect(parseCommand(DEFAULT_WORKFLOW, 'dj Party ON')).toEqual({ kind: 'dj-party', isOn: true })
+  expect(parseCommand(DEFAULT_WORKFLOW, 'dj party off')).toEqual({ kind: 'dj-party', isOn: false })
+  expect(parseCommand(DEFAULT_WORKFLOW, 'dj party loud')).toEqual({ kind: 'usage' })
   expect(parseCommand(DEFAULT_WORKFLOW, 'demo dj')).toEqual({ kind: 'demo-dj', seconds: DJ_DEMO_SECONDS })
   expect(parseCommand(DEFAULT_WORKFLOW, 'demo dj 5')).toEqual({ kind: 'demo-dj', seconds: 5 })
   expect(parseCommand(DEFAULT_WORKFLOW, 'demo dj 99')).toEqual({ kind: 'usage' })
   expect(unknownText(DEFAULT_WORKFLOW, 'dj loud')).toBe('Not a /stage command: dj loud. /stage help lists them all.')
   const named = parseWorkflow(JSON.stringify({ track: [{ id: 'dj', label: 'DJ', message: 'Mixing' }] }), STAGE_SCENES)
   expect('errors' in named && named.errors.some(e => e.includes('"dj" is one of /stage\'s words'))).toBe(true)
+})
+
+test("/stage dj party's answer: the full light show, or the gentle booth", () => {
+  expect(djPartyText(true)).toBe('DJ party lights on: the speakers, the floor, the booth and the box light up with the beat. /stage dj party off calms them.')
+  expect(djPartyText(false)).toBe('DJ party lights off: the booth glows steady while Clawd bobs to the beat. /stage dj party on lights it up.')
 })
 
 test("/stage dj's answer: off, waiting for Spotify, or the track playing", () => {

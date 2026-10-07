@@ -120,6 +120,9 @@ declare module 'claude-code' {
       // Whether DJ mode is on (/stage dj): kept across a reload, as calm
       // is.
       dj: boolean
+      // Whether the DJ picture has its full light show (/stage dj party):
+      // kept across a reload, as dj is.
+      djParty: boolean
     }
   }
 }

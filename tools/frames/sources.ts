@@ -173,8 +173,9 @@ export function waitingFrames(agents: readonly string[] | 'demo', times: readonl
 // mode, with this track (Artist - Title; the demo's first when not given),
 // these agents' helpers dancing (spawned at time 0), a change to the
 // demo's second track at changedAt ms, Claude working (the director and
-// the pop-ups' ground), calm; or its demo (/stage demo dj from time 0).
-export type DjOptions = { track?: string; agents?: readonly string[]; changedAt?: number; working?: boolean; calm?: boolean; demo?: boolean }
+// the pop-ups' ground), calm, the party lights; or its demo (/stage demo
+// dj from time 0).
+export type DjOptions = { track?: string; agents?: readonly string[]; changedAt?: number; working?: boolean; calm?: boolean; demo?: boolean; party?: boolean }
 
 const asTrack = (text: string): NowPlaying => {
   const at = text.indexOf(' - ')
@@ -188,6 +189,7 @@ export function djFrames(opts: DjOptions, times: readonly number[], size: AreaSi
   mod.band.requestId = 'r1'
   mod.idleSince = 0
   mod.isDj = true
+  mod.isDjParty = opts.party ?? false
   mod.isCalm = opts.calm ?? false
   mod.isBandWorking = opts.working ?? false
   const first = opts.track === undefined ? DJ_DEMO_TRACKS[0]! : asTrack(opts.track)

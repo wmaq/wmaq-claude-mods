@@ -135,7 +135,7 @@ function djPicture(mod: Mod, now: number): Picture {
     mod.activity = settled.activity
     layer = settled.layer
   }
-  const { djSince: since, djChangedAt: changedAt, dancers, isCalm } = mod
+  const { djSince: since, djChangedAt: changedAt, dancers, isCalm, isDjParty: isParty } = mod
   const np = mod.music.track
   // Inside each frame's drawing, so a track that can't be written fails
   // there, where areaCells takes the picture down.
@@ -147,6 +147,7 @@ function djPicture(mod: Mod, now: number): Picture {
     sinceChange: changedAt === null ? null : (t - changedAt) / 1000,
     dancers,
     isCalm,
+    isParty,
   })
   let track: string | null = null
   try {
@@ -161,8 +162,8 @@ function djPicture(mod: Mod, now: number): Picture {
 }
 
 // /stage demo dj's picture: the demo's script on the DJ picture, from the
-// demo's start.
-function djDemoPicture(demo: { at: number; seconds: number; kind: 'dj' }): Picture {
+// demo's start, with the party lights as /stage dj party has them.
+function djDemoPicture(demo: { at: number; seconds: number; kind: 'dj' }, isParty: boolean): Picture {
   return {
     name: `demo:${demo.at}:dj`,
     draw: (t, size) => {
@@ -178,6 +179,7 @@ function djDemoPicture(demo: { at: number; seconds: number; kind: 'dj' }): Pictu
           sinceChange: isChanged ? (t - f.changedAt) / 1000 : null,
           dancers: f.dancers,
           isCalm: false,
+          isParty,
         },
         size,
       )
@@ -223,7 +225,7 @@ function pictureOf(mod: Mod, now: number, log: Log): Picture | null {
       },
     }
   }
-  if (demo?.kind === 'dj') return demoStep(demo, now) && !mod.isDjBroken ? djDemoPicture(demo) : null
+  if (demo?.kind === 'dj') return demoStep(demo, now) && !mod.isDjBroken ? djDemoPicture(demo, mod.isDjParty) : null
   if (demo?.kind === 'waiting') {
     if (!demoStep(demo, now)) return null
     const at = waitingDemoAt(demo.at, now, demo.columns)

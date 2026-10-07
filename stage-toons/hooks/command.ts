@@ -31,6 +31,7 @@ export type Command =
   | { kind: 'bubbles'; isOn: boolean | null }
   | { kind: 'calm'; isOn: boolean | null }
   | { kind: 'dj'; isOn: boolean | null }
+  | { kind: 'dj-party'; isOn: boolean | null }
   | { kind: 'width'; width: WidthSetting | null }
   | { kind: 'width-usage' }
   | { kind: 'log'; count: number }
@@ -45,7 +46,7 @@ export function usage(w: Workflow): string {
   const stages = [...w.track.map((s, i) => `${i + 1} ${s.id}`), DONE_ID, ...w.side.map(s => (s === zero ? `0 ${s.id}` : s.id))]
 
   return [
-    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work | dj] [seconds] | demo waiting [scene] | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | calm [on | off] | dj [on | off] | width [<n> | full] | log [n] | time | help]',
+    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work | dj] [seconds] | demo waiting [scene] | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | calm [on | off] | dj [on | off | party [on | off]] | width [<n> | full] | log [n] | time | help]',
     '  /stage                  show the current stage and the recent moves',
     `  /stage 5, /stage plan   move to a stage${zero ? ` (0 or ? for ${zero.label})` : ''}`,
     '  /stage next, /stage back',
@@ -62,6 +63,7 @@ export function usage(w: Workflow): string {
     "  /stage bubbles [on | off]  whether Clawd's pop-ups show: what Claude is doing over his head, and what he says",
     '  /stage calm [on | off]  whether the cartoons hold still, changing only when something happens',
     "  /stage dj [on | off]    Clawd DJ: while Spotify plays, Clawd at the decks and the track's name (Windows)",
+    "  /stage dj party [on | off]  the DJ's full light show: speakers, floor, booth and box lighting up with the beat (off by default)",
     `  /stage width [<n> | full]  how wide the cartoons may grow under the bar (${DEFAULT_WIDTH} columns by default, ${WIDTH_MAX} at most)`,
     `  /stage log [n]          the last n moves (${LOG_DEFAULT}; up to ${HISTORY_MAX}) with how long each stage lasted`,
     '  /stage time             time per feature and per stage, wall-clock and Claude working',
@@ -81,6 +83,12 @@ export function parseCommand(w: Workflow, args: string): Command {
   if (word === 'demo') return parseDemo(w, tail.toLowerCase())
   if (word === 'auto' || word === 'bubbles' || word === 'calm' || word === 'dj') {
     const sub = tail.toLowerCase()
+    if (word === 'dj' && sub.split(/\s+/)[0] === 'party') {
+      const party = sub.slice('party'.length).trim()
+      if (party === '') return { kind: 'dj-party', isOn: null }
+
+      return party === 'on' || party === 'off' ? { kind: 'dj-party', isOn: party === 'on' } : { kind: 'usage' }
+    }
     if (sub === '') return { kind: word, isOn: null }
 
     return sub === 'on' || sub === 'off' ? { kind: word, isOn: sub === 'on' } : { kind: 'usage' }
@@ -272,6 +280,12 @@ export function djText(isOn: boolean, music: Music, isBroken = false): string {
 
   return 'DJ mode on: waiting for Spotify to play. /stage dj off turns it off.'
 }
+
+// /stage dj party's answer.
+export const djPartyText = (isOn: boolean): string =>
+  isOn
+    ? 'DJ party lights on: the speakers, the floor, the booth and the box light up with the beat. /stage dj party off calms them.'
+    : 'DJ party lights off: the booth glows steady while Clawd bobs to the beat. /stage dj party on lights it up.'
 
 // What a demo's answer adds while calm mode is on.
 export const CALM_DEMO_LINE = 'Calm mode is on: the demo moves anyway, and the stills come back when it ends.'

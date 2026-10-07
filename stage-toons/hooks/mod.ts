@@ -176,6 +176,8 @@ export type Mod = {
   // loop running (its token: a newer one ends it), and the kinds of failed
   // read already logged.
   isDj: boolean
+  // The DJ picture's full light show (/stage dj party).
+  isDjParty: boolean
   music: Music
   djChangedAt: number | null
   djSince: number
@@ -229,6 +231,7 @@ export const createMod = (): Mod => ({
   turnTokens: NO_COST,
   isReadOnly: false,
   isDj: false,
+  isDjParty: false,
   music: NO_MUSIC,
   djChangedAt: null,
   djSince: 0,

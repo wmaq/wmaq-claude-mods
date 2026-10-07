@@ -7,6 +7,9 @@
 // columns an equaliser and a tiled floor run on to a second speaker at the
 // right edge, and a box over the floor names the track. Loop: 8 s, sixteen
 // beats at 120 BPM: groove, eyes closed in the music, a scratch, a cheer.
+// Gentle by default: the lights hold steady while Clawd, the records, the
+// notes and the dancers move; /stage dj party lights the speakers, the
+// floor, the booth's LEDs, the ball and the box with the beat.
 //
 // Not a library scene: no stage deals it. frames.ts draws it with djFrame,
 // built for each frame from what the mod knows (the track, when it
@@ -20,7 +23,7 @@ import { drawWalker, WALKING_TOP } from '../waiting/index'
 import { isPresent } from '../waiting/calm'
 import { helperAt, homeX, MAX_SEATS, type SeatLog, type Spots } from '../waiting/seats'
 import { blinking, C, every } from './kit'
-import { fade, wrap } from './layers'
+import { fade, mix, wrap } from './layers'
 
 export const DJ_LOOP = 8
 export const BEAT = 0.5
@@ -101,13 +104,14 @@ function rightDeck(sinceChange: number | null): DeckState {
   return sinceChange < BEAT / 2 ? 'empty' : 'lifted'
 }
 
-function drawBooth(b: PixelBuffer, t: number, sinceChange: number | null) {
-  // The front, with a row of LEDs that runs with the beat.
+function drawBooth(b: PixelBuffer, t: number, sinceChange: number | null, isParty: boolean) {
+  // The front, with a row of LEDs: dim and steady, or at a party running
+  // with the beat.
   fillRect(b, BOOTH_X, BOOTH_TOP, BOOTH_W, 1, BOOTH)
   const beat = beatOf(t)
   const LED = [C.green, C.gold, C.red, C.blue]
   for (let k = 0; k < 7; k++) {
-    const isOn = (beat + k) % 4 === 0 || (inBeat(t) < 0.3 && k === beat % 7)
+    const isOn = isParty && ((beat + k) % 4 === 0 || (inBeat(t) < 0.3 && k === beat % 7))
     setPixel(b, BOOTH_X + 4 + k * 4, BOOTH_TOP, isOn ? LED[k % 4]! : fade(LED[k % 4]!, 0.7))
   }
   // The left record spins steady (two turns a second); the right too, but
@@ -118,10 +122,10 @@ function drawBooth(b: PixelBuffer, t: number, sinceChange: number | null) {
   drawDeck(b, DECK_L, steady, 'playing')
   drawDeck(b, DECK_R, rock, rightDeck(sinceChange))
   // The mixer between them, under Clawd: a dark plate with two faders and
-  // the cross-fader, its knobs blinking with the beat.
+  // the cross-fader, its knobs blinking with the beat at a party.
   const y = BOOTH_TOP - 1
   fillRect(b, 11, y, 9, 1, C.darkGray)
-  const k = beat % 2 === 0
+  const k = !isParty || beat % 2 === 0
   setPixel(b, 12, y, k ? C.green : C.gold)
   setPixel(b, 18, y, k ? C.gold : C.green)
   setPixel(b, 14 + (isScratch ? every(t, 0.25) % 3 : 1), y, C.white)
@@ -139,17 +143,17 @@ function drawPhones(b: PixelBuffer, t: number) {
   fillRect(b, x + 12, y + 1, 1, 2, C.blue)
 }
 
-// A speaker stack at column x: two cabinets, the woofer's cone pushing out
-// on each beat; marks in the air beside it on the thump (the near stack's
-// only where the dance floor leaves room).
+// A speaker stack at column x: two cabinets, the woofer's cone; at a
+// party it lights on each beat, with marks in the air beside it on the
+// thump (the near stack's only where the dance floor leaves room).
 const SPEAKER_X = 33
 const CABINET = 0x2b2b33
-function drawSpeaker(b: PixelBuffer, t: number, x: number, hasMarks: boolean) {
+function drawSpeaker(b: PixelBuffer, t: number, x: number, hasMarks: boolean, isParty: boolean) {
   fillRect(b, x, 3, 7, 4, CABINET)
   fillRect(b, x, 7, 7, 7, CABINET)
   setPixel(b, x + 3, 4, C.gray)
   setPixel(b, x + 3, 5, C.darkGray)
-  const isThump = inBeat(t) < 0.3
+  const isThump = isParty && inBeat(t) < 0.3
   const ring = isThump ? C.paperShade : C.darkGray
   fillRect(b, x + 2, 8, 3, 1, ring)
   fillRect(b, x + 1, 9, 1, 3, ring)
@@ -166,18 +170,18 @@ function drawSpeaker(b: PixelBuffer, t: number, x: number, hasMarks: boolean) {
 // The mirror ball, hung from the area's top right of the near speaker.
 const BALL_X = 41
 const BALL: Sprite = { palette: { s: C.gray, w: C.paperShade }, frames: [['.w.', 'sws', '.s.']] }
-function drawBall(b: PixelBuffer, t: number) {
+function drawBall(b: PixelBuffer, t: number, isParty: boolean) {
   const { top } = areaOf(b)
   for (let y = top; y < 1; y++) setPixel(b, BALL_X + 1, y, C.darkGray)
   drawSprite(b, BALL, 0, BALL_X, 1)
-  const glint = every(t, 0.25) % 4
+  const glint = every(t, isParty ? 0.25 : 1) % 4
   setPixel(b, BALL_X + (glint % 3), 1 + (glint === 3 ? 1 : 0), C.white)
 }
 
 // Specks of light the ball throws, placed by hand on the core's 48
 // columns (repeated every 48 on a wider area) from the headroom down, and
 // drifting slowly right, round the area. None is drawn on the ball or its
-// cord; one in four is bright for a moment in turn.
+// cord; at a party, one in four is bright for a moment in turn.
 const SPECKS: readonly (readonly [number, number, number])[] = [
   [3, 1, C.blue],
   [9, -3, C.violet],
@@ -193,7 +197,7 @@ const SPECKS: readonly (readonly [number, number, number])[] = [
   [46, 4, C.gold],
 ]
 const isOnBall = (x: number, y: number) => x >= BALL_X - 1 && x <= BALL_X + 3 && y <= 4
-function drawSpecks(b: PixelBuffer, time: number) {
+function drawSpecks(b: PixelBuffer, time: number, isParty: boolean) {
   const { left, right, top } = areaOf(b)
   const w = right - left
   const shift = Math.floor(time * 2)
@@ -203,7 +207,7 @@ function drawSpecks(b: PixelBuffer, time: number) {
       if (y < top) return
       const x = left + wrap(sx + tile * STAGE_W + shift, w)
       if (isOnBall(x, y)) return
-      setPixel(b, x, y, fade(color, (i + twinkle) % 4 === 0 ? 0.35 : 0.72))
+      setPixel(b, x, y, fade(color, isParty && (i + twinkle) % 4 === 0 ? 0.35 : 0.72))
     })
   }
 }
@@ -261,13 +265,14 @@ function drawEqualiser(b: PixelBuffer, t: number) {
   }
 }
 
-// The floor: tiles along the bottom row that light up in turn with the beat.
-function drawFloor(b: PixelBuffer, t: number) {
+// The floor: tiles along the bottom row, dim, or at a party lighting up in
+// turn with the beat.
+function drawFloor(b: PixelBuffer, t: number, isParty: boolean) {
   const { left, right } = areaOf(b)
   const beat = beatOf(t)
   const TILES = [C.blue, C.violet, C.gold, C.green]
   for (let x = left, i = 0; x < right; x += 4, i++) {
-    const isLit = (i + beat) % 3 === 0
+    const isLit = isParty && (i + beat) % 3 === 0
     fillRect(b, x, 13, 3, 1, isLit ? fade(TILES[(i + beat) % 4]!, 0.45) : fade(C.gray, 0.82))
   }
 }
@@ -315,18 +320,23 @@ function drawDancers(b: PixelBuffer, t: number, log: SeatLog, now: number, isCal
   }
 }
 
-// Now playing: a box over the dance floor, in front of everything, with a
-// note and the track as text, on the area's cells 1 to 3 (pixel rows 2 to
-// 7), clear of the dancers below and of Clawd's pop-up at the left. Only
-// on a wide room. Its frame brightens on each beat and flashes for a
-// second when the track changes. A title too long for it scrolls: the
-// start held SCROLL_HOLD s, then SCROLL_SPEED columns a second to the end,
-// the end held, and from the start again; calm, it is cut with ~.
+// Now playing: a box over the dance floor, in front of everything, at the
+// floor's left edge by the mirror ball, with the track as text, on the
+// area's cells 1 to 3 (pixel rows 2 to 7), clear of the dancers below and
+// of Clawd's pop-up at the left. Only on a wide room. Its text takes at
+// most BOX_TEXT_MAX cells; a title too long for it scrolls: the start held
+// SCROLL_HOLD s, then SCROLL_SPEED columns a second to the end, the end
+// held, and from the start again; calm, it is cut with ~. Its frame is a
+// steady gold (at a party, bright on each beat), and brightens once over
+// PULSE_S when the track changes: a single slow pulse, well under the
+// three flashes a second flashing guidelines allow.
 const BOX = 0x15151a
-const BOX_W_EXTRA = 7
+// The frame and a column of padding on each side.
+const BOX_W_EXTRA = 4
+export const BOX_TEXT_MAX = 60
 export const SCROLL_HOLD = 2
 export const SCROLL_SPEED = 4
-const FLASH_S = 1
+const PULSE_S = 1
 
 // The part of a text (as characters) the box shows: all of it when it
 // fits in room cells, else a window of room cells, `into` seconds after
@@ -347,27 +357,28 @@ function drawNowPlaying(b: PixelBuffer, t: number, input: DjInput) {
   const { right, top } = areaOf(b)
   if (input.track === null || right < WIDE_ROOM) return
   const floorTo = right - FAR_ROOM
-  const room = floorTo - FLOOR_X - 2 - BOX_W_EXTRA
+  const room = Math.min(BOX_TEXT_MAX, floorTo - FLOOR_X - 2 - BOX_W_EXTRA)
   if (room < 3) return
   const chars = [...input.track]
   const text = input.isCalm ? cutText(chars, room) : scrollWindow(chars, room, input.trackTime)
   const w = textCells(text) + BOX_W_EXTRA
-  const x = Math.round((FLOOR_X + floorTo - w) / 2)
+  const x = FLOOR_X
   const y = top + 2
-  const isFlash = !input.isCalm && input.sinceChange !== null && input.sinceChange >= 0 && input.sinceChange < FLASH_S
-  const edge = isFlash ? (every(input.sinceChange!, 0.125) % 2 === 0 ? C.white : C.gold) : inBeat(t) < 0.3 ? C.gold : fade(C.gold, 0.25)
+  const since = input.sinceChange
+  const pulse = !input.isCalm && since !== null && since >= 0 && since < PULSE_S ? Math.sin((since / PULSE_S) * Math.PI) : 0
+  const base = input.isParty && !input.isCalm && inBeat(t) >= 0.3 ? fade(C.gold, 0.25) : C.gold
+  const edge = pulse > 0 ? mix(base, C.white, 0.7 * pulse) : base
   fillRect(b, x, y, w, 6, BOX)
   fillRect(b, x, y, w, 1, edge)
   fillRect(b, x, y + 5, w, 1, edge)
   fillRect(b, x, y, 1, 6, edge)
   fillRect(b, x + w - 1, y, 1, 6, edge)
-  drawSprite(b, { ...NOTE, palette: { x: C.gold } }, 0, x + 2, y + 1)
   // The text on the box's dark, one character a cell, on its middle row
   // (the area's cell row 2).
-  const col = x + (b.ox ?? 0) + 5
+  const col = x + (b.ox ?? 0) + 2
   const row = (y + (b.oy ?? 0) + 2) / 2
   for (let i = 0; i < textCells(text); i++) clearCell(b, col + i, row)
-  fillRect(b, x + 5, y + 2, textCells(text), 2, BOX)
+  fillRect(b, x + 2, y + 2, textCells(text), 2, BOX)
   drawText(b, col, row, text, C.paper)
 }
 
@@ -376,7 +387,7 @@ function drawNowPlaying(b: PixelBuffer, t: number, input: DjInput) {
 // mod's clock, for the dancers' walks; trackTime: seconds since the track
 // came on (the box's scroll); sinceChange: seconds since the track
 // changed while playing (null when it hasn't), for the record swap and
-// the box's flash.
+// the box's pulse; isParty: the full light show (/stage dj party).
 export type DjInput = {
   track: string | null
   time: number
@@ -385,6 +396,7 @@ export type DjInput = {
   sinceChange: number | null
   dancers: SeatLog
   isCalm: boolean
+  isParty: boolean
 }
 
 export function djScene(input: DjInput): Scene {
@@ -393,14 +405,14 @@ export function djScene(input: DjInput): Scene {
     loop: DJ_LOOP,
     still: DJ_STILL,
     focusX: FOCUS_X,
-    background: drawSpecks,
+    background: (b, time) => drawSpecks(b, time, input.isParty),
     backdrop: (b, t) => {
-      drawFloor(b, t)
+      drawFloor(b, t, input.isParty)
       drawEqualiser(b, t)
-      drawBall(b, t)
+      drawBall(b, t, input.isParty)
       const { right } = areaOf(b)
-      drawSpeaker(b, t, SPEAKER_X, right >= WIDE_ROOM)
-      if (right >= WIDE_ROOM) drawSpeaker(b, t, right - 9, true)
+      drawSpeaker(b, t, SPEAKER_X, right >= WIDE_ROOM, input.isParty)
+      if (right >= WIDE_ROOM) drawSpeaker(b, t, right - 9, true, input.isParty)
     },
     actors: [
       {
@@ -423,7 +435,7 @@ export function djScene(input: DjInput): Scene {
         },
       },
       { kind: 'prop', z: 1, draw: drawPhones },
-      { kind: 'prop', z: 2, draw: (b, t) => drawBooth(b, t, input.isCalm ? null : input.sinceChange) },
+      { kind: 'prop', z: 2, draw: (b, t) => drawBooth(b, t, input.isCalm ? null : input.sinceChange, input.isParty) },
       { kind: 'prop', z: 3, draw: drawNotes },
       { kind: 'prop', z: 4, draw: (b, t) => drawDancers(b, t, input.dancers, input.now, input.isCalm) },
     ],

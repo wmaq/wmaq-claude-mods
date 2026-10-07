@@ -14,7 +14,7 @@ import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { ended, reconcileRoster, rememberKind, spawned } from './agents'
 import { autoMatch, hasRules, type Heard, isWindowsPath, relativePath, type Signal, typedSkill, viaOf } from './auto'
 import { areaSize, BAR_TONES, bandLayout, bandMode, type BandSite } from './band'
-import { autoText, bubblesText, CALM_DEMO_LINE, calmText, DJ_NEEDS_WINDOWS, djText, hideText, moveFor, parseCommand, settingsText, settingsWords, showText, unknownText, usage, WORKFLOW_FILE, workflowSummary } from './command'
+import { autoText, bubblesText, CALM_DEMO_LINE, calmText, DJ_NEEDS_WINDOWS, djPartyText, djText, hideText, moveFor, parseCommand, settingsText, settingsWords, showText, unknownText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { demoAt, demoFor, demoLine, demoStep, djDemoLine, idleDemoAt, idleDemoLine, startDemo, waitingDemoLine, workDemoAt, workDemoLine } from './demo'
 import { createDirector, react, restarted, withAuditing, withScene } from './director'
 import { areaCells, type Log } from './frames'
@@ -42,6 +42,7 @@ const AUTO_KEY = 'auto'
 const BUBBLES_KEY = 'bubbles'
 const CALM_KEY = 'calm'
 const DJ_KEY = 'dj'
+const DJ_PARTY_KEY = 'dj-party'
 const WIDTH_KEY = 'width'
 const PRUNED_KEY = 'pruned-at'
 // Set once the first session's welcome toast was given.
@@ -93,6 +94,8 @@ const bubblesAtom = atom({ plugin: 'stage-toons', key: 'bubbles' } as const, tru
 const calmAtom = atom({ plugin: 'stage-toons', key: 'calm' } as const, false)
 // Whether DJ mode is on (/stage dj): kept across a reload, as calm is.
 const djAtom = atom({ plugin: 'stage-toons', key: 'dj' } as const, false)
+// Whether the DJ picture has its full light show (/stage dj party).
+const djPartyAtom = atom({ plugin: 'stage-toons', key: 'djParty' } as const, false)
 // How wide the cartoons grow, for this session, as autoAtom is.
 const widthAtom = atom({ plugin: 'stage-toons', key: 'width' } as const, DEFAULT_WIDTH as WidthSetting)
 
@@ -551,6 +554,19 @@ async function setDj($: EngineInterface, mod: Mod, isOn: boolean): Promise<strin
   return djText(mod.isDj, mod.music, mod.isDjBroken)
 }
 
+// /stage dj party on or off, kept for every project, as calm is; the band
+// is drawn again, so the next frame has it.
+async function setDjParty($: EngineInterface, mod: Mod, isOn: boolean) {
+  mod.isDjParty = isOn
+  await update($, djPartyAtom, () => isOn)
+  $.ui.invalidate('ui.render')
+  try {
+    await $.store.set(DJ_PARTY_KEY, isOn)
+  } catch {
+    // Lasts for this session.
+  }
+}
+
 async function setAuditing($: EngineInterface, mod: Mod, isAuditing: boolean) {
   await update($, auditingAtom, () => isAuditing)
   mod.director = withAuditing(mod.director, isAuditing, await $.clock.now())
@@ -853,14 +869,18 @@ export const register: Register = on => {
     // Spotify at once (off Windows it never polls).
     if (isFresh) {
       let isDj = false
+      let isParty = false
       try {
         isDj = (await $.store.get(DJ_KEY)) === true
+        isParty = (await $.store.get(DJ_PARTY_KEY)) === true
       } catch {
         // Off for this session.
       }
       await update($, djAtom, () => isDj)
+      await update($, djPartyAtom, () => isParty)
     }
     mod.isDj = await read($, djAtom)
+    mod.isDjParty = await read($, djPartyAtom)
     if (mod.isDj && canDj(mod)) startPoll($, mod, false)
     mod.idleSince = now
     let routine = await read($, idleAtom)
@@ -884,7 +904,7 @@ export const register: Register = on => {
           name: COMMAND,
           description:
             "Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene, a stage's scenes, the idle routines, the waiting toon, what Clawd shows while Claude works or Clawd DJ; /stage workflow shows or reloads the workflow; /stage auto, bubbles, calm, dj, width, log and time: the automatic moves, Clawd's pop-ups, whether the cartoons hold still, Clawd DJ while Spotify plays, how wide they grow, the history, the time spent",
-          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work | dj] [seconds] | demo waiting [scene] | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | calm [on | off] | dj [on | off] | width [<n> | full] | log [n] | time]',
+          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work | dj] [seconds] | demo waiting [scene] | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | calm [on | off] | dj [on | off | party [on | off]] | width [<n> | full] | log [n] | time]',
           immediate: true,
         })
       ).command
@@ -1033,6 +1053,11 @@ export const register: Register = on => {
       if (cmd.isOn !== null) await setCalm($, mod, cmd.isOn)
 
       return { text: calmText(mod.isCalm, (await read($, workflowAtom))?.settings?.calm) }
+    }
+    if (cmd.kind === 'dj-party') {
+      if (cmd.isOn !== null) await setDjParty($, mod, cmd.isOn)
+
+      return { text: djPartyText(mod.isDjParty) }
     }
     if (cmd.kind === 'dj') return { text: cmd.isOn !== null ? await setDj($, mod, cmd.isOn) : mod.isDj && !canDj(mod) ? DJ_NEEDS_WINDOWS : djText(mod.isDj, mod.music, mod.isDjBroken) }
     if (cmd.kind === 'width') {

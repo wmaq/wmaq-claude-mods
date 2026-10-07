@@ -94,6 +94,7 @@ You can move it yourself with `/stage`:
 | `/stage bubbles [on \| off]` | Whether Clawd's pop-ups show: what Claude is doing over his head, and what he says |
 | `/stage calm [on \| off]` | Whether the cartoons hold still, changing only when something happens (off by default) |
 | `/stage dj [on \| off]` | Clawd DJ: while Spotify plays, Clawd at the decks and the track's name (Windows; off by default) |
+| `/stage dj party [on \| off]` | The DJ's full light show: speakers, floor, booth and box lighting up with the beat (off by default) |
 | `/stage width [<n> \| full]` | How wide the cartoons may grow under the bar: up to n columns (120 by default; 48 to 512), or the band's whole width |
 | `/stage log [n]` | The last n moves (15; up to 200) with how long each stage lasted |
 | `/stage time` | Time per feature and per stage |
@@ -277,14 +278,21 @@ same one every 2 s, to learn that the area still shows).
 `/stage dj on` (Windows, in the terminal) has Clawd DJ while Spotify
 plays, for every project: behind a booth with two turntables, in
 headphones, bobbing to a 120 BPM beat (the media session gives no
-tempo), speakers thumping and a mirror ball over a dance floor. It plays
-on every stage, between turns and while agents work: their helpers come
-down to the dance floor and dance. Clawd's pop-ups show over his head as
-usual. From 72 columns a box over the floor names the track (a long
-title scrolls; calm mode holds it, cut with `~`), and a new track swaps
-the record. When Spotify pauses or closes, the usual cartoons come back
-a read later. `/stage dj` says what it last heard; `/stage dj off`
-stops it.
+tempo, so it follows the song only when the song is near 120), speakers
+and a mirror ball over a dance floor. It plays on every stage, between
+turns and while agents work: their helpers come down to the dance floor
+and dance. Clawd's pop-ups show over his head as usual. From 72 columns
+a box by the mirror ball names the track, up to 60 characters (a longer
+title scrolls; calm mode holds it, cut with `~`); a new track swaps the
+record and brightens the box once. When Spotify pauses or closes, the
+usual cartoons come back a read later. `/stage dj` says what it last
+heard; `/stage dj off` stops it.
+
+The booth is gentle by default, for long coding sessions: the lights
+hold steady while Clawd, the records, the notes and the dancers move.
+`/stage dj party on` lights it up with the beat: the speakers thump,
+the floor tiles and the booth's LEDs blink, the mirror ball glints and
+the box's frame pulses. Nothing flashes faster than twice a second.
 
 It reads Spotify through Windows' media session with Windows PowerShell
 (`powershell.exe`, part of Windows): no Spotify account, app or token.
@@ -292,7 +300,9 @@ A read takes about 0.3 s, every 5 s while the area shows and every 30 s
 while it doesn't or Clawd sleeps with nothing playing. The track stays
 in memory: it isn't saved, logged or sent to Claude. The box writes
 Latin letters (with accents, Polish ones too), Greek and Cyrillic;
-other characters show as `?`.
+other characters (Japanese, Chinese, Korean, emoji) show as `?`.
+Spotify tells Windows only a track's first artist, so a track by two
+shows the first.
 
 ## Your own workflow
 
