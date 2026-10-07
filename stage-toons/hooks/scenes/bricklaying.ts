@@ -174,7 +174,9 @@ export const bricklaying: Scene = {
           ? { facing: 0, eyes: 'wide', arms: { left: 'up', right: 'up' } }
           : {
               pose: 'walk',
-              stride: Math.floor(clawdX(t, area) / 2),
+              // A step every 2 columns he goes, and at least two a second
+              // (on a narrow area the wall grows slowly).
+              stride: Math.floor(clawdX(t, area) / 2 + t * 2),
               facing: -1,
               isBlinking: blinking(t, 1.5),
               arms: { left: isStriking(t) ? 'out' : 'up', right: 'down' },

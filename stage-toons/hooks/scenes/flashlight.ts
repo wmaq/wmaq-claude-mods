@@ -37,17 +37,19 @@ function bugX(area: Area): number {
 }
 
 const ease = (k: number) => 0.5 - 0.5 * Math.cos(Math.PI * Math.max(0, Math.min(1, k)))
-const swayY = (t: number) => START.y + Math.sin(t * 2.1) * 4
+// The pool's sway: from row 0 (3 rows under the area's top on 7 and 8 rows,
+// so it stays round there) down to row 8.
+const swayY = (t: number, area: Area) => lerp(Math.max(0, area.top + 3), 8, (1 + Math.sin(t * 2.1)) / 2)
 // Where the pool of light is at t.
 function aimAt(t: number, area: Area): { x: number; y: number } {
   const far = farOf(area)
   const onBug = { x: bugX(area) + 2, y: BUG_Y - 1 }
-  if (t < OUT) return { x: lerp(START.x, far, ease(t / OUT)), y: swayY(t) }
+  if (t < OUT) return { x: lerp(START.x, far, ease(t / OUT)), y: swayY(t, area) }
   if (t < BACK) {
     // Back past the bug, a little high, then onto it.
     const k = ease((t - OUT) / (BACK - OUT))
 
-    return { x: lerp(far, onBug.x, k), y: lerp(swayY(OUT), onBug.y, k) - Math.sin(k * Math.PI) * 3 }
+    return { x: lerp(far, onBug.x, k), y: lerp(swayY(OUT, area), onBug.y, k) - Math.sin(k * Math.PI) * 3 }
   }
 
   return onBug

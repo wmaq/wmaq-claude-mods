@@ -18,10 +18,18 @@ export type Cast = {
 
 export const sceneIn = (cast: Cast, id: SceneId): Scene => (cast.broken.has(id) ? undefined : cast.scenes[id]) ?? cast.scenes[FALLBACK_SCENE]!
 
-// The column a shot's camera keeps in view: a reaction plays around the
-// hero, so a camera that panned away holds still on the scene's own focus
-// while it lasts.
-const focusOf = (shot: Shot, scene: Scene, size: AreaSize): number => (shot.reaction ? scene.focusX : focusAt(scene, shot.time, size))
+// The column a shot's camera keeps in view. A reaction plays around the
+// hero: while it lasts, a camera that panned away from a hero standing
+// still holds on the scene's own focus, and one that follows a walking hero
+// goes on following him. This relies on a walking scene's camera tracking
+// its hero (focus = his column plus a constant, focusX the same at t 0),
+// so the switch between the two never jumps.
+function focusOf(shot: Shot, scene: Scene, size: AreaSize): number {
+  if (shot.reaction === null) return focusAt(scene, shot.time, size)
+  const isWalking = heroAt(scene, shot.time, size).x !== heroAt(scene, 0, size).x
+
+  return isWalking ? focusAt(scene, shot.time, size) : scene.focusX
+}
 
 // Where the hero's head is on an area of this size: its centre column and
 // top row, the core's origin added and the crop's start taken off.
