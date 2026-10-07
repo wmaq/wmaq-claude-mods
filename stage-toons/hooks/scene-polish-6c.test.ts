@@ -75,9 +75,65 @@ test('stamp: the pages past Clawd carry the red seal down the belt to the edge; 
   }
 })
 
+test('crash-test: the car runs the width into the padded barrier, sparks fly, and the meter reads red', () => {
+  const car = (t: number, size: AreaSize = MID) => Math.min(...xs(draw('crash-test', t, size), C.blue))
+  expect(car(0.3)).toBe(24)
+  expect(car(2)).toBeGreaterThan(car(1))
+  expect(car(3.2)).toBe(105)
+  // The bump: it rocks back a column off the barrier.
+  expect(car(3.3)).toBe(104)
+  // At 48 columns the run is short: the bump at 33, the barrier ending at 45.
+  expect(car(3.2, { columns: 48, rows: 7 })).toBe(33)
+  // The barrier: red and white, its last column 2 short of the edge.
+  expect(Math.max(...xs(draw('crash-test', 0.3), C.red).filter(x => x > 40))).toBe(117)
+  expect(where(draw('crash-test', 3), C.gold).filter(p => p.x > 100)).toHaveLength(0)
+  expect(where(draw('crash-test', 3.3), C.gold).filter(p => p.x > 100).length).toBeGreaterThan(0)
+  // The meter in his claw (columns 16 to 20): low, then into the red.
+  const meterRed = (t: number) => where(draw('crash-test', t), C.red).filter(p => p.x >= 16 && p.x <= 20).length
+  expect(meterRed(0.3)).toBe(0)
+  expect(meterRed(4.6)).toBeGreaterThan(0)
+})
+
+test('crash-test in a narrow toon: the camera follows the car to the bump, and is back on Clawd before and after', () => {
+  const s = scene('crash-test')
+  for (const width of [24, 30]) {
+    expect(where(renderScene(s, 3.3, width), C.gold).length).toBeGreaterThan(0)
+    for (const t of [0.3, 4.6]) expect([...renderScene(s, t, width).px].filter(c => c === CLAWD_ORANGE).length).toBeGreaterThan(40)
+  }
+})
+
+test('dice: the pawn hops along a board to the edge and ends on the gold goal, at every width', () => {
+  for (const columns of [48, 120, 200]) {
+    const size = { columns, rows: 9 }
+    // The pawn: blue over the board's row (7).
+    const pawn = (t: number) => Math.min(...where(draw('dice', t, size), C.blue).filter(p => p.y < 7).map(p => p.x))
+    const goal = Math.min(...where(draw('dice', 0.05, size), C.gold).filter(p => p.y === 7).map(p => p.x))
+    // On the first square, which widens with the board's pitch.
+    expect({ columns, start: pawn(0.05) >= 25 && pawn(0.05) <= 26 }).toEqual({ columns, start: true })
+    expect({ columns, mid: pawn(4) > 26 && pawn(4) < goal }).toEqual({ columns, mid: true })
+    expect({ columns, end: pawn(8.2) - goal }).toEqual({ columns, end: pawn(0.05) - 25 })
+  }
+})
+
+test('bug-net: the bug flits ahead of Clawd, never over him, and is netted on the far flowers', () => {
+  const s = scene('bug-net')
+  for (const columns of [48, 120, 200]) {
+    const size = { columns, rows: 9 }
+    for (let t = 0; t < 7.3; t += 0.05) {
+      const hero = heroAt(s, t, size)
+      const over = where(draw('bug-net', t, size), C.red).filter(p => p.x >= hero.x - 7 && p.x < hero.x + 7 && p.y >= hero.y)
+      expect(`${columns} ${t}: ${over.length}`).toBe(`${columns} ${t}: 0`)
+    }
+  }
+  const bug = (t: number) => xs(draw('bug-net', t), C.red)
+  expect(Math.min(...bug(0.25))).toBeLessThan(40)
+  expect(Math.min(...bug(7.6))).toBeGreaterThan(100)
+  expect(Math.min(...bug(8.5))).toBeGreaterThan(90)
+})
+
 test('at 30 columns the crop keeps Clawd whole through the loop (crash-test follows its car there)', () => {
   const cast: Cast = { scenes: SCENES, reactions: REACTIONS, broken: new Set(), onBreak: () => undefined }
-  const ids = ['writing-desk', 'sticky-notes', 'scroll', 'proofread-page', 'proofread-checklist', 'stamp']
+  const ids = ['writing-desk', 'sticky-notes', 'scroll', 'proofread-page', 'proofread-checklist', 'stamp', 'dice', 'bug-net']
   for (const id of ids) {
     for (let t = 0; t < scene(id).loop; t += 0.1) {
       const head = heroOnScreen({ base: id, time: t, reaction: null }, { columns: 30, rows: 7 }, cast)

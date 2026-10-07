@@ -72,7 +72,7 @@ test("the auditor's question mark shows whole", () => {
 
 // Scenes whose hero walks on through the loop and the fade at its loop
 // point brings back to the start.
-const WALKS_ON = ['bricklaying', 'sticky-notes']
+const WALKS_ON = ['bricklaying', 'sticky-notes', 'bug-net']
 
 test('every loop is seamless: the hero ends where it began, or the fade brings him back', () => {
   for (const scene of SCENE_LIST.filter(s => !WALKS_ON.includes(s.id))) {
@@ -226,20 +226,20 @@ const BATCH_2 = [
   'workbench', 'crash-test', 'cake', 'recycling', 'bug-net', 'dice',
 ]
 
-// crash-test's camera leaves Clawd for the wall from the roll to the pan
-// back (0.4 to 2.8 s).
-const isOnWall = (id: string, t: number) => id === 'crash-test' && t > 0.5 && t < 2.8
-
+// crash-test's camera leaves Clawd for the car's run (its own test, in
+// scene-polish-6c.test.ts).
 test('batch 2: at 30 columns, the narrowest the demo plays at, the crop still shows most of Clawd', () => {
-  for (const id of BATCH_2) {
+  for (const id of BATCH_2.filter(id => id !== 'crash-test')) {
     const scene = SCENES[id]!
-    for (let t = 0.013; t < scene.loop; t += 0.1) if (!isOnWall(id, t)) expect(count(renderScene(scene, t, 30), CLAWD_ORANGE)).toBeGreaterThan(40)
+    for (let t = 0.013; t < scene.loop; t += 0.1) expect(count(renderScene(scene, t, 30), CLAWD_ORANGE)).toBeGreaterThan(40)
   }
 })
 
+// The scenes that fade at their loop point are measured with the fade in
+// scene-polish.test.ts.
 test('batch 2: no scene jumps at its loop point', () => {
   const changed = (a: PixelBuffer, b: PixelBuffer) => [...a.px].filter((c, i) => c !== b.px[i]).length
-  for (const id of [...BATCH_2, 'dishes']) {
+  for (const id of [...BATCH_2, 'dishes'].filter(id => SCENES[id]!.fadesAtLoop !== true)) {
     const scene = SCENES[id]!
     expect(changed(renderFull(scene, scene.loop - 0.02), renderFull(scene, 0.02))).toBeLessThan(30)
   }
@@ -292,12 +292,7 @@ test('batch 2, part 2: each new scene shows what it is about', () => {
   expect(has('workbench', C.blue, 3)).toBe(0)
   expect(has('workbench', C.blue, 3.7)).toBe(1)
   expect(has('workbench', C.gray, 6.6)).toBe(0)
-  // The cart rolls up to the wall, which bangs, and bounces back.
-  const cartX = (t: number) => Math.min(...at('crash-test', C.blue, t).map(p => p.x))
-  expect(cartX(0.2)).toBeLessThan(cartX(1.5))
-  expect(cartX(3)).toBeLessThan(cartX(1.5))
-  expect(has('crash-test', C.gold, 1)).toBe(0)
-  expect(has('crash-test', C.gold, 1.7)).toBeGreaterThan(0)
+  // crash-test, reworked in phase 6c: scene-polish-6c.test.ts.
 })
 
 test('batch 2, part 3: each new scene shows what it is about', () => {
@@ -309,16 +304,7 @@ test('batch 2, part 3: each new scene shows what it is about', () => {
   // The third ball misses the bin: it lies on the floor past it.
   expect(at('recycling', C.white, 4.5).every(p => p.x >= 44 && p.y >= 11)).toBe(true)
   expect(has('recycling', C.white, 4.5)).toBe(2)
-  // The bug is caught inside the net's hoop.
-  expect(at('bug-net', C.red, 4.5).every(p => p.x >= 32 && p.x <= 36 && p.y >= 3 && p.y <= 6)).toBe(true)
-  expect(has('bug-net', C.red, 4.5)).toBe(2)
-  // It stays caught: the net comes back up with it as the next bug flies in.
-  const red = at('bug-net', C.red, 5.7)
-  expect(red.filter(p => p.x >= 17 && p.x <= 21 && p.y <= 3)).toHaveLength(2)
-  expect(red.filter(p => p.x >= 38)).toHaveLength(2)
-  // The dice land on a double six: twelve pips (Clawd's eyes are ink too).
-  expect(at('dice', C.ink, 3).filter(p => p.x >= 26)).toHaveLength(12)
-  expect([...renderFull(SCENES.dice!, 1).px]).not.toEqual([...renderFull(SCENES.dice!, 1.15).px])
+  // bug-net and dice, reworked in phase 6c: scene-polish-6c.test.ts.
 })
 
 test('the kit draws a line with both ends and every pixel between', () => {
@@ -349,16 +335,6 @@ test('polish: the thought clouds swell into the big cloud and thin away a step a
   expect(white(5.5)).toBeGreaterThan(white(5.7))
   expect(white(5.7)).toBeGreaterThan(white(5.9))
   expect(white(5.9)).toBeGreaterThan(0)
-})
-
-test("polish: crash-test's camera shows the wall and the bang in a narrow toon, and Clawd before and after", () => {
-  const scene = SCENES['crash-test']!
-  for (const width of [24, 30]) {
-    const bang = renderScene(scene, 1.7, width)
-    expect(count(bang, C.gold)).toBeGreaterThan(0)
-    expect(count(bang, C.brick)).toBe(count(renderFull(scene, 1.7), C.brick))
-    for (const t of [0.2, 3.2]) expect(count(renderScene(scene, t, width), CLAWD_ORANGE)).toBeGreaterThan(40)
-  }
 })
 
 test('polish: the dishes clear away before their loop starts again; the wall grows to its end, then fades', () => {
@@ -436,15 +412,6 @@ test('stargazing, fireworks and the rocket have a drifting night sky behind them
     // The sky moves on through the loop point.
     expect([...renderFull(scene, scene.loop + 0.1).px]).not.toEqual([...renderFull(scene, 0.1).px])
   }
-})
-
-test('bug-net: the free bug loops round behind Clawd, then back out in front of him', () => {
-  const scene = SCENES['bug-net']!
-  const red = (t: number) => [...renderFull(scene, t).px].flatMap((c, i) => (c === C.red ? [{ x: i % STAGE_W, y: Math.floor(i / STAGE_W) }] : []))
-  // Behind him at its farthest left: hidden by his body.
-  expect(red(1.6)).toHaveLength(0)
-  // On the way back, in front of his body (x 7 to 19).
-  expect(red(2.6).some(p => p.x >= 7 && p.x <= 19)).toBe(true)
 })
 
 test('light-bulbs: one idea peeks up from behind Clawd, another pops up in front of him', () => {

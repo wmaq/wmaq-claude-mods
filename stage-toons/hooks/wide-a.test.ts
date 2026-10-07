@@ -54,19 +54,6 @@ test("bricklaying: the wall runs from 6 to Clawd's width and two short of the ed
   expect(heroAt(scene, 13.4, { columns: 48, rows: 7 }).x).toBe(40)
 })
 
-test('crash-test: the wall carries on as bricks to the edge, column 47 only past 48 columns', () => {
-  const b = draw('crash-test', 0)
-  for (const y of [3, 4, 5, 8, 13]) expect(gaps(b, y, 43, 200)).toEqual([])
-  expect(at(b, 47, 4)).toBe(C.mortar)
-  // Joints every 4 columns, carried on from the core's (44 and 46 by course).
-  expect(at(b, 48, 3)).toBe(C.mortar)
-  expect(at(b, 196, 3)).toBe(C.mortar)
-  expect(at(b, 50, 5)).toBe(C.mortar)
-  expect(at(b, 49, 5)).toBe(C.brick)
-  const bare = draw('crash-test', 0, { columns: 48, rows: 7 })
-  for (let y = 0; y < 14; y++) expect(at(bare, 47, y)).toBe(EMPTY)
-})
-
 test('fireworks: the starfield fills the area, rockets go up in the wings, and Clawd cheers his own alone', () => {
   const b = draw('fireworks', 3)
   expect([...b.px].some((c, i) => c === STAR_LAYERS.far.color && i % b.w >= 192)).toBe(true)
@@ -222,3 +209,4 @@ test('road-trip: the road and the fence run to the edge, the near layer scrollin
     expect(orange(scene('road-trip'))).toBe(orange(bare))
   }
 })
+

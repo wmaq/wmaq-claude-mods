@@ -16,6 +16,7 @@ import { popOf } from './scenes/rocket'
 const PHASE = [
   'road-trip', 'bricklaying', 'flashlight', 'rocket',
   'writing-desk', 'sticky-notes', 'scroll', 'proofread-page', 'proofread-checklist', 'stamp',
+  'crash-test', 'dice', 'bug-net',
 ]
 const scene = (id: string): Scene => SCENES[id]!
 const SIZES: AreaSize[] = [{ columns: 48, rows: 7 }, { columns: 120, rows: 7 }, { columns: 200, rows: 9 }]
@@ -65,7 +66,9 @@ test("the phase's scenes: at the still Clawd's eyes are open, on every size", ()
 })
 
 test("the phase's scenes: at 30 columns the crop keeps Clawd in view through the loop", () => {
-  for (const id of PHASE) {
+  // crash-test's camera follows the car to the barrier there, as it always
+  // has, so the bump is seen (spec section 5).
+  for (const id of PHASE.filter(id => id !== 'crash-test')) {
     for (const t of moments(scene(id))) {
       const b = renderScene(scene(id), t, 30)
       expect(`${id} at ${t}: ${[...b.px].filter(c => c === CLAWD_ORANGE).length > 40}`).toBe(`${id} at ${t}: true`)

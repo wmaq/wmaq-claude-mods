@@ -6,8 +6,10 @@ import { type AreaSize, renderFull, type Scene, STAGE_W } from './scene'
 import { SCENES } from './scenes'
 import { C } from './scenes/kit'
 
-// The scenes whose wings this file covers: each a themed set piece past the core.
-const WINGED = ['blueprint', 'bug-hunt', 'bug-net', 'cake', 'clipboard', 'control-panel', 'dice', 'dishes', 'fable-audit', 'gift', 'ladder']
+// The scenes whose wings this file covers: each a themed set piece past the
+// core. bug-net and dice, reworked across the whole width in phase 6c, are
+// held by scene-polish.test.ts and scene-polish-6c.test.ts.
+const WINGED = ['blueprint', 'bug-hunt', 'cake', 'clipboard', 'control-panel', 'dishes', 'fable-audit', 'gift', 'ladder']
 const scene = (id: string): Scene => SCENES[id]!
 const at = (id: string, t: number, columns: number, rows = 9): PixelBuffer => renderFull(scene(id), t, null, t, { columns, rows } satisfies AreaSize)
 
@@ -30,8 +32,6 @@ test('every themed wing draws past the core at 120 columns, in the kit colours, 
 test('the wings leave the core as it was: its columns at 120 are those at 48, at every size', () => {
   for (const id of WINGED) {
     for (let t = 0; t < scene(id).loop; t += 0.5) {
-      // The next bug's flight in from above is the one change inside bug-net's core.
-      if (id === 'bug-net' && t >= 5.4) continue
       for (const rows of [7, 8, 9]) expect({ id, t, rows, core: columns(at(id, t, 120, rows), 0, STAGE_W) }).toEqual({ id, t, rows, core: columns(at(id, t, 48, rows), 0, STAGE_W) })
     }
   }
@@ -64,7 +64,7 @@ test('every picture draws at any size without throwing, at exactly that size', (
 
 test('the wings that run on reach the edge at 200 columns with no gap in their row', () => {
   const runs: [string, number, number, number][] = [
-    // [scene, core row, first column, colour]: cake's table, dishes' counter, the shelves' bottom planks, dice's track.
+    // [scene, core row, first column, colour]: cake's table, dishes' counter, the shelves' bottom planks.
     ['cake', 10, 49, C.wood],
     ['dishes', 7, 63, C.gray],
     ['clipboard', 13, 60, C.wood],
@@ -77,7 +77,7 @@ test('the wings that run on reach the edge at 200 columns with no gap in their r
     expect({ id, gaps: rowOf(b, y, from).filter(c => c !== color && c !== C.woodDark).length }).toEqual({ id, gaps: 0 })
   }
   // Something in the last 8 columns of each tiled wing (gift's whole piles stop short of it).
-  for (const id of ['blueprint', 'bug-hunt', 'bug-net', 'cake', 'clipboard', 'control-panel', 'dice', 'dishes', 'fable-audit', 'ladder']) {
+  for (const id of ['blueprint', 'bug-hunt', 'cake', 'clipboard', 'control-panel', 'dishes', 'fable-audit', 'ladder']) {
     expect({ id, edge: columns(at(id, 1, 200), 192).some(c => c !== EMPTY) }).toEqual({ id, edge: true })
   }
 })
@@ -107,32 +107,4 @@ test("control-panel's banks of lights blink slowly, a step a second, and match a
   expect(loop % 3).toBe(0)
   expect(lights(loop - 0.001)).toEqual(lights(2.999))
   expect(lights(0)).toEqual(lights(3))
-})
-
-// The free bug's red pixels between the hoop and the wings (the caught one stays in the net at x 18 to 20).
-const freeBug = (t: number, columns: number) => where(at('bug-net', t, columns), C.red).filter(p => p.x >= 30 && p.x < STAGE_W)
-
-test("bug-net's next bug flies in from above the area on a wide one, over the same 0.6 s, to the catch", () => {
-  const b = at('bug-net', 5.7, 120)
-  const oy = b.oy ?? 0
-  // Not yet there as the entry starts; on its way down from the top half way through; at the catch (34, 4) as the loop ends.
-  expect(freeBug(5.41, 120)).toEqual([])
-  const half = freeBug(5.7, 120)
-  expect(half.length).toBeGreaterThan(0)
-  expect(Math.max(...half.map(p => p.y)) - oy).toBeLessThan(4)
-  expect(Math.max(...half.map(p => p.x))).toBeLessThan(42)
-  const last = freeBug(5.999, 120)
-  expect(last.map(p => ({ x: p.x, y: p.y - oy }))).toEqual([
-    { x: 34, y: 4 },
-    { x: 35, y: 4 },
-  ])
-  expect(last).toEqual(freeBug(0, 120))
-  // From any height: at 7 and 8 rows it comes from above the area's top too.
-  for (const rows of [7, 8]) expect(where(at('bug-net', 5.41, 120, rows), C.red).filter(p => p.x >= 30 && p.x < STAGE_W)).toEqual([])
-})
-
-test("bug-net keeps today's entry from x 50 where it doesn't show mid-air: up to 50 columns", () => {
-  for (const width of [48, 49, 50]) expect(freeBug(5.7, width)).toEqual(freeBug(5.7, 48))
-  // Today's flight: level with the catch, half way along from x 50.
-  expect(Math.min(...freeBug(5.7, 48).map(p => p.x))).toBeGreaterThanOrEqual(41)
 })
