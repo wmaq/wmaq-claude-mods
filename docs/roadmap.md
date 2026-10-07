@@ -144,6 +144,10 @@ canvas (#25), in 0.12.0, which finished phase 4, richer art.)
   documented to the same standard.
 
 **Phase 6: calm mode and scene polish.**
+- 6a (calm mode) and 6b (scene polish) are built on
+  `claude/project-thread-82dcqi` and passed the local test on 2026-10-07
+  (hand-off `2026-10-07-stage-toons-6a-6b-local-test.md`); they ship with
+  6c as 0.13.0, merged to `main` after 6c's test.
 - **Calm mode** (#10): the bar stays, the rasters hold still.
 - **Scene polish:** new scenes, and re-choreographing the ones that look
   unpolished on the wider canvas (props spread out, longer walks,
