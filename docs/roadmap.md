@@ -8,15 +8,15 @@ the workflow's step 10).
 
 ### Where things stand
 
-0.13.0 is on `main`: automatic moves and history with cost per stage, 41
+0.14.0 is on `main`: automatic moves and history with cost per stage, 41
 scenes dealt like a deck and played in the area below the bar with Z
 layers and a dissolve at every change of picture, an area that grows with
 the terminal (`/stage width`) with scenes that spread their action across
-it, calm mode (`/stage calm`), Clawd's pop-ups for the work at hand and a
+it, calm mode (`/stage calm`), Clawd DJ while Spotify plays (`/stage dj`), Clawd's pop-ups for the work at hand and a
 task count on the bar, four waiting scenes seating up to 8 helpers, 5 idle
 routines with a prop show-off and a celebration, Done after a merge,
 per-project settings, and the frame tool (`tools/frames/`) for checking
-the drawing from a cloud session. Phases 1 to 4 and 6 of the plan below
+the drawing from a cloud session. Phases 1 to 4, 6 and 7 of the plan below
 are done; phase 5, easy to extend, is next. History: `stage-toons/CHANGELOG.md`. Sources for what
 comes next: the research report
 (`docs/research/2026-10-04-stage-toons-improvement-ideas.md`, ideas
@@ -106,6 +106,16 @@ line). `toon.ts`, `TOON_ROWS` and `TOON_MIN` keep
   no still with Clawd's head clear of the pop-ups. On a light terminal
   theme the scenes read but look odd; the person wants no tuning unless
   someone raises it once the mod is public.
+- **Clawd DJ (phase 7, the final review's minors):** a read in flight
+  when `/stage dj off` is typed lands after it (`mod.music` stale until
+  the next `on`'s read); the box's scroll counts uncomposed code points
+  (normalise in `parseNowPlaying`); `layer.ts` measures labels by
+  `.length` while `drawText` draws code points; the poll's 30 s sleep
+  isn't woken when the area shows again; dancers walk in over the far
+  speaker on a wide room; `/stage demo dj` with the DJ picture broken
+  answers "Playing" and ends at once; `hearSkill`'s local `heard`
+  shadows `nowplaying`'s. After a hot reload with music playing, the
+  area dissolves to the usual picture and back within the first read.
 
 ### The plan after the frame tool (agreed 2026-10-04, reordered 2026-10-06)
 
@@ -138,7 +148,7 @@ place, in 0.9.0; 4b, smoother scenes, in 0.10.0; 4c, Clawd follows the
 work, and 4d, more waiting scenes, together in 0.11.0; 4e, a wider
 canvas (#25), in 0.12.0, which finished phase 4, richer art; phase 6,
 calm mode (#10) and scene polish, in 0.13.0, ahead of phase 5 as
-reordered.)
+reordered; phase 7, Clawd DJ, in 0.14.0.)
 
 **Phase 5: easy to extend.**
 - **Scene authoring** (#26): a data format for scenes (sprites and
@@ -153,14 +163,6 @@ reordered.)
   `stage-toons:auditor` agent type later, if other mods need more. The
   scene format and the presets file are contracts too, so they are
   documented to the same standard.
-
-**Phase 7: Clawd DJ.** While Spotify (or any media app) plays, Clawd DJs
-and the band notes `♪ Artist – Title`. Reading the track through Windows'
-media session with Windows PowerShell is proven live from a mod, with no
-account or token. The note, the research and the probe mod:
-`docs/ideas/2026-10-06-clawd-dj.md`,
-`docs/research/2026-10-06-spotify-now-playing.md`,
-`docs/ideas/clawd-dj-probe/`.
 
 **Phase 8: review, cleanup and community readiness, then a release.**
 - A full code review of the mod and the frame tool.
@@ -185,7 +187,8 @@ current media session, or a setting); Japanese, Chinese and Korean titles
 (wide characters) in the now-playing box; a `$.process.spawn` watcher in
 place of the poll (needs a probe of its life across a hot reload and
 `/clear`); macOS and Linux reads (osascript; playerctl over MPRIS), each
-needing a probe.
+needing a probe; following the song's tempo (the media session gives
+none: it would take audio analysis outside the mod's sandbox).
 
 **Dropped:** #29 (pet or drag Clawd with the pointer; the person,
 2026-10-05: not worth it in a terminal). **Ruled out** by the research:

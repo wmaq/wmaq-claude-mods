@@ -6,6 +6,47 @@ release (departures from the spec, review findings, live checks) are in its
 spec and plan under `docs/superpowers/`, the hand-offs in `docs/handoffs/`
 and the git history.
 
+## 0.14.0 (2026-10-08)
+
+Roadmap phase 7, Clawd DJ, built locally (it reads the person's Spotify)
+from a cloud session's mock of the scene, and tested live against
+Spotify with the person. Spec:
+`docs/superpowers/specs/2026-10-07-clawd-dj-design.md`; plan:
+`docs/superpowers/plans/2026-10-07-clawd-dj.md` (drafted and tested
+first, then cut into tasks and replayed byte for byte); the mock:
+`docs/handoffs/2026-10-07-clawd-dj-mock.md`, `docs/ideas/clawd-dj-mock/`.
+- **`/stage dj [on | off]`** (Windows, in the terminal; off by default,
+  kept for every project): while Spotify plays, the DJ picture takes the
+  area on every stage, between turns and while agents work. Clawd in
+  headphones behind a booth with two turntables, bobbing at a fixed 120
+  BPM; speakers, a mirror ball, an equaliser and a dance floor where the
+  agents' helpers dance (Fable's too, with "Hi, Fable!" in the pop-up);
+  Clawd's pop-ups over his head. From 72 columns a box by the mirror
+  ball names the track (60 characters at most; a longer title scrolls,
+  calm cuts it with `~`); a new track swaps the record and brightens the
+  box once. Paused or closed, the usual cartoons come back a read later.
+- **Gentle by default; `/stage dj party [on | off]`** lights the
+  speakers, floor, booth, ball and box with the beat (after the person's
+  look). Nothing flashes faster than twice a second.
+- **Reading Spotify:** Windows PowerShell (`-EncodedCommand`) reads
+  Windows' media session, no account or token; Spotify is found by any
+  of its session's names (`Spotify.exe`, the Store edition's, or
+  Chromium's per-user id, which a taskbar pin gives it, while Spotify
+  runs). A read at once on `on`, then every 5 s while the area shows
+  (30 s otherwise); the command's own read is held to 4 s, inside its
+  hook's budget. The track is never saved, logged or sent to Claude.
+  Spotify tells Windows only a track's first artist.
+- **Text beyond ASCII:** `drawText` writes single-width letters (Latin
+  with accents, Polish, Greek, Cyrillic) from an allowlist the Raster is
+  known to take; anything else (CJK, emoji) is `?`, never a refused
+  picture. The frame tool's font has them, and draws the DJ picture
+  (`dj`, `--party`, `--demo`).
+- **`/stage demo dj`**, and `dj` is one of `/stage`'s reserved words.
+- Fable audited the spec and the plan (each task replayed with its
+  checks) and reviewed the branch (two important findings fixed: the
+  command's read inside its budget; a broken DJ picture said so and
+  retried). The live test passed every check on the person's terminal.
+
 ## 0.13.0 (2026-10-07)
 
 Roadmap phase 6, calm mode (6a) and scene polish (6b, 6c), built by a

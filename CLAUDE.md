@@ -6,7 +6,7 @@ the marketplace manifest `.claude-plugin/marketplace.json`.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with an area below the bar where Clawd lives: the stage's pixel-art scene while Claude works, an idle Clawd between turns, and a desk row of helpers while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.13.0 (calm mode, `/stage calm`, every picture held still; eleven scenes reworked across the width, and three new: the rocket, the victory lap, bowling; tested locally; 0.12.0 brought the wider canvas, `/stage width`); the frame tool in `tools/frames/`; releases in `stage-toons/CHANGELOG.md`; the plan ahead in `docs/roadmap.md`, ideas in `docs/research/`; the latest review in `docs/reviews/` |
+| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with an area below the bar where Clawd lives: the stage's pixel-art scene while Claude works, an idle Clawd between turns, and a desk row of helpers while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.14.0 (Clawd DJ, `/stage dj`: while Spotify plays, Clawd at the decks and the track's name, read from Windows' media session; gentle by default, `/stage dj party` for the light show; tested live against Spotify; 0.13.0 brought calm mode and scene polish); the frame tool in `tools/frames/`; releases in `stage-toons/CHANGELOG.md`; the plan ahead in `docs/roadmap.md`, ideas in `docs/research/`; the latest review in `docs/reviews/` |
 
 ## The workflow
 
@@ -183,6 +183,25 @@ Learned building stage-toons on 2.1.287 to 2.1.289:
 - `$.store` lives in `~/.claude/plugins/store/<plugin>_inline-<hash>.json`
   (a hot-reloaded copy's): read it to check what a mod saved.
 
+Learned building Clawd DJ on 2.1.293:
+
+- `$.process.run` (CLI only) runs `powershell.exe` from a mod with no
+  permission prompt and no console window; give it a copy of a constant
+  argv (`[...ARGV]`). It rejects alike for a command that can't start
+  and one past `timeoutMs`.
+- A hook's budget is 10 s for the whole dispatch: a slow call awaited in
+  a `command.run` hook (a process, say) needs a shorter timeout of its
+  own, or the command loses its answer.
+- A Raster takes accented Latin (Polish included), Greek, Cyrillic and
+  `♪` (checked live); a cell it can't take (CJK, an emoji, a combining
+  mark, an unassigned code point) refuses the whole picture, and the
+  area freezes: stage-toons' `drawText` keeps to an allowlist
+  (`isRasterGlyph`).
+- Spotify names its media session after the shortcut it was started
+  from: `Spotify.exe` from the Start menu or Win+R, Chromium's per-user
+  id (`Chromium.<base32 of the MD5 of the user's SID>`) from a taskbar
+  pin that carries it. It gives Windows only a track's first artist.
+
 ### The test kit (`claude-code/testing`)
 
 - Register every test hook before the test's first `$` call.
@@ -225,6 +244,14 @@ Learned building stage-toons on 2.1.287 to 2.1.289:
 - Engine calls with no arguments answer from a test hook by name, as
   `on('session.cwd', () => ({ value: '/proj' }))`; raised `turn.start`
   needs `{ turnId }` beneath. `expect.stringContaining` exists.
+- `$.process.run` answers from a test hook:
+  `on('process.run', ($, e) => ({ value: { exitCode, stdout, stderr, isStdoutTruncated, isStderrTruncated } }))`,
+  `e.argv` and `e.init?.timeoutMs` as the mod passed them; a hook that
+  throws is a rejection. `ui.log` lines can be caught the same way
+  (`on('ui.log', ($, e) => ...)`, answer `{ value: undefined }`).
+- `claude plugin test` runs every test file and exits 1 on any failure,
+  the load-sensitive timeouts too: when a script needs a pass/fail, check
+  that the failures are only those named.
 
 ## Working as a cloud agent
 
