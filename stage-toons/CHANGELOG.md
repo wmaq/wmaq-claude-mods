@@ -6,6 +6,38 @@ release (departures from the spec, review findings, live checks) are in its
 spec and plan under `docs/superpowers/`, the hand-offs in `docs/handoffs/`
 and the git history.
 
+## 0.13.0 (2026-10-07)
+
+Roadmap phase 6, calm mode (6a) and scene polish (6b, 6c), built by a
+cloud session and tested locally, every check passing with no code
+changes. Specs and plans:
+`docs/superpowers/specs/2026-10-06-stage-toons-calm-mode-design.md`,
+`docs/superpowers/plans/2026-10-06-stage-toons-calm-mode.md`,
+`docs/superpowers/specs/2026-10-07-stage-toons-scene-polish-design.md`,
+`docs/superpowers/plans/2026-10-07-stage-toons-scene-polish-6b.md`,
+`docs/superpowers/plans/2026-10-07-stage-toons-scene-polish-6c.md`.
+Hand-offs: `docs/handoffs/2026-10-06-stage-toons-calm-mode.md`,
+`docs/handoffs/2026-10-07-stage-toons-scene-polish-6b.md`,
+`docs/handoffs/2026-10-07-stage-toons-scene-polish-6c.md`; the local
+tests: `docs/handoffs/2026-10-07-stage-toons-6a-6b-local-test.md`,
+`docs/handoffs/2026-10-07-stage-toons-6c-local-test.md`.
+- **Calm mode (6a):** `/stage calm [on | off]` (off by default, also a
+  workflow-file setting). Every scene, idle routine and waiting scene
+  holds one still, Clawd's eyes open and its idea showing; the area
+  changes only when something happens (a turn, a stage move, Fable, a
+  helper, the doze), with the dissolve. The pop-ups stay, drawn still.
+  The loop sends a frame only on a change; demos move anyway. The frame
+  tool's `--calm` and `stills`.
+- **Scene polish (6b):** scenes are given their area and spread across
+  it; a depth kit of faded, scrolling layers. road-trip in parallax,
+  bricklaying's wall across the width with a crane, flashlight's beam
+  over a dark storeroom, and a new **rocket** in Done.
+- **Scene polish (6c):** writing-desk, sticky-notes, scroll, both
+  proofreads, stamp, crash-test, dice and bug-net reworked to use the
+  width; two new scenes, the **victory lap** in Done and **bowling** in
+  Claude testing (41 in `/stage demo`). A reaction in a narrow toon keeps
+  following a walking Clawd.
+
 ## 0.12.0 (2026-10-06)
 
 Roadmap phase 4e, a wider canvas, built by a cloud session and tested

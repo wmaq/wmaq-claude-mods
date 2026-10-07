@@ -8,16 +8,16 @@ the workflow's step 10).
 
 ### Where things stand
 
-0.12.0 is on `main`: automatic moves and history with cost per stage, 38
+0.13.0 is on `main`: automatic moves and history with cost per stage, 41
 scenes dealt like a deck and played in the area below the bar with Z
 layers and a dissolve at every change of picture, an area that grows with
-the terminal (`/stage width`) with every scene's set or wings to the edge,
-Clawd's pop-ups for the work at hand and a task count on the bar, four
-waiting scenes seating up to 8 helpers, 5 idle routines with a prop
-show-off and a celebration, Done after a merge, per-project settings, and
-the frame tool (`tools/frames/`) for checking the drawing from a cloud
-session. Phases 1 to 4 of the plan below are done; phase 5, easy to
-extend, is next. History: `stage-toons/CHANGELOG.md`. Sources for what
+the terminal (`/stage width`) with scenes that spread their action across
+it, calm mode (`/stage calm`), Clawd's pop-ups for the work at hand and a
+task count on the bar, four waiting scenes seating up to 8 helpers, 5 idle
+routines with a prop show-off and a celebration, Done after a merge,
+per-project settings, and the frame tool (`tools/frames/`) for checking
+the drawing from a cloud session. Phases 1 to 4 and 6 of the plan below
+are done; phase 5, easy to extend, is next. History: `stage-toons/CHANGELOG.md`. Sources for what
 comes next: the research report
 (`docs/research/2026-10-04-stage-toons-improvement-ideas.md`, ideas
 #1-#30) and the code review (`docs/reviews/2026-10-04-code-review.md`).
@@ -97,6 +97,15 @@ line). `toon.ts`, `TOON_ROWS` and `TOON_MIN` keep
   fallbacks in `tasks.ts` are dead weight now that the result shapes are
   known. Stamp's and the ladder's high-head rule were checked on sheets
   only (fishing live).
+- **Calm mode and scene polish (phase 6):** props raised above Clawd's
+  head (proofread's lifted page, bug-net's hoop, crash-test's meter top,
+  the trophy) share the pop-ups' rows, so a bubble or badge can draw over
+  them; stamp on 8 rows leaves its two headroom rows bare; recycling and
+  test-tubes (not reworked) cut up to 5 columns of Clawd at 30 to 36
+  columns. In calm mode on 7 rows, fishing, stamp and waiting-bench have
+  no still with Clawd's head clear of the pop-ups. On a light terminal
+  theme the scenes read but look odd; the person wants no tuning unless
+  someone raises it once the mod is public.
 
 ### The plan after the frame tool (agreed 2026-10-04, reordered 2026-10-06)
 
@@ -127,7 +136,9 @@ plan included. (Phases 1 and 2, the polish pass and the hook wins, shipped
 in 0.7.0; phase 3, "done" after a merge, in 0.8.0; 4a, Clawd in one
 place, in 0.9.0; 4b, smoother scenes, in 0.10.0; 4c, Clawd follows the
 work, and 4d, more waiting scenes, together in 0.11.0; 4e, a wider
-canvas (#25), in 0.12.0, which finished phase 4, richer art.)
+canvas (#25), in 0.12.0, which finished phase 4, richer art; phase 6,
+calm mode (#10) and scene polish, in 0.13.0, ahead of phase 5 as
+reordered.)
 
 **Phase 5: easy to extend.**
 - **Scene authoring** (#26): a data format for scenes (sprites and
@@ -142,28 +153,6 @@ canvas (#25), in 0.12.0, which finished phase 4, richer art.)
   `stage-toons:auditor` agent type later, if other mods need more. The
   scene format and the presets file are contracts too, so they are
   documented to the same standard.
-
-**Phase 6: calm mode and scene polish.**
-- 6a (calm mode) and 6b (scene polish) are built on
-  `claude/project-thread-82dcqi` and passed the local test on 2026-10-07
-  (hand-off `2026-10-07-stage-toons-6a-6b-local-test.md`); 6c (the other
-  nine reworks, the victory lap and bowling) is built on the same branch,
-  waiting on the local test (hand-off
-  `2026-10-07-stage-toons-scene-polish-6c.md`). The three ship together
-  as 0.13.0, merged to `main` after 6c's test.
-- **Calm mode** (#10): the bar stays, the rasters hold still.
-- **Scene polish:** new scenes, and re-choreographing the ones that look
-  unpolished on the wider canvas (props spread out, longer walks,
-  compositions per width; the person chose the wider set in 4e and
-  deferred this).
-  - 6c's leftovers (hand-off `2026-10-07-stage-toons-scene-polish-6c.md`):
-    props raised above Clawd's head (proofread's page, bug-net's hoop,
-    the trophy) share the pop-ups' rows; bowling on a short lane pauses
-    about 4 s with the pins down; stamp's headroom rows stay bare on 8
-    rows; recycling and test-tubes (not reworked) cut up to 5 columns of
-    Clawd at 30 to 36 columns, as in 0.12.0.
-- Maybe: an Svg rendition for the desktop app (#24), the only element
-  known to reach the app; needs the person's devices to check first.
 
 **Phase 7: Clawd DJ.** While Spotify (or any media app) plays, Clawd DJs
 and the band notes `♪ Artist – Title`. Reading the track through Windows'
@@ -187,8 +176,9 @@ account or token. The note, the research and the probe mod:
 **Parked** (2026-10-06, the person: not in the plan for now):
 achievements for finished stages (#28); a timeline pane for `/stage log`
 and `/stage time` (#19; whether the app places plugin panes for a cloud
-session is unconfirmed); the Svg rendition for VS Code and mobile (#24,
-beyond the desktop app maybe in phase 6); #13 (un-defer `set_stage`: tokens on every request for
+session is unconfirmed); the Svg rendition (#24) for the desktop app (the only
+element known to reach it; needs the person's devices to check first),
+VS Code and mobile; #13 (un-defer `set_stage`: tokens on every request for
 one tool); #14 (a status line; off by default if ever built).
 
 **Dropped:** #29 (pet or drag Clawd with the pointer; the person,
