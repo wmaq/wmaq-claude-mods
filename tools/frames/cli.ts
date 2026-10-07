@@ -19,7 +19,7 @@ import { parseWorkflow } from '../../stage-toons/hooks/workflow'
 import { type Canvas, toRgba } from './grid'
 import { encodePng } from './png'
 import { contactSheet } from './sheet'
-import { bandFrames, idleFrames, sceneFrames, STILL_KINDS, stillFrames, turnFrames, waitingFrames, workDemoFrames } from './sources'
+import { bandFrames, djFrames, idleFrames, sceneFrames, STILL_KINDS, stillFrames, turnFrames, waitingFrames, workDemoFrames } from './sources'
 
 const USAGE = `usage: npx -y tsx tools/frames/cli.ts <what> [options]
   scene <id> [--reaction advance|failure] [--auditing]
@@ -27,13 +27,15 @@ const USAGE = `usage: npx -y tsx tools/frames/cli.ts <what> [options]
   idle <routine> [--doze]
   waiting --agents fable,sonnet,... [--scene id]
   waiting --demo [--scene id]
+  dj [--track "Artist - Title"] [--agents a,b] [--changed-at MS] [--working]
+  dj --demo
   band --stage <id> [--feature F] [--message M] [--columns N] [--max-rows N] [--width N|full]
        [--agents a,b] [--auditing] [--working] [--scene id] [--workflow file.json] [--idle routine]
        [--tasks done/total]
   turn [--stage id] [--scene id] [--idle routine] [--start MS] [--end MS]
   demo-work [--stage id] [--scene id] [--seconds N]
   stills scenes|idle|waiting   every picture's still in calm mode, one frame each
-calm mode: --calm on scene, idle, waiting (not --demo), band and turn
+calm mode: --calm on scene, idle, waiting (not --demo), dj (not --demo), band and turn
 the area (all but band): --columns N[,N...] (120; scene's --width is another name) --rows N (7 to 9; 9)
 common: --from MS (0) --every MS (250; 500 for turn) --count N (16; 4 with several --columns)
         --columns-per-row N (4; 2 for frames over 64 columns; a row per width with several --columns)
@@ -48,6 +50,7 @@ const OPTIONS: Record<string, readonly string[]> = {
   scene: ['reaction', 'auditing', 'width', 'columns', 'rows', 'mode', 'phase', 'what', 'say', 'calm'],
   idle: ['doze', 'columns', 'rows', 'calm'],
   waiting: ['agents', 'columns', 'rows', 'scene', 'demo', 'calm'],
+  dj: ['track', 'agents', 'changed-at', 'working', 'demo', 'columns', 'rows', 'calm'],
   band: ['stage', 'feature', 'message', 'columns', 'max-rows', 'width', 'agents', 'auditing', 'working', 'scene', 'workflow', 'idle', 'tasks', 'calm'],
   turn: ['stage', 'scene', 'idle', 'start', 'end', 'columns', 'rows', 'calm'],
   'demo-work': ['stage', 'scene', 'seconds', 'workflow', 'columns', 'rows'],
@@ -163,7 +166,7 @@ function workflowOpt(opts: Map<string, string>): Workflow | undefined {
 function render(args: Args, times: readonly number[], columns: number): { frames: Canvas[]; name: string } {
   const { what, id, opts } = args
   const known = OPTIONS[what]
-  if ((what === 'band' || what === 'waiting' || what === 'turn' || what === 'demo-work') && id !== undefined) throw new Error(`unexpected "${id}" for ${what}\n${USAGE}`)
+  if ((what === 'band' || what === 'waiting' || what === 'turn' || what === 'demo-work' || what === 'dj') && id !== undefined) throw new Error(`unexpected "${id}" for ${what}\n${USAGE}`)
   if (known !== undefined) {
     for (const name of opts.keys()) {
       if (!known.includes(name) && !COMMON.includes(name)) throw new Error(`unknown option --${name} for ${what}\n${USAGE}`)
@@ -206,6 +209,23 @@ function render(args: Args, times: readonly number[], columns: number): { frames
       const frames = waitingFrames(isDemo ? 'demo' : agents, times, size, scene, opts.has('calm'))
 
       return { frames, name: `frames-waiting-${scene}-${isDemo ? 'demo' : agents.join('-')}.png` }
+    }
+    case 'dj': {
+      const agents = listOpt(opts, 'agents')
+      const frames = djFrames(
+        {
+          track: opts.get('track'),
+          agents: opts.has('agents') ? agents : undefined,
+          changedAt: opts.has('changed-at') ? numberOpt(opts, 'changed-at', 0) : undefined,
+          working: opts.has('working'),
+          calm: opts.has('calm'),
+          demo: opts.has('demo'),
+        },
+        times,
+        size,
+      )
+
+      return { frames, name: `frames-dj${opts.has('demo') ? '-demo' : ''}${agents.length > 0 ? `-${agents.join('-')}` : ''}.png` }
     }
     case 'band': {
       const stage = opts.get('stage')

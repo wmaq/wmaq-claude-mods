@@ -37,6 +37,9 @@ npx -y tsx tools/frames/cli.ts turn --stage develop --idle nyan
 npx -y tsx tools/frames/cli.ts turn --scene sweeping --from 4900 --every 83
 npx -y tsx tools/frames/cli.ts turn --stage develop --calm
 npx -y tsx tools/frames/cli.ts stills scenes --columns 30,48,120
+npx -y tsx tools/frames/cli.ts dj --agents opus,fable --columns 48,80,120
+npx -y tsx tools/frames/cli.ts dj --changed-at 1000 --from 500 --every 250
+npx -y tsx tools/frames/cli.ts dj --demo --every 1000 --count 20
 ```
 
 | Command | Draws |
@@ -48,12 +51,15 @@ npx -y tsx tools/frames/cli.ts stills scenes --columns 30,48,120
 | `band --stage <id> [--feature F] [--message M] [--columns N] [--max-rows N] [--width N\|full] [--agents …] [--auditing] [--working] [--scene id] [--workflow file.json] [--idle routine] [--tasks done/total]` | the band: the bar's lines (`--columns`, the band's width, 100 by default; `--tasks 3/8` adds Claude's task count), and under them, sized as the band's hook sizes the area (`--width` is `/stage width`'s setting, 120 by default; `--max-rows` the band's rows, the bar's lines and 9 by default), the idle Clawd (`--idle`'s routine, classic by default), or the waiting toon with `--agents` (always the laptops; `waiting --scene` draws the others); `--working` draws the stage's scene instead (its first, or `--scene`'s; `--auditing` walks Fable in from time 0), and ignores `--agents` and `--idle` |
 | `turn [--stage id] [--scene id] [--idle routine] [--start MS] [--end MS]` | the area through one turn: the idle Clawd (classic, or `--idle`'s) until `--start` (1000), the stage's scene (the stage's first, or `--scene`) until `--end` (5000), then the idle Clawd again, both edges dissolving (`--start 0` skips the idle Clawd before). Its own defaults are `--every 500 --count 16`; a closer look at an edge takes `--from` and `--every 83` |
 | `demo-work [--stage id] [--scene id] [--seconds N] [--workflow file.json]` | `/stage demo work`: the layer's 14 steps over the stage's scene (its first, or `--scene`'s), `--seconds` each (3); its own defaults sample the middle of each step |
+| `dj [--track "Artist - Title"] [--agents a,b,…] [--changed-at MS] [--working]` | Clawd DJ's picture as the area plays it while Spotify plays in DJ mode: the track in the box (from 72 columns; the demo's long one when not given), a helper per agent dancing (arriving from time 0), a change to the demo's second track at `--changed-at`, `--working` with Claude at work |
+| `dj --demo` | the script `/stage demo dj` plays, from time 0 |
 | `stills scenes\|idle\|waiting` | calm mode's still of every picture of that kind, one frame each, captioned with its id: every scene; the routines, Done's celebration, each default stage's show-off and the doze; the four waiting scenes with four helpers seated. It takes `--columns` (a list too), `--rows`, `--columns-per-row`, `--scale` and `--out` |
 
-`--calm` draws `scene`, `idle`, `waiting`, `band` and `turn` with calm
-mode on: a sheet then shows the same frame over time but for a change
-(`turn --calm` dissolves from the idle still to the scene's and back).
-`waiting --demo` refuses it, as the demos move by design.
+`--calm` draws `scene`, `idle`, `waiting`, `dj`, `band` and `turn` with
+calm mode on: a sheet then shows the same frame over time but for a
+change (`turn --calm` dissolves from the idle still to the scene's and
+back). `waiting --demo` and `dj --demo` refuse it, as the demos move by
+design.
 
 **The area's size.** Every command but `band` draws the area at
 `--columns N` (its width, 120 by default, up to 512) and `--rows N` (7,

@@ -17,6 +17,7 @@ test('each command writes a PNG of its sheet', () => {
     [['scene', 'bricklaying'], 2 * (120 + 1) + 1, 9 + 1 + 2],
     [['idle', 'classic', '--doze'], 2 * (120 + 1) + 1, 9 + 1 + 2],
     [['waiting', '--agents', 'fable,opus'], 2 * (120 + 1) + 1, 9 + 1 + 2],
+    [['dj', '--agents', 'opus'], 2 * (120 + 1) + 1, 9 + 1 + 2],
     [['band', '--stage', 'plan', '--columns', '80'], 2 * (80 + 1) + 1, 2 + 9 + 1 + 2],
   ]
   for (const [args, cols, rows] of cases) {

@@ -8,7 +8,7 @@ import { WATER } from '../../stage-toons/hooks/waiting/rowing'
 import { CELL_H, CELL_W, type Canvas } from './grid'
 import { SCENES } from '../../stage-toons/hooks/scenes'
 import { WAITING_SCENE_IDS } from '../../stage-toons/hooks/waiting/deal'
-import { bandFrames, idleFrames, sceneFrames, stillFrames, turnFrames, waitingFrames, workDemoFrames } from './sources'
+import { bandFrames, djFrames, idleFrames, sceneFrames, stillFrames, turnFrames, waitingFrames, workDemoFrames } from './sources'
 
 const has = (c: Canvas, colour: number) => c.px.includes(colour)
 
@@ -44,6 +44,17 @@ test('waiting draws the scene asked for, and --demo the demo\'s script over it',
   const [early, full] = waitingFrames('demo', [500, 9000], STAGE_SIZE, 'conveyor')
   assert.ok(!has(early!, HELPER_COLORS.haiku))
   for (const kind of ['sonnet', 'opus', 'fable', 'haiku'] as const) assert.ok(has(full!, HELPER_COLORS[kind]))
+})
+
+test("dj draws Clawd DJ: the agents' helpers dancing, and the demo's script; --demo takes no other option", () => {
+  const WIDE = { columns: 120, rows: 9 }
+  const [dancing] = djFrames({ agents: ['sonnet'] }, [3000], WIDE)
+  const [alone] = djFrames({}, [3000], WIDE)
+  assert.ok(has(dancing!, HELPER_COLORS.sonnet))
+  assert.ok(!has(alone!, HELPER_COLORS.sonnet))
+  const [demo] = djFrames({ demo: true }, [3000], WIDE)
+  assert.ok(has(demo!, HELPER_COLORS.fable))
+  assert.throws(() => djFrames({ demo: true, calm: true }, [0]), /dj --demo plays its own script/)
 })
 
 test("the waiting toon seats Fable's helper at the desk row, in violet", () => {

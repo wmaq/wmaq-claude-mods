@@ -10,11 +10,12 @@
 import type { WidthSetting, Workflow } from '../../stage-toons/types'
 import { spawned } from '../../stage-toons/hooks/agents'
 import { AREA_ROWS, areaSize, BAR_TONES, bandLayout, bandMode, type BandSite, type Span } from '../../stage-toons/hooks/band'
-import { WORK_DEMO_SECONDS } from '../../stage-toons/hooks/demo'
+import { DJ_DEMO_SECONDS, DJ_DEMO_TRACKS, WORK_DEMO_SECONDS } from '../../stage-toons/hooks/demo'
 import { createDirector, react, withAuditing } from '../../stage-toons/hooks/director'
 import { areaCells } from '../../stage-toons/hooks/frames'
 import { CELEBRATE, DOZE_MS, IDLE_IDS, routineOf, SHOW_OFF_PREFIX, showOffId } from '../../stage-toons/hooks/idle'
 import { createMod, type Mod } from '../../stage-toons/hooks/mod'
+import type { NowPlaying } from '../../stage-toons/hooks/nowplaying'
 import { type Phase, PHASES } from '../../stage-toons/hooks/phase'
 import { hex } from '../../stage-toons/hooks/pixels'
 import { type AreaSize, FALLBACK_SCENE, STAGE_SIZE } from '../../stage-toons/hooks/scene'
@@ -166,6 +167,46 @@ export function waitingFrames(agents: readonly string[] | 'demo', times: readonl
   if (agents === 'demo') mod.demo = { kind: 'waiting', at: 0, scene: scene as WaitingSceneId, columns: size.columns }
 
   return areaFrames(mod, size, times).map(cells => cellsCanvas(cells, size))
+}
+
+// Clawd DJ: the DJ picture as the area plays it while Spotify plays in DJ
+// mode, with this track (Artist - Title; the demo's first when not given),
+// these agents' helpers dancing (spawned at time 0), a change to the
+// demo's second track at changedAt ms, Claude working (the director and
+// the pop-ups' ground), calm; or its demo (/stage demo dj from time 0).
+export type DjOptions = { track?: string; agents?: readonly string[]; changedAt?: number; working?: boolean; calm?: boolean; demo?: boolean }
+
+const asTrack = (text: string): NowPlaying => {
+  const at = text.indexOf(' - ')
+
+  return at < 0 ? { artist: '', title: text, isPlaying: true } : { artist: text.slice(0, at), title: text.slice(at + 3), isPlaying: true }
+}
+
+export function djFrames(opts: DjOptions, times: readonly number[], size: AreaSize = STAGE_SIZE): Canvas[] {
+  if (opts.demo && (opts.track !== undefined || opts.agents !== undefined || opts.changedAt !== undefined || opts.calm || opts.working)) throw new Error('dj --demo plays its own script: no other option with it')
+  const mod = createMod()
+  mod.band.requestId = 'r1'
+  mod.idleSince = 0
+  mod.isDj = true
+  mod.isCalm = opts.calm ?? false
+  mod.isBandWorking = opts.working ?? false
+  const first = opts.track === undefined ? DJ_DEMO_TRACKS[0]! : asTrack(opts.track)
+  mod.music = { track: first, isPlaying: true, misses: 0 }
+  ;(opts.agents ?? []).forEach((name, i) => {
+    mod.roster = spawned(mod.roster, `agent-${i + 1}`, name, 0)
+  })
+  if (opts.demo) mod.demo = { kind: 'dj', at: 0, seconds: DJ_DEMO_SECONDS }
+  const changedAt = opts.changedAt
+  const before =
+    changedAt === undefined
+      ? undefined
+      : (t: number) => {
+          if (t < changedAt || mod.djChangedAt !== null) return
+          mod.music = { track: DJ_DEMO_TRACKS[1]!, isPlaying: true, misses: 0 }
+          mod.djChangedAt = changedAt
+        }
+
+  return areaFrames(mod, size, times, before).map(cells => cellsCanvas(cells, size))
 }
 
 export type BandOptions = {
