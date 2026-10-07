@@ -321,7 +321,7 @@ function drawDancers(b: PixelBuffer, t: number, log: SeatLog, now: number, isCal
 }
 
 // Now playing: a box over the dance floor, in front of everything, at the
-// floor's left edge by the mirror ball, with the track as text, on the
+// floor's left, a little clear of the mirror ball, with the track as text, on the
 // area's cells 1 to 3 (pixel rows 2 to 7), clear of the dancers below and
 // of Clawd's pop-up at the left. Only on a wide room. Its text takes at
 // most BOX_TEXT_MAX cells; a title too long for it scrolls: the start held
@@ -334,6 +334,9 @@ const BOX = 0x15151a
 // The frame and a column of padding on each side.
 const BOX_W_EXTRA = 4
 export const BOX_TEXT_MAX = 60
+// Where the box starts: three columns into the floor, so four clear of the
+// mirror ball.
+export const BOX_X = FLOOR_X + 3
 export const SCROLL_HOLD = 2
 export const SCROLL_SPEED = 4
 const PULSE_S = 1
@@ -357,12 +360,12 @@ function drawNowPlaying(b: PixelBuffer, t: number, input: DjInput) {
   const { right, top } = areaOf(b)
   if (input.track === null || right < WIDE_ROOM) return
   const floorTo = right - FAR_ROOM
-  const room = Math.min(BOX_TEXT_MAX, floorTo - FLOOR_X - 2 - BOX_W_EXTRA)
+  const room = Math.min(BOX_TEXT_MAX, floorTo - BOX_X - 2 - BOX_W_EXTRA)
   if (room < 3) return
   const chars = [...input.track]
   const text = input.isCalm ? cutText(chars, room) : scrollWindow(chars, room, input.trackTime)
   const w = textCells(text) + BOX_W_EXTRA
-  const x = FLOOR_X
+  const x = BOX_X
   const y = top + 2
   const since = input.sinceChange
   const pulse = !input.isCalm && since !== null && since >= 0 && since < PULSE_S ? Math.sin((since / PULSE_S) * Math.PI) : 0

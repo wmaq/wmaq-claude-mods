@@ -5,7 +5,7 @@ import { fnv1a } from '../golden'
 import { encodeCells, type PixelBuffer } from '../pixels'
 import type { AreaSize } from '../scene'
 import { EMPTY_LOG, type SeatLog } from '../waiting/seats'
-import { BOX_TEXT_MAX, cutText, DANCER_W, DJ_LOOP, djFrame, djHead, type DjInput, djSpots, FLOOR_X, scrollWindow } from './dj'
+import { BOX_TEXT_MAX, BOX_X, cutText, DANCER_W, DJ_LOOP, djFrame, djHead, type DjInput, djSpots, FLOOR_X, scrollWindow } from './dj'
 import { C } from './kit'
 
 const SMALL: AreaSize = { columns: 48, rows: 7 }
@@ -102,26 +102,28 @@ test('the box names the track from 72 columns, beyond ASCII too; narrower, no bo
   expect(textRow(djFrame(input(1), WIDE), 2)).toBe(TRACK)
   expect(textRow(djFrame(input(1, { track: 'Clawd & the Toons - Łąka, Кино' }), WIDE), 2)).toBe('Clawd & the Toons - Łąka, Кино')
   expect(textRow(djFrame(input(1), { columns: 71, rows: 9 }), 2)).toBe('')
-  expect(textRow(djFrame(input(1, { isCalm: true }), { columns: 80, rows: 9 }), 2)).toBe('Daft Punk - Harder~')
+  expect(textRow(djFrame(input(1, { isCalm: true }), { columns: 80, rows: 9 }), 2)).toBe('Daft Punk - Har~')
   expect(textRow(djFrame(input(1, { track: null }), WIDE), 2)).toBe('')
 })
 
 test("the box sits at the floor's left edge by the mirror ball, its text at most 60 characters, no note beside it", () => {
   const b = djFrame(input(1), WIDE)
-  // Its frame from FLOOR_X, the text two columns in, on the area's cell row 2.
-  expect(at(b, FLOOR_X, 2)).toBe(C.gold)
-  expect(at(b, FLOOR_X - 1, 2)).not.toBe(C.gold)
-  expect(b.text!.cp[2 * b.w + FLOOR_X + 2]).toBe('D'.codePointAt(0)!)
+  // Its frame from BOX_X, four columns clear of the mirror ball (its last at
+  // 43), the text two columns in, on the area's cell row 2.
+  expect(BOX_X).toBe(FLOOR_X + 3)
+  expect(at(b, BOX_X, 2)).toBe(C.gold)
+  expect(at(b, BOX_X - 1, 2)).not.toBe(C.gold)
+  expect(b.text!.cp[2 * b.w + BOX_X + 2]).toBe('D'.codePointAt(0)!)
   // Inside the frame, nothing gold: no note (the frame's right edge is at
-  // FLOOR_X + the text's cells + 3).
-  const right = FLOOR_X + TRACK.length + 3
+  // BOX_X + the text's cells + 3).
+  const right = BOX_X + TRACK.length + 3
   expect(at(b, right, 2)).toBe(C.gold)
-  for (let y = 3; y <= 6; y++) for (let x = FLOOR_X + 1; x < right; x++) expect(at(b, x, y)).not.toBe(C.gold)
+  for (let y = 3; y <= 6; y++) for (let x = BOX_X + 1; x < right; x++) expect(at(b, x, y)).not.toBe(C.gold)
   // A long title in a box at most BOX_TEXT_MAX wide, however wide the area.
   const long = 'x'.repeat(142)
   expect(BOX_TEXT_MAX).toBe(60)
   expect(textRow(djFrame(input(1, { track: long }), { columns: 372, rows: 9 }), 2)).toHaveLength(60)
-  expect(textRow(djFrame(input(1, { track: long }), WIDE), 2)).toHaveLength(59)
+  expect(textRow(djFrame(input(1, { track: long }), WIDE), 2)).toHaveLength(56)
 })
 
 // A frame's pixels on a row, from column x0 to x1 (past the last).
@@ -149,7 +151,7 @@ test("a track change: the right record off for half a beat, the arm up for the b
   // channels) over the second after the change: one rise and one fall,
   // never more than a flash a second (flashing guidelines allow three), in
   // either mode; calm, none.
-  const corner = (extra: Partial<DjInput>) => at(djFrame(input(1, extra), WIDE), FLOOR_X, 2)!
+  const corner = (extra: Partial<DjInput>) => at(djFrame(input(1, extra), WIDE), BOX_X, 2)!
   const light = (c: number) => ((c >> 16) & 0xff) + ((c >> 8) & 0xff) + (c & 0xff)
   for (const isParty of [false, true]) {
     const seen = Array.from({ length: 21 }, (_, i) => light(corner({ sinceChange: i * 0.05, isParty })))
@@ -167,8 +169,8 @@ test("a track change: the right record off for half a beat, the arm up for the b
 const GOLDEN = {
   small: '9b25dd9c',
   smallDancing: '2b923d12',
-  wide: '01842049',
-  wideDancing: 'ee97f7cf',
-  wideCalm: '347db2e4',
-  wideParty: 'a457c4b9',
+  wide: 'a44737b5',
+  wideDancing: '1bb39cb3',
+  wideCalm: '14e5439c',
+  wideParty: '24995585',
 }
