@@ -14,8 +14,8 @@ import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { ended, reconcileRoster, rememberKind, spawned } from './agents'
 import { autoMatch, hasRules, type Heard, isWindowsPath, relativePath, type Signal, typedSkill, viaOf } from './auto'
 import { areaSize, BAR_TONES, bandLayout, bandMode, type BandSite } from './band'
-import { autoText, bubblesText, CALM_DEMO_LINE, calmText, hideText, moveFor, parseCommand, settingsText, settingsWords, showText, unknownText, usage, WORKFLOW_FILE, workflowSummary } from './command'
-import { demoAt, demoFor, demoLine, demoStep, idleDemoAt, idleDemoLine, startDemo, waitingDemoLine, workDemoAt, workDemoLine } from './demo'
+import { autoText, bubblesText, CALM_DEMO_LINE, calmText, DJ_NEEDS_WINDOWS, djText, hideText, moveFor, parseCommand, settingsText, settingsWords, showText, unknownText, usage, WORKFLOW_FILE, workflowSummary } from './command'
+import { demoAt, demoFor, demoLine, demoStep, djDemoLine, idleDemoAt, idleDemoLine, startDemo, waitingDemoLine, workDemoAt, workDemoLine } from './demo'
 import { createDirector, react, restarted, withAuditing, withScene } from './director'
 import { areaCells, type Log } from './frames'
 import { CELEBRATE, pickIdle } from './idle'
@@ -24,6 +24,7 @@ import { createMod, endDemo, type Mod, queued, reseat, takeWaiting } from './mod
 import { animate, type Ports } from './paint'
 import { dealCard } from './deck'
 import { addCost, type Cost, costText, creditAt, currentEntry, logText, NO_COST, timeText, tokensOf } from './history'
+import { ARGV, heard, isNewTrack, nextDelay, NO_MUSIC, type NowPlaying, outcomeOf, READ_TIMEOUT_MS, type ReadFailure, trackText } from './nowplaying'
 import { momentOf, phaseOf, whatOf } from './phase'
 import { type KV, loadProgress, PRUNE_EVERY_MS, saveProgress, staleKeys, storeKey, validate } from './progress'
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolSchema, workflowText } from './prompt'
@@ -40,6 +41,7 @@ const HIDDEN_KEY = 'hidden'
 const AUTO_KEY = 'auto'
 const BUBBLES_KEY = 'bubbles'
 const CALM_KEY = 'calm'
+const DJ_KEY = 'dj'
 const WIDTH_KEY = 'width'
 const PRUNED_KEY = 'pruned-at'
 // Set once the first session's welcome toast was given.
@@ -89,6 +91,8 @@ const bubblesAtom = atom({ plugin: 'stage-toons', key: 'bubbles' } as const, tru
 // Whether the cartoons hold still, for this session, as autoAtom is: off
 // unless turned on.
 const calmAtom = atom({ plugin: 'stage-toons', key: 'calm' } as const, false)
+// Whether DJ mode is on (/stage dj): kept across a reload, as calm is.
+const djAtom = atom({ plugin: 'stage-toons', key: 'dj' } as const, false)
 // How wide the cartoons grow, for this session, as autoAtom is.
 const widthAtom = atom({ plugin: 'stage-toons', key: 'width' } as const, DEFAULT_WIDTH as WidthSetting)
 
@@ -449,6 +453,97 @@ async function setCalm($: EngineInterface, mod: Mod, isOn: boolean) {
   }
 }
 
+// Whether DJ mode can read Spotify here: a Windows project in the
+// terminal (the CLI, where $.process runs commands).
+const canDj = (mod: Mod): boolean => mod.isWindows && mod.surface === 'terminal'
+
+// One read of what Spotify plays: the track, or null for nothing playing.
+// A failed read counts as nothing playing; each kind is logged once per
+// load, with its exit code but never its output (it may name what other
+// apps play).
+async function readMusic($: EngineInterface, mod: Mod): Promise<NowPlaying | null> {
+  let track: NowPlaying | null = null
+  let failure: ReadFailure | null = null
+  let detail = ''
+  try {
+    const result = await $.process.run([...ARGV], { timeoutMs: READ_TIMEOUT_MS })
+    const outcome = outcomeOf(result)
+    track = outcome.track
+    failure = outcome.failure
+    if (failure === 'exit') detail = ` ${result.exitCode}`
+  } catch {
+    failure = 'rejected'
+  }
+  if (failure !== null && !mod.djFailures.has(failure)) {
+    mod.djFailures.add(failure)
+    $.ui.log(`stage-toons: reading Spotify failed (${failure}${detail}); DJ mode takes it as nothing playing`, { to: 'debug' })
+  }
+
+  return track
+}
+
+// A read taken in: what the mod has heard, the moment a new track came on,
+// and the band drawn again when the picture or the track changes.
+async function hearMusic($: EngineInterface, mod: Mod, track: NowPlaying | null) {
+  const before = mod.music
+  const after = heard(before, track)
+  mod.music = after
+  if (isNewTrack(before, after)) mod.djChangedAt = await $.clock.now()
+  const trackOf = (m: typeof after) => (m.track === null ? null : trackText(m.track))
+  if (before.isPlaying !== after.isPlaying || trackOf(before) !== trackOf(after)) $.ui.invalidate('ui.render')
+}
+
+// The poll (Clawd DJ), detached: reads Spotify at nextDelay's pace while
+// DJ mode stays on and this load is the current one; at once first unless
+// the caller has just read. One loop at a time: turning DJ mode off ends
+// it at its next look, and a loop started after that has its own token.
+function startPoll($: EngineInterface, mod: Mod, hasRead: boolean) {
+  if (mod.djLoop !== null) return
+  const token = Math.random().toString(36).slice(2, 10)
+  mod.djLoop = token
+  void (async () => {
+    let isFirst = !hasRead
+    while (mod.isDj && mod.djLoop === token) {
+      if (!isFirst) await $.clock.sleep(nextDelay({ isAreaShown: mod.band.requestId !== undefined, isAsleep: mod.band.isAsleep, isPlaying: mod.music.isPlaying }))
+      isFirst = false
+      if (!mod.isDj || mod.djLoop !== token) break
+      const id = await read($, loadAtom)
+      if (id !== null && id !== LOAD_ID) break
+      await hearMusic($, mod, await readMusic($, mod))
+    }
+  })()
+    .catch(() => {
+      // The environment unloaded mid-read (a reload, the session's end).
+    })
+    .finally(() => {
+      if (mod.djLoop === token) mod.djLoop = null
+    })
+}
+
+// /stage dj on or off, kept for every project; its answer. Turning it on
+// reads Spotify at once, so the answer names the track, then polls.
+async function setDj($: EngineInterface, mod: Mod, isOn: boolean): Promise<string> {
+  if (isOn && !canDj(mod)) return DJ_NEEDS_WINDOWS
+  mod.isDj = isOn
+  await update($, djAtom, () => isOn)
+  try {
+    await $.store.set(DJ_KEY, isOn)
+  } catch {
+    // Lasts for this session.
+  }
+  if (!isOn) {
+    mod.djLoop = null
+    mod.music = NO_MUSIC
+    mod.djChangedAt = null
+    $.ui.invalidate('ui.render')
+  } else if (mod.djLoop === null) {
+    await hearMusic($, mod, await readMusic($, mod))
+    startPoll($, mod, true)
+  }
+
+  return djText(mod.isDj, mod.music)
+}
+
 async function setAuditing($: EngineInterface, mod: Mod, isAuditing: boolean) {
   await update($, auditingAtom, () => isAuditing)
   mod.director = withAuditing(mod.director, isAuditing, await $.clock.now())
@@ -746,6 +841,20 @@ export const register: Register = on => {
       mod.width = await read($, widthAtom)
     }
     mod.surface = e.surface
+    // DJ mode is the person's own, never the workflow file's: from the
+    // store on a fresh session, from the session on a reload. On, it reads
+    // Spotify at once (off Windows it never polls).
+    if (isFresh) {
+      let isDj = false
+      try {
+        isDj = (await $.store.get(DJ_KEY)) === true
+      } catch {
+        // Off for this session.
+      }
+      await update($, djAtom, () => isDj)
+    }
+    mod.isDj = await read($, djAtom)
+    if (mod.isDj && canDj(mod)) startPoll($, mod, false)
     mod.idleSince = now
     let routine = await read($, idleAtom)
     if (routine === null) {
@@ -767,8 +876,8 @@ export const register: Register = on => {
         await $.command.register({
           name: COMMAND,
           description:
-            "Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene, a stage's scenes, the idle routines, the waiting toon or what Clawd shows while Claude works; /stage workflow shows or reloads the workflow; /stage auto, bubbles, calm, width, log and time: the automatic moves, Clawd's pop-ups, whether the cartoons hold still, how wide they grow, the history, the time spent",
-          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work] [seconds] | demo waiting [scene] | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | calm [on | off] | width [<n> | full] | log [n] | time]',
+            "Show or move the workflow stage; /stage hide hides the bar and the cartoons; /stage demo plays every scene, a stage's scenes, the idle routines, the waiting toon, what Clawd shows while Claude works or Clawd DJ; /stage workflow shows or reloads the workflow; /stage auto, bubbles, calm, dj, width, log and time: the automatic moves, Clawd's pop-ups, whether the cartoons hold still, Clawd DJ while Spotify plays, how wide they grow, the history, the time spent",
+          argumentHint: '[n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work | dj] [seconds] | demo waiting [scene] | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | calm [on | off] | dj [on | off] | width [<n> | full] | log [n] | time]',
           immediate: true,
         })
       ).command
@@ -918,6 +1027,7 @@ export const register: Register = on => {
 
       return { text: calmText(mod.isCalm, (await read($, workflowAtom))?.settings?.calm) }
     }
+    if (cmd.kind === 'dj') return { text: cmd.isOn !== null ? await setDj($, mod, cmd.isOn) : mod.isDj && !canDj(mod) ? DJ_NEEDS_WINDOWS : djText(mod.isDj, mod.music) }
     if (cmd.kind === 'width') {
       if (cmd.width !== null) await setWidth($, mod, cmd.width)
       const room = mod.lastBand === null ? null : Math.min(mod.lastBand.columns - 1, WIDTH_MAX)
@@ -927,7 +1037,7 @@ export const register: Register = on => {
     if (cmd.kind === 'width-usage') return { text: WIDTH_USAGE }
     if (cmd.kind === 'help') return { text: usage(mod.workflow) }
     if (cmd.kind === 'usage') return { text: unknownText(mod.workflow, e.args) }
-    if (cmd.kind === 'demo' || cmd.kind === 'demo-idle' || cmd.kind === 'demo-waiting' || cmd.kind === 'demo-work') {
+    if (cmd.kind === 'demo' || cmd.kind === 'demo-idle' || cmd.kind === 'demo-waiting' || cmd.kind === 'demo-work' || cmd.kind === 'demo-dj') {
       // The work demo plays over the stage's own scene; the waiting demo the
       // scene asked for, or the next one dealt.
       const deal = mod.waiting.deal
@@ -1131,7 +1241,9 @@ export const register: Register = on => {
             ? workDemoLine(workFrame, mod.isBubbles)
             : mod.demo?.kind === 'waiting'
               ? waitingDemoLine(mod.demo.scene)
-              : undefined
+              : mod.demo?.kind === 'dj'
+                ? djDemoLine()
+                : undefined
     const tasks = countOf(await read($, tasksAtom))
     const lines = progress === null ? [] : bandLayout(mod.workflow, progress, await read($, auditingAtom), columns, demoText, tasks)
     const site: BandSite = {

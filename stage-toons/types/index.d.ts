@@ -117,6 +117,9 @@ declare module 'claude-code' {
       // Whether the cartoons hold still (/stage calm): kept across a
       // reload, as bubbles is.
       calm: boolean
+      // Whether DJ mode is on (/stage dj): kept across a reload, as calm
+      // is.
+      dj: boolean
     }
   }
 }
