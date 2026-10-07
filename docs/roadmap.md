@@ -146,19 +146,22 @@ canvas (#25), in 0.12.0, which finished phase 4, richer art.)
 **Phase 6: calm mode and scene polish.**
 - 6a (calm mode) and 6b (scene polish) are built on
   `claude/project-thread-82dcqi` and passed the local test on 2026-10-07
-  (hand-off `2026-10-07-stage-toons-6a-6b-local-test.md`); they ship with
-  6c as 0.13.0, merged to `main` after 6c's test.
+  (hand-off `2026-10-07-stage-toons-6a-6b-local-test.md`); 6c (the other
+  nine reworks, the victory lap and bowling) is built on the same branch,
+  waiting on the local test (hand-off
+  `2026-10-07-stage-toons-scene-polish-6c.md`). The three ship together
+  as 0.13.0, merged to `main` after 6c's test.
 - **Calm mode** (#10): the bar stays, the rasters hold still.
 - **Scene polish:** new scenes, and re-choreographing the ones that look
   unpolished on the wider canvas (props spread out, longer walks,
   compositions per width; the person chose the wider set in 4e and
   deferred this).
-  - 6b's leftovers, for 6c to fix as it passes (hand-off
-    `2026-10-07-stage-toons-scene-polish-6b.md`): under about 36
-    columns a reaction holds bricklaying's camera at its start, away
-    from Clawd mid-build; flashlight's pool shows flat-topped for a
-    moment on 7 rows (its sway reaches the top row); bricklaying's steps
-    at 48 columns come about once a second.
+  - 6c's leftovers (hand-off `2026-10-07-stage-toons-scene-polish-6c.md`):
+    props raised above Clawd's head (proofread's page, bug-net's hoop,
+    the trophy) share the pop-ups' rows; bowling on a short lane pauses
+    about 4 s with the pins down; stamp's headroom rows stay bare on 8
+    rows; recycling and test-tubes (not reworked) cut up to 5 columns of
+    Clawd at 30 to 36 columns, as in 0.12.0.
 - Maybe: an Svg rendition for the desktop app (#24), the only element
   known to reach the app; needs the person's devices to check first.
 
