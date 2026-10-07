@@ -30,8 +30,14 @@ export const ARRIVAL_GAP = 500
 export const HOP = 300
 
 // edge: the area's width (48 at least) when the helper arrived, where it
-// walks in from and out to.
-export type SeatEntry = { agentId: string; seat: number; kind: ModelKind; arrivedAt: number; leftAt: number | null; edge: number }
+// walks in from and out to; x, the column it stands at when that isn't its
+// seat's (a spot on the DJ's dance floor).
+export type SeatEntry = { agentId: string; seat: number; kind: ModelKind; arrivedAt: number; leftAt: number | null; edge: number; x?: number }
+// Where a helper stands once it has walked in.
+export const homeX = (e: SeatEntry): number => e.x ?? seatX(e.seat)
+// Places other than the desk row's seats: how many there are, and each
+// one's column (the DJ's dance floor).
+export type Spots = { count: number; x: (seat: number) => number }
 // Clawd's walk: from fromX at `at`, toward toX, at CLAWD_SPEED.
 export type Walk = { at: number; fromX: number; toX: number }
 // seats: how many seats the period has (SEATS until one starts).
@@ -44,14 +50,14 @@ const walkMs = (pixels: number, speed: number) => (Math.abs(pixels) / speed) * 1
 export const walkSpeed = (e: SeatEntry): number => Math.min(MAX_WALK_SPEED, (WALK_SPEED * e.edge) / AREA_W)
 
 // Where a helper walking in from its edge stands at a moment.
-const walkInX = (e: SeatEntry, now: number) => Math.max(seatX(e.seat), e.edge - ((now - e.arrivedAt) / 1000) * walkSpeed(e))
+const walkInX = (e: SeatEntry, now: number) => Math.max(homeX(e), e.edge - ((now - e.arrivedAt) / 1000) * walkSpeed(e))
 // When a helper reaches its seat, walking in.
-export const seatedAt = (e: SeatEntry): number => e.arrivedAt + walkMs(e.edge - seatX(e.seat), walkSpeed(e))
+export const seatedAt = (e: SeatEntry): number => e.arrivedAt + walkMs(e.edge - homeX(e), walkSpeed(e))
 // Whether the helper had sat down when it got up.
 const satAt = (e: SeatEntry, at: number) => at >= seatedAt(e)
 // Where a leaving helper starts walking out: its seat, or (turned round
 // mid walk-in) where it stood.
-const outFrom = (e: SeatEntry, leftAt: number) => (satAt(e, leftAt) ? seatX(e.seat) : walkInX(e, leftAt))
+const outFrom = (e: SeatEntry, leftAt: number) => (satAt(e, leftAt) ? homeX(e) : walkInX(e, leftAt))
 
 // When a leaving helper has walked out of the area and its seat is free.
 export function freesAt(e: SeatEntry): number {
@@ -71,11 +77,11 @@ export function helperAt(e: SeatEntry, now: number): Helper | null {
   if (e.leftAt === null || now < e.leftAt) {
     if (!satAt(e, now)) return { entry: e, pose: 'walk-in', x: Math.round(walkInX(e, now)), stride: strideAt(now - e.arrivedAt) }
 
-    return { entry: e, pose: 'seated', x: seatX(e.seat), stride: 0 }
+    return { entry: e, pose: 'seated', x: homeX(e), stride: 0 }
   }
   if (now >= freesAt(e)) return null
   const hop = satAt(e, e.leftAt) ? HOP : 0
-  if (now < e.leftAt + hop) return { entry: e, pose: 'hop', x: seatX(e.seat), stride: 0 }
+  if (now < e.leftAt + hop) return { entry: e, pose: 'hop', x: homeX(e), stride: 0 }
   const from = outFrom(e, e.leftAt)
   const gone = now - e.leftAt - hop
 
@@ -110,8 +116,9 @@ export function clawdWalking(log: SeatLog, now: number): { facing: number; strid
 // the waiting period starts and ends. endedAt is when a waiting period
 // ended, if one ended in this step: the idle clock restarts there.
 // columns: the area's width now, which sets a starting period's seats and
-// each newcomer's edge.
-export function seat(log: SeatLog, roster: Roster, now: number, isShown: boolean, columns = AREA_W): { log: SeatLog; endedAt: number | null } {
+// each newcomer's edge; spots, when given, stand in for the desk row's
+// seats (their count for the period, each newcomer's column).
+export function seat(log: SeatLog, roster: Roster, now: number, isShown: boolean, columns = AREA_W, spots?: Spots): { log: SeatLog; endedAt: number | null } {
   const working = new Set(atWork(roster).map(a => a.id))
   const freed = log.entries.filter(e => freesAt(e) <= now)
   let entries = log.entries.filter(e => freesAt(e) > now)
@@ -124,7 +131,7 @@ export function seat(log: SeatLog, roster: Roster, now: number, isShown: boolean
   })
   let queue = log.queue.filter(id => working.has(id))
   if (!isShown && working.size === 0) return { log: EMPTY_LOG, endedAt: log.since === null ? null : now }
-  const seats = log.since === null ? seatsFor(columns) : log.seats
+  const seats = log.since === null ? (spots?.count ?? seatsFor(columns)) : log.seats
   if (isShown) {
     const known = new Set([...entries.map(e => e.agentId), ...queue])
     queue = [...queue, ...[...working].filter(id => !known.has(id))]
@@ -136,7 +143,7 @@ export function seat(log: SeatLog, roster: Roster, now: number, isShown: boolean
       const agentId = queue.shift()!
       const arrivedAt = Math.max(now, last + ARRIVAL_GAP)
       last = arrivedAt
-      entries = [...entries, { agentId, seat: free, kind: roster.get(agentId)?.kind ?? 'unknown', arrivedAt, leftAt: null, edge: Math.max(AREA_W, columns) }]
+      entries = [...entries, { agentId, seat: free, kind: roster.get(agentId)?.kind ?? 'unknown', arrivedAt, leftAt: null, edge: Math.max(AREA_W, columns), ...(spots ? { x: spots.x(free) } : {}) }]
     }
   }
   let { since, until, walk } = log

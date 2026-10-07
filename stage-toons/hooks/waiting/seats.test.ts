@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { EMPTY_ROSTER, ended, type Roster, spawned } from '../agents'
-import { ARRIVAL_GAP, CLAWD_ASIDE, CLAWD_HOME, clawdX, EMPTY_LOG, freesAt, HOP, helperAt, seat, type SeatLog, WALK_SPEED } from './seats'
+import { ARRIVAL_GAP, CLAWD_ASIDE, CLAWD_HOME, clawdX, EMPTY_LOG, freesAt, HOP, helperAt, homeX, seat, seatedAt, type SeatLog, seatX, WALK_SPEED } from './seats'
 
 const T = 100_000
 const rosterOf = (...ids: string[]): Roster => ids.reduce<Roster>((r, id) => spawned(r, id, 'sonnet', 0), EMPTY_ROSTER)
@@ -128,4 +128,18 @@ test('helpers already walking off vanish when the toon is hidden', () => {
   log = seat(log, roster, T + 3000, true).log
   log = seat(log, roster, T + 3100, false).log
   expect(seats(log)).toEqual([['b', 1]])
+})
+
+test("spots stand in for the desk row's seats: their count for the period, each newcomer walking in to its spot's column", () => {
+  const spots = { count: 1, x: (spot: number) => 41 + spot * 10 }
+  const { log } = seat(EMPTY_LOG, rosterOf('a', 'b'), T, true, 48, spots)
+  expect(log.seats).toBe(1)
+  expect(log.entries.map(e => [e.agentId, e.x])).toEqual([['a', 41]])
+  expect(log.queue).toEqual(['b'])
+  const e = log.entries[0]!
+  expect(homeX(e)).toBe(41)
+  expect(helperAt(e, seatedAt(e))).toEqual({ entry: e, pose: 'seated', x: 41, stride: 0 })
+  expect(Math.round(seatedAt(e) - T)).toBe(Math.round(((48 - 41) / WALK_SPEED) * 1000))
+  // Without a spot, the desk row's seat.
+  expect(homeX({ ...e, x: undefined })).toBe(seatX(0))
 })

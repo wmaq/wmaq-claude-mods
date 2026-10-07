@@ -33,7 +33,7 @@ export const WAITING_SCENES: Record<WaitingSceneId, WaitingScene> = {
 }
 
 // A walking helper's top row: it stands on the bottom row.
-const WALKING_TOP = 9
+export const WALKING_TOP = 9
 
 // The walking helper, facing right; mirrored, facing left. Two strides.
 const WALKING = [
@@ -41,7 +41,7 @@ const WALKING = [
   ['.MMMMM.', '..MEME.', 'MMMMMMM', '.MMMMM.', '..M.M..'],
 ]
 
-function drawWalker(b: PixelBuffer, h: Helper) {
+export function drawWalker(b: PixelBuffer, h: Helper) {
   const color = HELPER_COLORS[h.entry.kind]
   const isLeft = h.pose === 'walk-in'
   drawSprite(b, { palette: { M: color, E: EYE_DARK }, frames: WALKING }, h.stride, h.x, WALKING_TOP, isLeft)
