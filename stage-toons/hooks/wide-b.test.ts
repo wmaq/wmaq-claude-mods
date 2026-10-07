@@ -129,11 +129,19 @@ test("the terminal: the mug's steam rises and the second monitor's graph changes
   expect(graph(4.8 + 0.1)).toBe(graph(0.1))
 })
 
-test('the test tubes: a tube every 7 columns from 45, bubbling in turn; only the core three get ticks', () => {
+test('the test tubes: a tube every 7 columns from 45, bubbling in turn; past 48 columns every tube gets its tick', () => {
   const b = draw('test-tubes', 5.9)
   for (let x = 45; x < 120; x += 7) expect(at(b, x + 1, 13)).toBe(C.glass)
-  const ticks = (columns: number) => [...draw('test-tubes', 5.9, { columns, rows: 9 }).px].filter(c => c === C.green).length
-  expect(ticks(120)).toBe(ticks(48))
+  const ticks = (t: number, columns: number) => [...draw('test-tubes', t, { columns, rows: 9 }).px].filter(c => c === C.green).length
+  // Five pixels a tick: the core's three at 48 columns, all fourteen at 120,
+  // in turn from 1.5 s to 3.9 s, clearing in turn from 4.4 s to 5.8 s; at
+  // 48 columns as before, one every 1.2 s, staying to the loop's end.
+  expect(ticks(4.3, 120)).toBe(14 * 5)
+  expect(ticks(1.4, 120)).toBe(0)
+  expect(ticks(2.7, 120)).toBeGreaterThan(ticks(2, 120))
+  expect(ticks(5, 120)).toBeLessThan(ticks(4.3, 120))
+  expect(ticks(5.9, 120)).toBe(0)
+  expect([1.4, 1.55, 2.75, 3.95, 5.9].map(t => ticks(t, 48))).toEqual([0, 5, 10, 15, 15])
   // A bubble's cycle is 0.75 s, 8 to the 6 s loop: seamless.
   expect(wings(draw('test-tubes', 6 - 0.01))).toBe(wings(draw('test-tubes', 0.75 - 0.01)))
 })
@@ -217,11 +225,12 @@ test('the waiting bench: the wall clock has a rim, a face, ticks at 12, 3, 6 and
   expect([at(later, 40, 4), at(later, 41, 3), at(later, 39, 3)]).toEqual([C.ink, C.ink, C.paper])
 })
 
-test('the waiting bench: a ticket display, a water cooler and a plant every 51 columns, the bench going on behind', () => {
+test('the waiting bench: one ticket display; a water cooler and a plant every 51 columns where they fit whole, the bench going on behind', () => {
   const b = draw('waiting-bench', 0, WIDE)
+  // The display on the wall, rows 2 to 8, in the first room alone: a frame round a dark screen with red digits.
+  expect([at(b, 48 + 3, 2), at(b, 48 + 13, 8), at(b, 48 + 4, 3)]).toEqual([C.darkGray, C.darkGray, C.ink])
+  for (const x of [99, 150]) expect([at(b, x + 3, 2), at(b, x + 4, 3)]).toEqual([EMPTY, EMPTY])
   for (const x of [48, 99, 150]) {
-    // The display on the wall, rows 2 to 8: a frame round a dark screen with red digits.
-    expect([at(b, x + 3, 2), at(b, x + 13, 8), at(b, x + 4, 3)]).toEqual([C.darkGray, C.darkGray, C.ink])
     // The cooler's bottle and body, standing on the floor in front of the bench.
     expect([at(b, x + 20, 3), at(b, x + 20, 4), at(b, x + 19, 11), at(b, x + 19, 13)]).toEqual([C.glass, C.blue, C.paperShade, C.darkGray])
     // The plant's leaves and its pot.
@@ -230,6 +239,9 @@ test('the waiting bench: a ticket display, a water cooler and a plant every 51 c
   // At the start the display reads 42: a 4 and a 2, in red.
   const digit = (x: number) => Array.from({ length: 15 }, (_, p) => (at(b, x + (p % 3), 3 + Math.floor(p / 3)) === C.red ? '1' : '0')).join('')
   expect([digit(53), digit(57)]).toEqual(['101101111001001', '111001111100111'])
+  // At 120 columns the second room's cooler (from 118) would be cut at the edge: it is left out.
+  const mid = draw('waiting-bench', 0)
+  for (let y = 3; y < 11; y++) for (const x of [118, 119]) expect(at(mid, x, y)).toBe(EMPTY)
 })
 
 test("the waiting bench: the display counts a ticket up every 3 s of the scene's own time, on through the loop point", () => {

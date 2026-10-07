@@ -1,7 +1,8 @@
 // Waiting bench: Clawd sits on a bench while a clock ticks, and now and
 // then turns and waves at you. On a wider area the bench runs on to the
-// edge, and along it, again and again, a "now serving" display on the
-// wall counts up the tickets, a water cooler and a potted plant stand.
+// edge; a "now serving" display on the wall counts up the tickets, and
+// along the bench, again and again, a water cooler and a potted plant
+// stand.
 
 import { fillRect, type PixelBuffer, rightOf, setPixel } from '../pixels'
 import { drawSprite, type Scene, type Sprite } from '../scene'
@@ -33,8 +34,9 @@ function drawClock(b: PixelBuffer, t: number) {
 }
 
 // The wings, every ROOM_EVERY columns (three of the bench's legs) from the
-// core's edge: the display on the wall, rows 2 to 8, then the cooler and
-// the plant standing on the floor in front of the bench.
+// core's edge: the cooler and the plant standing on the floor in front of
+// the bench, each only where it fits whole; and in the first room alone,
+// the display on the wall, rows 2 to 8.
 const ROOM_EVERY = 51
 const DISPLAY_X = 3
 const COOLER_X = 19
@@ -59,13 +61,12 @@ const PLANT: Sprite = {
 function drawDisplay(b: PixelBuffer, time: number) {
   const ticket = ticketAt(time)
   const digits = [Math.floor(ticket / 10), ticket % 10]
-  tileOn(b, WINGS_X, ROOM_EVERY, x => {
-    const d = x + DISPLAY_X
-    fillRect(b, d, 2, 11, 7, C.darkGray)
-    fillRect(b, d + 1, 3, 9, 5, C.ink)
-    digits.forEach((n, i) => {
-      for (let p = 0; p < 15; p++) if (DIGITS[n]![p] === '1') setPixel(b, d + 1 + 4 * i + (p % 3) + 1, 3 + Math.floor(p / 3), C.red)
-    })
+  const d = WINGS_X + DISPLAY_X
+  if (d + 11 > rightOf(b)) return
+  fillRect(b, d, 2, 11, 7, C.darkGray)
+  fillRect(b, d + 1, 3, 9, 5, C.ink)
+  digits.forEach((n, i) => {
+    for (let p = 0; p < 15; p++) if (DIGITS[n]![p] === '1') setPixel(b, d + 1 + 4 * i + (p % 3) + 1, 3 + Math.floor(p / 3), C.red)
   })
 }
 
@@ -87,8 +88,8 @@ export const waitingBench: Scene = {
     fillRect(b, 28, 11, edge - 28, 1, C.wood)
     for (let x = 25 + 17; x < edge; x += 17) fillRect(b, x, 12, 1, 2, C.woodDark)
     tileOn(b, WINGS_X, ROOM_EVERY, x => {
-      drawSprite(b, COOLER, 0, x + COOLER_X, 3)
-      drawSprite(b, PLANT, 0, x + PLANT_X, 5)
+      if (x + COOLER_X + 5 <= edge) drawSprite(b, COOLER, 0, x + COOLER_X, 3)
+      if (x + PLANT_X + 5 <= edge) drawSprite(b, PLANT, 0, x + PLANT_X, 5)
     })
   },
   actors: [

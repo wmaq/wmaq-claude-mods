@@ -131,11 +131,10 @@ function wingsDiffer(a: PixelBuffer, b: PixelBuffer): number {
 }
 
 // Scenes whose wings go on through the loop point by design rather than by a
-// fixed step: thought-clouds' drift on unwrapped time (its own test), the
-// fading scenes' (their held last moment dissolves into the start; the
-// phase's own are measured over the whole area in scene-polish.test.ts), and
-// recycling's missed ball, which lies by the bin until the loop ends.
-const UNSTEPPED = (s: Scene) => s.id === 'thought-clouds' || s.id === 'recycling' || s.fadesAtLoop === true
+// fixed step: thought-clouds' drift on unwrapped time (its own test), and
+// the fading scenes' (their held last moment dissolves into the start; the
+// phase's own are measured over the whole area in scene-polish.test.ts).
+const UNSTEPPED = (s: Scene) => s.id === 'thought-clouds' || s.fadesAtLoop === true
 
 for (const columns of [120, 200]) {
   test(`every loop is seamless across the wings at ${columns} columns: the step over the loop point is no bigger than any other`, () => {

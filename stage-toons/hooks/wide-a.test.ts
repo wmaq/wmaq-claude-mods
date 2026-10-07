@@ -152,7 +152,7 @@ test('flashlight: the pool sweeps out to 9 short of the edge, up to 150 columns 
   expect(gaps(draw('flashlight', 3.4, MID), 2, 60, 120).length).toBeLessThan(60)
 })
 
-test('recycling: past 50 columns the missed ball rolls against a second bin and lies there', () => {
+test('recycling: past 50 columns the third throw goes into a second bin; at 50 and under it misses and rolls off', () => {
   const ball = (t: number, size: AreaSize) => {
     const xs = columnsOf(draw('recycling', t, size), C.white).filter(x => x > 40)
     return xs.length === 0 ? null : Math.min(...xs)
@@ -161,14 +161,17 @@ test('recycling: past 50 columns the missed ball rolls against a second bin and 
   const b = draw('recycling', 0, MID)
   expect(gaps(b, 7, 49, 57)).toEqual([])
   expect(at(b, 50, 13)).toBe(C.gray)
-  // The ball stops at 48, against the bin's side, at the same speed, and lies there to the loop's end.
-  expect(ball(5.2, MID)).toBe(ball(5.2, { columns: 48, rows: 7 }))
-  for (const t of [5.8, 6, 6.39]) expect(ball(t, MID)).toBe(48)
-  expect(ball(0.01, MID)).toBe(null)
-  // At 50 columns and under it rolls off as before, gone at 6.0 s.
+  // The third ball flies on over the first bin and drops into the second:
+  // nothing lies on the floor after.
+  expect(ball(4.2, MID)).toBeGreaterThan(40)
+  for (const t of [4.6, 5.2, 5.8, 6, 6.39]) expect(ball(t, MID)).toBe(null)
+  // At 50 columns and under it misses, bounces and rolls off as before, gone at 6.0 s.
+  expect(ball(5.2, { columns: 48, rows: 7 })).not.toBe(null)
   expect(ball(5.95, { columns: 50, rows: 7 })).toBe(49)
   expect(ball(6.05, { columns: 50, rows: 7 })).toBe(null)
-  expect(ball(6.05, { columns: 51, rows: 7 })).toBe(48)
+  // Clawd's eyes go wide at a miss only.
+  const eyesWide = (size: AreaSize) => JSON.stringify(heroAt(SCENES.recycling!, 4.5, size)) + [...draw('recycling', 4.5, size).px].filter(c => c === 0x2a1610).length
+  expect(eyesWide({ columns: 48, rows: 9 })).not.toBe(eyesWide(MID))
 })
 
 test('recycling: past the second bin, sorting bins to the edge, 14 columns apart: paper, glass, plastic in turn', () => {
