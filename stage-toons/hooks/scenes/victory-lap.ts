@@ -125,6 +125,7 @@ function drawStands(b: PixelBuffer, t: number) {
   const area = areaOf(b)
   const width = area.right - area.left
   const middle = clawdX(t, area) + CLAWD_W / 2
+  const flashOdds = 0.015 * Math.min(1, 120 / width)
   fillRect(b, area.left, 10, width, 1, RAIL)
   fillRect(b, area.left, 11, width, 1, BARRIER)
   // The furthest tier first, so a nearer tier's scarves show over it.
@@ -145,11 +146,12 @@ function drawStands(b: PixelBuffer, t: number) {
       setPixel(b, x, head - (isUp ? 1 : 0), fade(C.skyShade, k))
       if (isUp) {
         setPixel(b, x, head, fade(C.skyShade, k))
-        if (wrap(x / 2 + every(t, 0.25), 2) === 0) setPixel(b, x + 1, head - 2, scarf)
+        if (wrap(Math.floor(x / 2) + every(t, 0.25), 2) === 0) setPixel(b, x + 1, head - 2, scarf)
         else setPixel(b, x + 1, head - 1, scarf)
       } else if (hash(seat + 3) < 0.2) setPixel(b, x, head + 1, fade(SCARVES[Math.floor(hash(seat + 1) * SCARVES.length)]!, k - 0.08))
-      // A camera's flash, a tenth of a second at a time.
-      if (isCheering(t) && Math.abs(x - middle) > CLAWD_W && hash(seat + every(t, 0.1) * 31) < 0.015) setPixel(b, x, head, FLASH)
+      // A camera's flash, a tenth of a second at a time: as many on a wide
+      // area as on 120 columns.
+      if (isCheering(t) && Math.abs(x - middle) > CLAWD_W && hash(seat + every(t, 0.1) * 31) < flashOdds) setPixel(b, x, head, FLASH)
     }
   }
 }

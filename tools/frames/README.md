@@ -62,7 +62,7 @@ room. `--columns` takes a list (`--columns 48,80,120,200`): the sheet
 then has a row of frames per width, each width's frames at the same
 moments (4 of them unless `--count` says), to check a picture's wide set
 in one look. At `--columns 48 --rows 7` every picture draws as its
-golden hash records (0.11.0's, or phase 6b's for the four scenes it
+golden hash records (0.11.0's, or phase 6b's or 6c's for the scenes they
 reworked or added).
 
 Common options: `--from MS` (0), `--every MS` (250), `--count N` (16),

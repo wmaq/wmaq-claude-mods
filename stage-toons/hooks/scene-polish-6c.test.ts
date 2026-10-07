@@ -114,6 +114,11 @@ test('dice: the pawn hops along a board to the edge and ends on the gold goal, a
     expect({ columns, mid: pawn(4) > 26 && pawn(4) < goal }).toEqual({ columns, mid: true })
     expect({ columns, end: pawn(8.2) - goal }).toEqual({ columns, end: pawn(0.05) - 25 })
   }
+  // The goal near the edge at every width up to 175 columns, where the board's 150 columns end.
+  for (let columns = 48; columns <= 175; columns++) {
+    const gold = xs(draw('dice', 0.05, { columns, rows: 9 }), C.gold)
+    expect(`${columns}: ${columns - Math.max(...gold) <= 8}`).toBe(`${columns}: true`)
+  }
 })
 
 test('bug-net: the bug flits ahead of Clawd, never over him, and is netted on the far flowers', () => {

@@ -152,9 +152,9 @@ function drawLane(b: PixelBuffer) {
     setPixel(b, x, LANE_TOP, GUTTER)
     for (let y = LANE_TOP + 1; y <= FLOOR; y++) setPixel(b, x, y, x >= deck - 1 ? DECK : (y + u) % 3 === 0 ? BOARD_DARK : BOARD)
   })
-  // The arrows, a row of little chevrons.
+  // The arrows, a row of little chevrons, short of the deck.
   const arrows = Math.round(lerp(BALL_START + 4, deck, 0.3))
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 3 && arrows + i * 3 + 1 < deck - 1; i++) {
     setPixel(b, arrows + i * 3, LANE_TOP + 2, ARROW)
     setPixel(b, arrows + i * 3 + 1, LANE_TOP + 1, ARROW)
   }

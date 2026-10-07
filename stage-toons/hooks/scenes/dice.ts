@@ -57,14 +57,16 @@ const FACES: Sprite = {
 // A die mid-tumble, on its corner.
 const CORNER: Sprite = { palette: { w: C.white, s: C.paperShade }, frames: [['..w..', '.www.', 'wwsww', '.www.', '..w..']] }
 
-// The board's pitch on an area: 4 columns a square, wider (up to 6) where
-// the board has the room, so it runs on towards the edge.
-const boardOf = (area: Area) => reach(area, BOARD_X, MAX, 7)
-const stepOf = (area: Area) => Math.max(4, Math.min(6, Math.floor(boardOf(area) / MAX_SQUARES)))
-// The squares to the goal on an area: 4 to MAX_SQUARES.
-const squaresOf = (area: Area) => Math.max(4, Math.min(MAX_SQUARES, Math.floor(boardOf(area) / stepOf(area))))
-// A square's left column.
-const squareX = (k: number, area: Area) => BOARD_X + k * stepOf(area)
+// The board on an area: the squares to the goal (4 to MAX_SQUARES, one
+// every 4 columns where it can), spread over its length at a pitch of 4 to
+// 6 columns, fractional where it has to be, so the goal lands near the edge.
+const boardOf = (area: Area) => reach(area, BOARD_X, MAX, 9)
+const squaresOf = (area: Area) => Math.max(4, Math.min(MAX_SQUARES, Math.floor(boardOf(area) / 4)))
+const pitchOf = (area: Area) => Math.max(4, Math.min(6, boardOf(area) / squaresOf(area)))
+// A square's width, a column short of the narrowest pitch between squares.
+const squareW = (area: Area) => Math.floor(pitchOf(area)) - 1
+// Square k's left column (k may be fractional, for the pawn mid-hop).
+const squareX = (k: number, area: Area) => BOARD_X + Math.round(k * pitchOf(area))
 
 // The two rolls' totals, each 2 to 12, adding up to the squares to the
 // goal; and each total as two dice.
@@ -114,7 +116,7 @@ function dieAt(i: number, t: number) {
 function drawBoard(b: PixelBuffer) {
   const area = areaOf(b)
   const n = squaresOf(area)
-  const w = stepOf(area) - 1
+  const w = squareW(area)
   const right = squareX(n, area) + w
   fillRect(b, BOARD_X - 1, BOARD_Y + 2, right + 1 - BOARD_X + 1, 1, C.wood)
   for (const x of [BOARD_X, right - 1]) fillRect(b, x, BOARD_Y + 3, 1, 14 - BOARD_Y - 3, C.woodDark)
@@ -152,7 +154,7 @@ export const dice: Scene = {
         const at = pawnAt(t, area)
         const hop = at - Math.floor(at)
         // Centred on its square.
-        const inset = Math.floor((stepOf(area) - 4) / 2)
+        const inset = Math.floor((squareW(area) - 3) / 2)
         drawSprite(b, PAWN, 0, Math.round(squareX(at, area)) + inset, Math.round(PAWN_Y - 2 * Math.sin(Math.PI * hop)))
       },
     },
