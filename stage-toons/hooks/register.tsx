@@ -14,7 +14,7 @@ import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { ended, reconcileRoster, rememberKind, spawned } from './agents'
 import { autoMatch, hasRules, type Heard, isWindowsPath, relativePath, type Signal, typedSkill, viaOf } from './auto'
 import { areaSize, BAR_TONES, bandLayout, bandMode, type BandSite } from './band'
-import { autoText, bubblesText, CALM_DEMO_LINE, calmText, DJ_NEEDS_TERMINAL as DJ_NEEDS_WINDOWS, djPartyText, djText, hideText, moveFor, parseCommand, settingsText, settingsWords, showText, unknownText, usage, WORKFLOW_FILE, workflowSummary } from './command'
+import { autoText, bubblesText, CALM_DEMO_LINE, calmText, djBlockedText, djPartyText, djText, hideText, moveFor, parseCommand, settingsText, settingsWords, showText, unknownText, usage, WORKFLOW_FILE, workflowSummary } from './command'
 import { demoAt, demoFor, demoLine, demoStep, djDemoLine, idleDemoAt, idleDemoLine, startDemo, waitingDemoLine, workDemoAt, workDemoLine } from './demo'
 import { createDirector, react, restarted, withAuditing, withScene } from './director'
 import { areaCells, type Log } from './frames'
@@ -25,7 +25,7 @@ import { animate, type Ports } from './paint'
 import { dealCard } from './deck'
 import { addCost, type Cost, costText, creditAt, currentEntry, logText, NO_COST, timeText, tokensOf } from './history'
 import { COMMAND_READ_MS, heard, isNewTrack, nextDelay, NO_MUSIC, type NowPlaying, READ_TIMEOUT_MS, type ReadFailure, trackText } from './nowplaying'
-import { WINDOWS_ARGV as ARGV, jsonOutcome as outcomeOf } from './readers'
+import { CHECK_TIMEOUT_MS, type Platform, platformOfUname, PLAYERCTL_VERSION_ARGV, problemOf, type Reader, readerFor, UNAME_ARGV } from './readers'
 import { momentOf, phaseOf, whatOf } from './phase'
 import { type KV, loadProgress, PRUNE_EVERY_MS, saveProgress, staleKeys, storeKey, validate } from './progress'
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolSchema, workflowText } from './prompt'
@@ -457,28 +457,68 @@ async function setCalm($: EngineInterface, mod: Mod, isOn: boolean) {
   }
 }
 
-// Whether DJ mode can read Spotify here: a Windows project in the
-// terminal (the CLI, where $.process runs commands).
-const canDj = (mod: Mod): boolean => mod.isWindows && mod.surface === 'terminal'
+// The platform check, run where the cwd isn't Windows: uname -sr, and on
+// Linux playerctl --version. isKept: false for an answer the next check
+// may change (uname couldn't run in time; playerctl isn't installed yet).
+async function checkPlatform($: EngineInterface): Promise<{ platform: Platform; isKept: boolean }> {
+  let platform: Platform
+  try {
+    platform = platformOfUname(await $.process.run([...UNAME_ARGV], { timeoutMs: CHECK_TIMEOUT_MS }))
+  } catch {
+    return { platform: 'none', isKept: false }
+  }
+  if (platform !== 'linux') return { platform, isKept: true }
+  try {
+    const { exitCode } = await $.process.run([...PLAYERCTL_VERSION_ARGV], { timeoutMs: CHECK_TIMEOUT_MS })
+    if (exitCode === 0) return { platform: 'linux', isKept: true }
+  } catch {
+    // Not installed.
+  }
 
-// One read of what Spotify plays: the track, or null for nothing playing.
-// A failed read counts as nothing playing; each kind is logged once per
-// load, with its exit code but never its output (it may name what other
-// apps play). timeoutMs: how long it may take (the poll's 10 s; a
-// command's own read less, inside its hook's budget).
-async function readMusic($: EngineInterface, mod: Mod, timeoutMs = READ_TIMEOUT_MS): Promise<NowPlaying | null> {
+  return { platform: 'linux-missing', isKept: false }
+}
+
+// The platform DJ mode reads on (Clawd DJ everywhere): none off the
+// terminal ($.process is CLI only), Windows from the cwd, elsewhere the
+// check's answer, kept for the load; a check in flight is shared, so a
+// poll and a /stage dj typed together run one.
+async function platformOf($: EngineInterface, mod: Mod): Promise<Platform> {
+  if (mod.surface !== 'terminal') return 'none'
+  if (mod.isWindows) return 'windows'
+  if (mod.platform === null) {
+    mod.platform = checkPlatform($).then(check => {
+      mod.platform = check.isKept ? check.platform : null
+
+      return check.platform
+    })
+  }
+
+  return await mod.platform
+}
+
+// One read of what Spotify plays, with the platform's reader: the track,
+// or null for nothing playing. A failed read counts as nothing playing;
+// each kind is logged once per load, with its exit code but never its
+// output or stderr (they may name what other apps play). It leaves what
+// macOS's permission says (mod.djProblem). timeoutMs: how long it may take
+// (the poll's 10 s; a command's own read less, inside its hook's budget).
+async function readMusic($: EngineInterface, mod: Mod, reader: Reader, timeoutMs = READ_TIMEOUT_MS): Promise<NowPlaying | null> {
   let track: NowPlaying | null = null
   let failure: ReadFailure | null = null
   let detail = ''
   try {
-    const result = await $.process.run([...ARGV], { timeoutMs })
-    const outcome = outcomeOf(result)
+    const result = await $.process.run([...reader.argv], { timeoutMs })
+    const outcome = reader.outcomeOf(result)
     track = outcome.track
     failure = outcome.failure
     if (failure === 'exit') detail = ` ${result.exitCode}`
   } catch {
     failure = 'rejected'
   }
+  mod.djProblem = problemOf(reader, failure, mod.hasDjRead)
+  // Only a read that reached Spotify shows macOS's prompt was answered:
+  // {} comes from running() alone, before any Apple Event.
+  if (track !== null) mod.hasDjRead = true
   if (failure !== null && !mod.djFailures.has(failure)) {
     mod.djFailures.add(failure)
     $.ui.log(`stage-toons: reading Spotify failed (${failure}${detail}); DJ mode takes it as nothing playing`, { to: 'debug' })
@@ -502,19 +542,21 @@ async function hearMusic($: EngineInterface, mod: Mod, track: NowPlaying | null)
 // DJ mode stays on and this load is the current one; at once first unless
 // the caller has just read. One loop at a time: turning DJ mode off ends
 // it at its next look, and a loop started after that has its own token.
+// It asks the platform first, and ends at once where DJ mode can't read.
 function startPoll($: EngineInterface, mod: Mod, hasRead: boolean) {
   if (mod.djLoop !== null) return
   const token = Math.random().toString(36).slice(2, 10)
   mod.djLoop = token
   void (async () => {
+    const reader = readerFor(await platformOf($, mod))
     let isFirst = !hasRead
-    while (mod.isDj && mod.djLoop === token) {
+    while (reader !== null && mod.isDj && mod.djLoop === token) {
       if (!isFirst) await $.clock.sleep(nextDelay(djPollState(mod)))
       isFirst = false
       if (!mod.isDj || mod.djLoop !== token) break
       const id = await read($, loadAtom)
       if (id !== null && id !== LOAD_ID) break
-      await hearMusic($, mod, await readMusic($, mod))
+      await hearMusic($, mod, await readMusic($, mod, reader))
     }
   })()
     .catch(() => {
@@ -528,9 +570,15 @@ function startPoll($: EngineInterface, mod: Mod, hasRead: boolean) {
 // /stage dj on or off, kept for every project; its answer. Turning it on
 // gives a DJ picture that failed another try, and reads Spotify at once
 // (within COMMAND_READ_MS, so the answer comes inside the hook's budget),
-// so the answer names the track, then polls.
+// so the answer names the track, then polls. Where DJ mode can't read (the
+// platform), it answers why and stays off.
 async function setDj($: EngineInterface, mod: Mod, isOn: boolean): Promise<string> {
-  if (isOn && !canDj(mod)) return DJ_NEEDS_WINDOWS
+  let reader: Reader | null = null
+  if (isOn) {
+    const platform = await platformOf($, mod)
+    reader = readerFor(platform)
+    if (reader === null) return djBlockedText(platform)
+  }
   mod.isDj = isOn
   if (isOn && mod.isDjBroken) {
     mod.isDjBroken = false
@@ -546,13 +594,25 @@ async function setDj($: EngineInterface, mod: Mod, isOn: boolean): Promise<strin
     mod.djLoop = null
     mod.music = NO_MUSIC
     mod.djChangedAt = null
+    mod.djProblem = null
     $.ui.invalidate('ui.render')
-  } else if (mod.djLoop === null) {
-    await hearMusic($, mod, await readMusic($, mod, COMMAND_READ_MS))
+  } else if (mod.djLoop === null && reader !== null) {
+    await hearMusic($, mod, await readMusic($, mod, reader, COMMAND_READ_MS))
     startPoll($, mod, true)
   }
 
-  return djText(mod.isDj, mod.music, mod.isDjBroken)
+  return djText(mod.isDj, mod.music, mod.isDjBroken, mod.djProblem)
+}
+
+// /stage dj's answer with no on or off: off; where DJ mode can't read (a
+// setting kept from another machine), why; else what it last heard.
+async function djStatus($: EngineInterface, mod: Mod): Promise<string> {
+  if (mod.isDj) {
+    const platform = await platformOf($, mod)
+    if (readerFor(platform) === null) return djBlockedText(platform)
+  }
+
+  return djText(mod.isDj, mod.music, mod.isDjBroken, mod.djProblem)
 }
 
 // /stage dj party on or off, kept for every project, as calm is; the band
@@ -867,7 +927,7 @@ export const register: Register = on => {
     mod.surface = e.surface
     // DJ mode is the person's own, never the workflow file's: from the
     // store on a fresh session, from the session on a reload. On, it reads
-    // Spotify at once (off Windows it never polls).
+    // Spotify at once (the poll ends at once where it can't read).
     if (isFresh) {
       let isDj = false
       let isParty = false
@@ -882,7 +942,7 @@ export const register: Register = on => {
     }
     mod.isDj = await read($, djAtom)
     mod.isDjParty = await read($, djPartyAtom)
-    if (mod.isDj && canDj(mod)) startPoll($, mod, false)
+    if (mod.isDj && mod.surface === 'terminal') startPoll($, mod, false)
     mod.idleSince = now
     let routine = await read($, idleAtom)
     if (routine === null) {
@@ -1060,7 +1120,7 @@ export const register: Register = on => {
 
       return { text: djPartyText(mod.isDjParty) }
     }
-    if (cmd.kind === 'dj') return { text: cmd.isOn !== null ? await setDj($, mod, cmd.isOn) : mod.isDj && !canDj(mod) ? DJ_NEEDS_WINDOWS : djText(mod.isDj, mod.music, mod.isDjBroken) }
+    if (cmd.kind === 'dj') return { text: cmd.isOn !== null ? await setDj($, mod, cmd.isOn) : await djStatus($, mod) }
     if (cmd.kind === 'width') {
       if (cmd.width !== null) await setWidth($, mod, cmd.width)
       const room = mod.lastBand === null ? null : Math.min(mod.lastBand.columns - 1, WIDTH_MAX)

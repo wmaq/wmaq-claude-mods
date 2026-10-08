@@ -11,18 +11,53 @@ const WAITING = 'DJ mode on: waiting for Spotify to play. /stage dj off turns it
 const FIGURE_LINE = 'DJ mode on: ♪ Linkin Park – Figure.09'
 const PLAYING = '{"status":"Playing","artist":"Linkin Park","title":"Figure.09"}'
 const PAUSED = '{"status":"Paused","artist":"Linkin Park","title":"Figure.09"}'
+const NL = String.fromCharCode(10)
+const NEEDS_TERMINAL = 'DJ mode needs Claude Code in a terminal on Windows, macOS or Linux.'
+const ASKING = 'DJ mode on: reading Spotify timed out. If macOS is asking whether your terminal may control Spotify, allow it, and the music shows.'
+const DENIED = "DJ mode on, but macOS doesn't let your terminal control Spotify: switch it on in System Settings › Privacy & Security › Automation, under your terminal's name."
+const MAC = { ...START, cwd: '/Users/me/proj' }
+const LINUX = { ...START, cwd: '/home/me/proj' }
+const LINUX_PLAYING = ['Playing', 'Linkin Park', 'Figure.09', ''].join(NL)
 
-// Windows' media session as powershell.exe answers it: what the script
-// prints, its exit code, or a failure to run at all; every read counted.
-type Spotify = { stdout: string; exitCode: number; isFailing: boolean; argv: (readonly string[])[]; timeouts: (number | undefined)[] }
+// The host's commands as the mod runs them: the platform check (uname,
+// playerctl --version), counted in checks, and the reads (powershell.exe,
+// osascript, playerctl metadata), counted in argv with their timeouts.
+// uname answers FreeBSD unless a test names another (null: it times out);
+// unameGate, when set, holds uname's answer until it resolves.
+type Spotify = {
+  stdout: string
+  stderr: string
+  exitCode: number
+  isFailing: boolean
+  uname: string | null
+  hasPlayerctl: boolean
+  unameGate: Promise<void> | null
+  argv: (readonly string[])[]
+  timeouts: (number | undefined)[]
+  checks: string[]
+}
 function spotify(on: On): Spotify {
-  const s: Spotify = { stdout: PLAYING, exitCode: 0, isFailing: false, argv: [], timeouts: [] }
-  on('process.run', ($, e) => {
+  const s: Spotify = { stdout: PLAYING, stderr: '', exitCode: 0, isFailing: false, uname: 'FreeBSD 14.1-RELEASE', hasPlayerctl: true, unameGate: null, argv: [], timeouts: [], checks: [] }
+  const answer = (exitCode: number, stdout: string, stderr = '') => ({ value: { exitCode, stdout, stderr, isStdoutTruncated: false, isStderrTruncated: false } })
+  on('process.run', async ($, e) => {
+    if (e.argv[0] === 'uname') {
+      s.checks.push('uname')
+      if (s.unameGate !== null) await s.unameGate
+      if (s.uname === null) throw new Error('uname ran past its time')
+
+      return answer(0, s.uname + NL)
+    }
+    if (e.argv[0] === 'playerctl' && e.argv[1] === '--version') {
+      s.checks.push('playerctl')
+      if (!s.hasPlayerctl) throw new Error('playerctl could not start')
+
+      return answer(0, 'v2.4.1' + NL)
+    }
     s.argv.push(e.argv)
     s.timeouts.push(e.init?.timeoutMs)
-    if (s.isFailing) throw new Error('powershell.exe could not start')
+    if (s.isFailing) throw new Error('the reader could not start')
 
-    return { value: { exitCode: s.exitCode, stdout: s.stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+    return answer(s.exitCode, s.stdout, s.stderr)
   })
 
   return s
@@ -64,6 +99,8 @@ test("DJ mode is off by default; /stage dj on reads Spotify at once, names the t
   expect(text(await runStage($, 'dj on'))).toBe(FIGURE_LINE)
   expect(s.argv).toHaveLength(1)
   expect(s.argv[0]!.slice(0, 4)).toEqual(['powershell.exe', '-NoProfile', '-NonInteractive', '-EncodedCommand'])
+  // Windows is known from the cwd: no check runs.
+  expect(s.checks).toEqual([])
   expect(world.store.dj).toBe(true)
   expect(text(await runStage($, 'dj'))).toBe(FIGURE_LINE)
   expect(text(await runStage($, 'dj off'))).toBe(OFF)
@@ -109,23 +146,25 @@ test('with nothing playing, DJ mode waits for Spotify', async ($, on) => {
   expect(text(await runStage($, 'dj on'))).toBe(WAITING)
 })
 
-test('off Windows DJ mode stays off, with no read', async ($, on) => {
+test('on another OS DJ mode stays off, with no read', async ($, on) => {
   const { world } = engine(on)
   const s = spotify(on)
-  await $.session.start({ ...START, cwd: '/home/me/proj' })
-  expect(text(await runStage($, 'dj on'))).toBe('DJ mode needs Claude Code in a terminal on Windows, macOS or Linux.')
+  await $.session.start(LINUX)
+  expect(text(await runStage($, 'dj on'))).toBe(NEEDS_TERMINAL)
+  expect(s.checks).toEqual(['uname'])
   expect(s.argv).toHaveLength(0)
   expect(world.store.dj).toBe(undefined)
   expect(text(await runStage($, 'dj'))).toBe(OFF)
 })
 
-test('kept on from a Windows session, DJ mode off Windows says it needs Windows, and never reads', async ($, on) => {
+test('kept on from another machine, DJ mode on another OS says what it needs, checks once and never reads', async ($, on) => {
   const { clock } = engine(on, { store: { dj: true } })
   const s = spotify(on)
-  await $.session.start({ ...START, cwd: '/home/me/proj' })
+  await $.session.start(LINUX)
   await clock.advance(60_000)
   expect(s.argv).toHaveLength(0)
-  expect(text(await runStage($, 'dj'))).toBe('DJ mode needs Claude Code in a terminal on Windows, macOS or Linux.')
+  expect(text(await runStage($, 'dj'))).toBe(NEEDS_TERMINAL)
+  expect(s.checks).toEqual(['uname'])
 })
 
 test('while Spotify plays the area shows the DJ picture and its box; one paused read keeps it, the second gives the area back', async ($, on) => {
@@ -214,4 +253,158 @@ test('/stage demo dj plays Clawd DJ with its line under the bar; dj is in the he
   expect(await bandText($)).toContain('DJ demo: Clawd at the decks · /stage demo stop ends it')
   expect(text(await runStage($, 'help'))).toContain("/stage dj [on | off]    Clawd DJ: while Spotify plays, Clawd at the decks and the track's name (Windows, macOS, Linux)")
   expect(text(await runStage($, 'help'))).toContain("/stage dj party [on | off]  the DJ's full light show: speakers, floor, booth and box lighting up with the beat")
+})
+
+test('on macOS, /stage dj on reads through osascript and names the track; the check runs once', async ($, on) => {
+  const { world } = engine(on)
+  const s = spotify(on)
+  s.uname = 'Darwin 27.0.0'
+  await $.session.start(MAC)
+  expect(text(await runStage($, 'dj on'))).toBe(FIGURE_LINE)
+  expect(s.argv[0]!.slice(0, 4)).toEqual(['osascript', '-l', 'JavaScript', '-e'])
+  expect(s.timeouts[0]).toBe(4000)
+  expect(world.store.dj).toBe(true)
+  expect(text(await runStage($, 'dj'))).toBe(FIGURE_LINE)
+  expect(s.checks).toEqual(['uname'])
+})
+
+test('on macOS, a first read that times out is the Automation prompt; once a read goes through, a timeout is only slow', async ($, on) => {
+  const { clock } = engine(on)
+  const s = spotify(on)
+  s.uname = 'Darwin 27.0.0'
+  s.isFailing = true
+  await $.session.start(MAC)
+  expect(text(await runStage($, 'dj on'))).toBe(ASKING)
+  expect(text(await runStage($, 'dj'))).toBe(ASKING)
+  s.isFailing = false
+  // No band: the poll's slow pace.
+  await clock.advance(30_000)
+  expect(text(await runStage($, 'dj'))).toBe(FIGURE_LINE)
+  s.isFailing = true
+  await clock.advance(30_000)
+  expect(text(await runStage($, 'dj'))).not.toContain('timed out')
+})
+
+test('on macOS with Spotify closed at /stage dj on, the prompt that comes once it runs still reads as asking', async ($, on) => {
+  const { clock } = engine(on)
+  const s = spotify(on)
+  s.uname = 'Darwin 27.0.0'
+  s.stdout = '{}'
+  await $.session.start(MAC)
+  expect(text(await runStage($, 'dj on'))).toBe(WAITING)
+  // Spotify starts; the first Apple Event waits on the prompt.
+  s.isFailing = true
+  await clock.advance(30_000)
+  expect(text(await runStage($, 'dj'))).toBe(ASKING)
+})
+
+test('on macOS, denied says where to allow it; allowed, the music comes back at the next read, the denial logged once without stderr', async ($, on) => {
+  const { world, clock } = engine(on)
+  const lines = logs(on)
+  const s = spotify(on)
+  s.uname = 'Darwin 27.0.0'
+  s.exitCode = 1
+  s.stdout = ''
+  s.stderr = 'execution error: Error: Error: An error occurred. (-1743)'
+  await $.session.start(MAC)
+  expect(text(await runStage($, 'dj on'))).toBe(DENIED)
+  expect(world.store.dj).toBe(true)
+  await clock.advance(30_000)
+  expect(text(await runStage($, 'dj'))).toBe(DENIED)
+  s.exitCode = 0
+  s.stdout = PLAYING
+  s.stderr = ''
+  await clock.advance(30_000)
+  expect(text(await runStage($, 'dj'))).toBe(FIGURE_LINE)
+  const failures = lines.filter(line => line.includes('reading Spotify failed'))
+  expect(failures).toEqual(['stage-toons: reading Spotify failed (denied); DJ mode takes it as nothing playing'])
+  expect(lines.some(line => line.includes('-1743') || line.includes('execution error'))).toBe(false)
+})
+
+test('on macOS without Spotify installed, DJ mode waits, and logs no failure', async ($, on) => {
+  engine(on)
+  const lines = logs(on)
+  const s = spotify(on)
+  s.uname = 'Darwin 27.0.0'
+  s.exitCode = 1
+  s.stdout = ''
+  s.stderr = "execution error: Error: Error: Application can't be found. (-2700)"
+  await $.session.start(MAC)
+  expect(text(await runStage($, 'dj on'))).toBe(WAITING)
+  expect(lines.some(line => line.includes('reading Spotify failed'))).toBe(false)
+})
+
+test('on Linux, /stage dj on checks for playerctl, then reads through it', async ($, on) => {
+  engine(on)
+  const s = spotify(on)
+  s.uname = 'Linux 6.8.0-45-generic'
+  s.stdout = LINUX_PLAYING
+  await $.session.start(LINUX)
+  expect(text(await runStage($, 'dj on'))).toBe(FIGURE_LINE)
+  expect(s.checks).toEqual(['uname', 'playerctl'])
+  expect(s.argv[0]!.slice(0, 4)).toEqual(['playerctl', '--player=spotify', 'metadata', '--format'])
+})
+
+test('on Linux with no Spotify player, DJ mode waits and logs no failure', async ($, on) => {
+  engine(on)
+  const lines = logs(on)
+  const s = spotify(on)
+  s.uname = 'Linux 6.8.0-45-generic'
+  s.exitCode = 1
+  s.stdout = ''
+  s.stderr = 'No players found'
+  await $.session.start(LINUX)
+  expect(text(await runStage($, 'dj on'))).toBe(WAITING)
+  expect(lines.some(line => line.includes('reading Spotify failed'))).toBe(false)
+})
+
+test('on Linux without playerctl, DJ mode says so and stays off; installed, the next /stage dj on looks again', async ($, on) => {
+  const { world } = engine(on)
+  const s = spotify(on)
+  s.uname = 'Linux 6.8.0-45-generic'
+  s.stdout = LINUX_PLAYING
+  s.hasPlayerctl = false
+  await $.session.start(LINUX)
+  expect(text(await runStage($, 'dj on'))).toBe('DJ mode on Linux needs playerctl (from your package manager): it reads Spotify through MPRIS.')
+  expect(world.store.dj).toBe(undefined)
+  expect(s.argv).toHaveLength(0)
+  s.hasPlayerctl = true
+  expect(text(await runStage($, 'dj on'))).toBe(FIGURE_LINE)
+  expect(s.checks).toEqual(['uname', 'playerctl', 'uname', 'playerctl'])
+})
+
+test("under WSL DJ mode says Windows' Spotify is out of reach, and runs no playerctl", async ($, on) => {
+  engine(on)
+  const s = spotify(on)
+  s.uname = 'Linux 5.15.153.1-microsoft-standard-WSL2'
+  await $.session.start(LINUX)
+  expect(text(await runStage($, 'dj on'))).toBe("DJ mode can't reach Spotify on Windows from WSL: run Claude Code in a Windows terminal for it.")
+  expect(s.checks).toEqual(['uname'])
+})
+
+test('a uname that times out is not kept: the next /stage dj on asks again', async ($, on) => {
+  engine(on)
+  const s = spotify(on)
+  s.uname = null
+  await $.session.start(MAC)
+  expect(text(await runStage($, 'dj on'))).toBe(NEEDS_TERMINAL)
+  s.uname = 'Darwin 27.0.0'
+  expect(text(await runStage($, 'dj on'))).toBe(FIGURE_LINE)
+  expect(s.checks).toEqual(['uname', 'uname'])
+})
+
+test("a /stage dj typed while the poll's check runs shares that check", async ($, on) => {
+  const { clock } = engine(on, { store: { dj: true } })
+  const s = spotify(on)
+  s.uname = 'Darwin 27.0.0'
+  // The mock clock's sleep is how a test hook answers late: uname answers
+  // at the clock's next 10 ms, after /stage dj has asked.
+  s.unameGate = clock.sleep(10)
+  await $.session.start(MAC)
+  const answer = runStage($, 'dj')
+  await clock.advance(10)
+  expect(text(await answer)).toContain('DJ mode on')
+  await clock.advance(10)
+  expect(s.checks).toEqual(['uname'])
+  expect(s.argv.length).toBeGreaterThan(0)
 })

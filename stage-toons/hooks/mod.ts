@@ -11,6 +11,7 @@ import { createDirector, type Director } from './director'
 import { type Cost, type EntryKey, NO_COST } from './history'
 import { type Music, NO_MUSIC, type PollState, type ReadFailure } from './nowplaying'
 import { DEEP_SLEEP_MS, DOZE_MS } from './idle'
+import type { DjProblem, Platform } from './readers'
 import type { PixelBuffer } from './pixels'
 import { storeKey } from './progress'
 import { type AreaSize, FADE_MS, type SceneId, STAGE_W } from './scene'
@@ -173,8 +174,9 @@ export type Mod = {
   // have heard, when a read last brought another track while one played,
   // when the DJ picture last came on, the helpers on its dance floor,
   // whether it threw (the normal pictures stand in for the load), the poll
-  // loop running (its token: a newer one ends it), and the kinds of failed
-  // read already logged.
+  // loop running (its token: a newer one ends it), the kinds of failed
+  // read already logged, the platform it reads on, and what macOS's
+  // permission left.
   isDj: boolean
   // The DJ picture's full light show (/stage dj party).
   isDjParty: boolean
@@ -185,6 +187,16 @@ export type Mod = {
   isDjBroken: boolean
   djLoop: string | null
   djFailures: Set<ReadFailure>
+  // The platform DJ mode reads on: the check's promise while it runs (a
+  // poll and a command share it), its answer once known, or null before
+  // the first check and after one that isn't kept (a uname that timed
+  // out, Linux without playerctl).
+  platform: Platform | Promise<Platform> | null
+  // What macOS's Automation permission left at the last read, and whether
+  // a read of this load has reached Spotify (a track): a timeout after one
+  // is no prompt.
+  djProblem: DjProblem
+  hasDjRead: boolean
   // Every move runs in turn on this queue.
   queue: Promise<unknown>
 }
@@ -239,6 +251,9 @@ export const createMod = (): Mod => ({
   isDjBroken: false,
   djLoop: null,
   djFailures: new Set(),
+  platform: null,
+  djProblem: null,
+  hasDjRead: false,
   queue: Promise.resolve(),
 })
 
