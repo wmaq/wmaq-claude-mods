@@ -164,6 +164,12 @@ reordered; phase 7, Clawd DJ, in 0.14.0.)
     live probe, as the Windows read was.
 - **8b, a full code review** of the mod and the frame tool (correctness,
   performance, security), and fixes for what it finds.
+- **8b, `/stage help` as a guide to the mod** (the person, 2026-10-08):
+  today it lists the commands only; it should also sum up every feature
+  in Claude Code (the bar and its automatic moves, the scenes, Clawd's
+  pop-ups, the waiting toon, the idle Clawd, Done, calm mode, the width,
+  Clawd DJ, the history and the cost per stage), each with the commands
+  that go with it.
 
 **Phase 9: the release.**
 - Documentation cleanup (CLAUDE.md, the CHANGELOG, `docs/`) and a
