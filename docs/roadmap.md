@@ -169,6 +169,14 @@ reordered; phase 7, Clawd DJ, in 0.14.0.)
 - Documentation cleanup (CLAUDE.md, the CHANGELOG, `docs/`) and a
   README cleanup.
 - A "not affiliated with Anthropic" line.
+- A GIF for the README: the frame tool writing GIFs, or a screen
+  recording.
+- The CHANGELOG made ready for readers (`stage-toons/CHANGELOG.md` has
+  every release since 0.1) and linked from the README.
+- Maybe CI, after a probe: the frame tool's tests need only Node, so they
+  can run on GitHub Actions as they are; whether `claude plugin validate`
+  and `claude plugin test` run there (Claude Code installed on the runner,
+  with or without a sign-in) is unknown.
 - Release tags.
 - The release.
 
@@ -191,10 +199,6 @@ now):
   ["stage-toons"]` gets stage-toons' contract laid into its types and
   reads `progress` and `scene` with `$.state.get` (writes stay the
   owner's).
-- From community readiness (#22), what the release leaves out: a GIF for
-  the README (the frame tool would have to write GIFs, or a screen
-  recording), CI running `validate` and `test`, a CHANGELOG drawn from
-  this roadmap.
 - Achievements for finished stages (#28); a timeline pane for `/stage log`
   and `/stage time` (#19; whether the app places plugin panes for a cloud
   session is unconfirmed); the Svg rendition (#24) for the desktop app
