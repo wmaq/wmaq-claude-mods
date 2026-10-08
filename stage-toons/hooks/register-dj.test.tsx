@@ -408,3 +408,17 @@ test("a /stage dj typed while the poll's check runs shares that check", async ($
   expect(s.checks).toEqual(['uname'])
   expect(s.argv.length).toBeGreaterThan(0)
 })
+
+test("a poll whose platform check isn't kept asks again at the slow pace, and reads once it can", async ($, on) => {
+  const { clock } = engine(on, { store: { dj: true } })
+  const s = spotify(on)
+  s.uname = null
+  await $.session.start(MAC)
+  await clock.advance(10)
+  expect(s.argv).toHaveLength(0)
+  s.uname = 'Darwin 27.0.0'
+  await clock.advance(30_000)
+  expect(s.argv).toHaveLength(1)
+  expect(text(await runStage($, 'dj'))).toBe(FIGURE_LINE)
+  expect(s.checks).toEqual(['uname', 'uname'])
+})

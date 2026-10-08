@@ -24,7 +24,7 @@ import { createMod, djPollState, endDemo, type Mod, queued, reseat, takeWaiting 
 import { animate, type Ports } from './paint'
 import { dealCard } from './deck'
 import { addCost, type Cost, costText, creditAt, currentEntry, logText, NO_COST, timeText, tokensOf } from './history'
-import { COMMAND_READ_MS, heard, isNewTrack, nextDelay, NO_MUSIC, type NowPlaying, READ_TIMEOUT_MS, type ReadFailure, trackText } from './nowplaying'
+import { COMMAND_READ_MS, heard, isNewTrack, nextDelay, NO_MUSIC, type NowPlaying, READ_TIMEOUT_MS, type ReadFailure, SLOW_POLL_MS, trackText } from './nowplaying'
 import { CHECK_TIMEOUT_MS, type Platform, platformOfUname, PLAYERCTL_VERSION_ARGV, problemOf, type Reader, readerFor, UNAME_ARGV } from './readers'
 import { momentOf, phaseOf, whatOf } from './phase'
 import { type KV, loadProgress, PRUNE_EVERY_MS, saveProgress, staleKeys, storeKey, validate } from './progress'
@@ -542,13 +542,22 @@ async function hearMusic($: EngineInterface, mod: Mod, track: NowPlaying | null)
 // DJ mode stays on and this load is the current one; at once first unless
 // the caller has just read. One loop at a time: turning DJ mode off ends
 // it at its next look, and a loop started after that has its own token.
-// It asks the platform first, and ends at once where DJ mode can't read.
+// It asks the platform first, and ends at once where DJ mode can't read
+// (a check that isn't kept is asked again every SLOW_POLL_MS).
 function startPoll($: EngineInterface, mod: Mod, hasRead: boolean) {
   if (mod.djLoop !== null) return
   const token = Math.random().toString(36).slice(2, 10)
   mod.djLoop = token
   void (async () => {
-    const reader = readerFor(await platformOf($, mod))
+    let reader = readerFor(await platformOf($, mod))
+    // A check that isn't kept (uname too slow, playerctl not yet
+    // installed) is asked again at the slow pace while DJ mode stays on.
+    while (reader === null && mod.platform === null && mod.isDj && mod.djLoop === token) {
+      await $.clock.sleep(SLOW_POLL_MS)
+      const id = await read($, loadAtom)
+      if (id !== null && id !== LOAD_ID) return
+      reader = readerFor(await platformOf($, mod))
+    }
     let isFirst = !hasRead
     while (reader !== null && mod.isDj && mod.djLoop === token) {
       if (!isFirst) await $.clock.sleep(nextDelay(djPollState(mod)))
