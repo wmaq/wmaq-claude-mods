@@ -158,8 +158,7 @@ reordered; phase 7, Clawd DJ, in 0.14.0.)
 **Phase 8: pre-release.**
 - **8a, leftovers and Clawd DJ everywhere.**
   - Fix the open leftovers above that are still worth fixing (Clawd DJ's
-    final-review minors included); move the rest to a short "known
-    limits" list or drop them.
+    final-review minors included).
   - Clawd DJ on macOS and Linux: read the playing track with `osascript`
     (macOS) and `playerctl` over MPRIS (Linux), each proven first with a
     live probe, as the Windows read was.
@@ -167,8 +166,8 @@ reordered; phase 7, Clawd DJ, in 0.14.0.)
   performance, security), and fixes for what it finds.
 
 **Phase 9: the release.**
-- Documentation cleanup (CLAUDE.md, CHANGELOG, specs and hand-offs
-  pointed to where they belong) and a README cleanup.
+- Documentation cleanup (CLAUDE.md, the CHANGELOG, `docs/`) and a
+  README cleanup.
 - A "not affiliated with Anthropic" line.
 - Release tags.
 - The release.
