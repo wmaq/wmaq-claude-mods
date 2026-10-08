@@ -1,52 +1,11 @@
-// What Spotify plays, read through Windows' media session (Clawd DJ): the
-// PowerShell script the mod runs, what it prints, and the poll's pace.
-// Pure: register.tsx runs the script with $.process.run.
-
-import { base64 } from './pixels'
+// What Spotify plays, as every platform's reader gives it (Clawd DJ), and
+// what the mod makes of it: the track, the two-misses rule, the poll's
+// pace. Pure: readers.ts has the commands, register.tsx runs them.
 
 export type NowPlaying = { artist: string; title: string; isPlaying: boolean }
 
-// The script, for Windows PowerShell 5.1 (powershell.exe; PowerShell 7
-// can't reach the media session). It prints Spotify's session as compact
-// JSON, { status, artist, title }, or {} when Spotify has none. Spotify
-// names its session after the shortcut it was started from: Spotify.exe
-// (the Start menu, Win+R), a name with Spotify in it (the Microsoft Store
-// edition), or Chromium's per-user id (a taskbar pin that carries it),
-// which every Chromium-embedded app without an id of its own shares: that
-// one counts only while a Spotify process runs. Without the progress line
-// PowerShell writes a progress record to stderr; without the UTF-8 output
-// accented names come garbled.
-export const SCRIPT = String.raw`
-$ProgressPreference = 'SilentlyContinue'
-[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-Add-Type -AssemblyName System.Runtime.WindowsRuntime
-$asTask = [System.WindowsRuntimeSystemExtensions].GetMethods() | ? { $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation${'`'}1' } | select -First 1
-function Await($op, [Type]$t) { $task = $asTask.MakeGenericMethod($t).Invoke($null, @($op)); $task.Wait(-1) | Out-Null; $task.Result }
-$null = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager, Windows.Media.Control, ContentType = WindowsRuntime]
-$mgr = Await ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager])
-$hasSpotify = [bool](Get-Process -Name Spotify -ErrorAction SilentlyContinue)
-$s = $mgr.GetSessions() | ? { $id = $_.SourceAppUserModelId; $id -eq 'Spotify.exe' -or $id -like '*Spotify*' -or ($hasSpotify -and $id -like 'Chromium.*') } | select -First 1
-if (-not $s) { '{}'; exit }
-$p = Await ($s.TryGetMediaPropertiesAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties])
-[pscustomobject]@{ status = "$($s.GetPlaybackInfo().PlaybackStatus)"; artist = $p.Artist; title = $p.Title } | ConvertTo-Json -Compress
-`
-
-// What -EncodedCommand reads: the text's UTF-16LE bytes in base64.
-export function encodeCommand(text: string): string {
-  const bytes = new Uint8Array(text.length * 2)
-  for (let i = 0; i < text.length; i++) {
-    const c = text.charCodeAt(i)
-    bytes[i * 2] = c & 0xff
-    bytes[i * 2 + 1] = c >> 8
-  }
-
-  return base64(bytes)
-}
-
-export const ARGV: readonly string[] = ['powershell.exe', '-NoProfile', '-NonInteractive', '-EncodedCommand', encodeCommand(SCRIPT)]
-
-// What the script printed: the track, or null for {} (no Spotify session),
-// output that isn't the script's JSON, or a session with no title.
+// What a script printed (Windows', macOS'): the track, or null for {} (no
+// Spotify session), output that isn't the scripts' JSON, or no title.
 export function parseNowPlaying(stdout: string): NowPlaying | null {
   let raw: unknown
   try {
@@ -66,19 +25,13 @@ export const trackText = (np: NowPlaying): string => (np.artist ? `${np.artist} 
 export const trackLine = (np: NowPlaying): string => `♪ ${np.artist ? `${np.artist} – ${np.title}` : np.title}`
 
 // Why a read gave nothing: the command didn't start or ran past its time
-// (rejected), it exited with an error (exit), or it printed something
-// that isn't the script's answer (output).
-export type ReadFailure = 'rejected' | 'exit' | 'output'
-
+// (rejected), it exited with an error (exit), it printed something that
+// isn't its answer (output), or macOS's Automation permission is denied
+// (denied).
+export type ReadFailure = 'rejected' | 'exit' | 'output' | 'denied'
 // A finished read: the track, or nothing playing, and what failed if
-// anything did. {} is no failure: Spotify has no session.
-export function outcomeOf(result: { exitCode: number; stdout: string }): { track: NowPlaying | null; failure: ReadFailure | null } {
-  if (result.exitCode !== 0) return { track: null, failure: 'exit' }
-  const track = parseNowPlaying(result.stdout)
-  if (track !== null) return { track, failure: null }
-
-  return { track: null, failure: result.stdout.trim() === '{}' ? null : 'output' }
-}
+// anything did.
+export type Outcome = { track: NowPlaying | null; failure: ReadFailure | null }
 
 // What the mod has heard of the music: the last track read (kept through a
 // pause, and through a read that found none, for the answer), whether the

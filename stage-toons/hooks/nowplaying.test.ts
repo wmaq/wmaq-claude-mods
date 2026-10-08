@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { ARGV, encodeCommand, heard, isNewTrack, nextDelay, NO_MUSIC, outcomeOf, parseNowPlaying, POLL_MS, SCRIPT, SLOW_POLL_MS, trackLine, trackText } from './nowplaying'
+import { heard, isNewTrack, nextDelay, NO_MUSIC, parseNowPlaying, POLL_MS, SLOW_POLL_MS, trackLine, trackText } from './nowplaying'
 
 const FIGURE = { artist: 'Linkin Park', title: 'Figure.09', isPlaying: true }
 const CALX = { artist: 'Aphex Twin', title: 'Yellow Calx', isPlaying: true }
@@ -23,30 +23,6 @@ test('a track as the box writes it, and as /stage dj answers it', () => {
   expect(trackText(FIGURE)).toBe('Linkin Park - Figure.09')
   expect(trackText({ artist: '', title: 'Intro', isPlaying: true })).toBe('Intro')
   expect(trackLine(FIGURE)).toBe('♪ Linkin Park – Figure.09')
-})
-
-test("a read's outcome: the track, nothing playing ({} is no failure), or what failed", () => {
-  expect(outcomeOf({ exitCode: 0, stdout: '{"status":"Playing","artist":"Linkin Park","title":"Figure.09"}' })).toEqual({ track: FIGURE, failure: null })
-  expect(outcomeOf({ exitCode: 0, stdout: '{}\r\n' })).toEqual({ track: null, failure: null })
-  expect(outcomeOf({ exitCode: 0, stdout: 'not json' })).toEqual({ track: null, failure: 'output' })
-  expect(outcomeOf({ exitCode: 1, stdout: '{"status":"Playing","artist":"A","title":"B"}' })).toEqual({ track: null, failure: 'exit' })
-})
-
-test("-EncodedCommand's text is the script's UTF-16LE bytes in base64, as Node writes it", () => {
-  // Buffer.from('Hi ♪', 'utf16le').toString('base64') in Node.
-  expect(encodeCommand('Hi ♪')).toBe('SABpACAAaiY=')
-  expect(ARGV.slice(0, 4)).toEqual(['powershell.exe', '-NoProfile', '-NonInteractive', '-EncodedCommand'])
-  expect(ARGV[4]).toBe(encodeCommand(SCRIPT))
-})
-
-test("the script finds Spotify's session by any of its names, and keeps PowerShell quiet and in UTF-8", () => {
-  expect(SCRIPT).toContain("$id -eq 'Spotify.exe'")
-  expect(SCRIPT).toContain("$id -like '*Spotify*'")
-  expect(SCRIPT).toContain("($hasSpotify -and $id -like 'Chromium.*')")
-  expect(SCRIPT).toContain('Get-Process -Name Spotify')
-  expect(SCRIPT).toContain("ParameterType.Name -eq 'IAsyncOperation`1'")
-  expect(SCRIPT).toContain("$ProgressPreference = 'SilentlyContinue'")
-  expect(SCRIPT).toContain('[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)')
 })
 
 test('the DJ picture stays through one read that says not playing, and goes at the second', () => {
