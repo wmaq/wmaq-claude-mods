@@ -172,6 +172,9 @@ reordered; phase 7, Clawd DJ, in 0.14.0.)
   that go with it.
 
 **Phase 9: the release.**
+- Clawd DJ on Linux, probed: the person runs `docs/ideas/clawd-dj-probe-linux/`
+  on a Linux desktop (the cases in its header), and the readers'
+  "No player" match and the README's "untested" follow what it shows.
 - Documentation cleanup (CLAUDE.md, the CHANGELOG, `docs/`) and a
   README cleanup.
 - A "not affiliated with Anthropic" line.

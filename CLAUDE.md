@@ -202,6 +202,20 @@ Learned building Clawd DJ on 2.1.293:
   id (`Chromium.<base32 of the MD5 of the user's SID>`) from a taskbar
   pin that carries it. It gives Windows only a track's first artist.
 
+Learned porting Clawd DJ to macOS on 2.1.295:
+
+- There is no platform API: stage-toons knows Windows from the cwd and
+  runs `uname -sr` elsewhere (`Darwin …`, `Linux …`, WSL's release names
+  `microsoft`).
+- `osascript` from `$.process.run` works on macOS, with no window. Its
+  first Apple Event to an app raises macOS's Automation prompt, which
+  names the terminal app (the process responsible: Ghostty, even through
+  a multiplexer), and the read **waits on the prompt** until its timeout;
+  the dialog outlives the killed read. Denied, it exits 1 with `(-1743)`
+  in stderr; an app that isn't installed, `(-2700)`.
+- In JXA, `Application('X').running()` sends no Apple Event and launches
+  nothing; anything asked of the app itself launches it.
+
 ### The test kit (`claude-code/testing`)
 
 - Register every test hook before the test's first `$` call.

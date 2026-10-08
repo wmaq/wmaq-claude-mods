@@ -93,7 +93,7 @@ You can move it yourself with `/stage`:
 | `/stage auto [on \| off]` | Show the rules that move the stage by itself; turn them on or off |
 | `/stage bubbles [on \| off]` | Whether Clawd's pop-ups show: what Claude is doing over his head, and what he says |
 | `/stage calm [on \| off]` | Whether the cartoons hold still, changing only when something happens (off by default) |
-| `/stage dj [on \| off]` | Clawd DJ: while Spotify plays, Clawd at the decks and the track's name (Windows; off by default) |
+| `/stage dj [on \| off]` | Clawd DJ: while Spotify plays, Clawd at the decks and the track's name (Windows, macOS, Linux; off by default) |
 | `/stage dj party [on \| off]` | The DJ's full light show: speakers, floor, booth and box lighting up with the beat (off by default) |
 | `/stage width [<n> \| full]` | How wide the cartoons may grow under the bar: up to n columns (120 by default; 48 to 512), or the band's whole width |
 | `/stage log [n]` | The last n moves (15; up to 200) with how long each stage lasted |
@@ -275,18 +275,18 @@ same one every 2 s, to learn that the area still shows).
 
 ## Clawd DJ
 
-`/stage dj on` (Windows, in the terminal) has Clawd DJ while Spotify
-plays, for every project: behind a booth with two turntables, in
-headphones, bobbing to a 120 BPM beat (the media session gives no
-tempo, so it follows the song only when the song is near 120), speakers
-and a mirror ball over a dance floor. It plays on every stage, between
-turns and while agents work: their helpers come down to the dance floor
-and dance. Clawd's pop-ups show over his head as usual. From 72 columns
-a box by the mirror ball names the track, up to 60 characters (a longer
-title scrolls; calm mode holds it, cut with `~`); a new track swaps the
-record and brightens the box once. When Spotify pauses or closes, the
-usual cartoons come back a read later. `/stage dj` says what it last
-heard; `/stage dj off` stops it.
+`/stage dj on` (in a terminal on Windows, macOS or Linux) has Clawd DJ
+while Spotify plays, for every project: behind a booth with two
+turntables, in headphones, bobbing to a 120 BPM beat (the media session
+gives no tempo, so it follows the song only when the song is near 120),
+speakers and a mirror ball over a dance floor. It plays on every stage,
+between turns and while agents work: their helpers come down to the
+dance floor and dance. Clawd's pop-ups show over his head as usual. From
+72 columns a box by the mirror ball names the track, up to 60 characters
+(a longer title scrolls; calm mode holds it, cut with `~`); a new track
+swaps the record and brightens the box once. When Spotify pauses or
+closes, the usual cartoons come back a read later. `/stage dj` says what
+it last heard; `/stage dj off` stops it.
 
 The booth is gentle by default, for long coding sessions: the lights
 hold steady while Clawd, the records, the notes and the dancers move.
@@ -294,15 +294,28 @@ hold steady while Clawd, the records, the notes and the dancers move.
 the floor tiles and the booth's LEDs blink, the mirror ball glints and
 the box's frame pulses. Nothing flashes faster than twice a second.
 
-It reads Spotify through Windows' media session with Windows PowerShell
-(`powershell.exe`, part of Windows): no Spotify account, app or token.
-A read takes about 0.3 s, every 5 s while the area shows and every 30 s
-while it doesn't or Clawd sleeps with nothing playing. The track stays
-in memory: it isn't saved, logged or sent to Claude. The box writes
-Latin letters (with accents, Polish ones too), Greek and Cyrillic;
+How it reads Spotify, with no Spotify account, app or token:
+
+- **Windows:** through Windows' media session with Windows PowerShell
+  (`powershell.exe`, part of Windows). Spotify tells Windows only a
+  track's first artist, so a track by two shows the first.
+- **macOS:** through `osascript` (part of macOS). The first time it finds
+  Spotify running, macOS asks whether your terminal (Ghostty, iTerm,
+  Terminal…) may control Spotify; allow it and the music shows. Through
+  tmux or another multiplexer, it is the terminal that started it that
+  asks. With Spotify closed at `/stage dj on`, the question comes later,
+  when Spotify first runs. If you said no, `/stage dj` says where to
+  switch it on: System Settings › Privacy & Security › Automation, under
+  your terminal's name; the music shows at the next read.
+- **Linux (untested):** through `playerctl` (MPRIS), which your package
+  manager has. Under WSL, Spotify plays on the Windows side, out of
+  reach: run Claude Code in a Windows terminal for it.
+
+A read takes about 0.1 to 0.3 s, every 5 s while the area shows and
+every 30 s while it doesn't or Clawd sleeps with nothing playing. The
+track stays in memory: it isn't saved, logged or sent to Claude. The box
+writes Latin letters (with accents, Polish ones too), Greek and Cyrillic;
 other characters (Japanese, Chinese, Korean, emoji) show as `?`.
-Spotify tells Windows only a track's first artist, so a track by two
-shows the first.
 
 ## Your own workflow
 
