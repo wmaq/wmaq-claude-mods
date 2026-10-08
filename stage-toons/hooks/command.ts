@@ -5,6 +5,7 @@ import { ruleText } from './auto'
 import { DEMO_MAX, DEMO_MIN, DEMO_SECONDS, DJ_DEMO_SECONDS, WORK_DEMO_SECONDS } from './demo'
 import { ago, LOG_DEFAULT } from './history'
 import { type Music, trackLine } from './nowplaying'
+import type { DjProblem, Platform } from './readers'
 import { applyMove, backStage, describe, HISTORY_MAX, nextStage, parseStage, stageLabel } from './stages'
 import { isWaitingScene, WAITING_SCENE_IDS, type WaitingSceneId } from './waiting/deal'
 import { DEFAULT_WIDTH, parseWidth, WIDTH_MAX, widthSettingWords } from './width'
@@ -62,7 +63,7 @@ export function usage(w: Workflow): string {
     "  /stage auto [on | off]  show the workflow's rules for moving the stage by itself; turn them on or off",
     "  /stage bubbles [on | off]  whether Clawd's pop-ups show: what Claude is doing over his head, and what he says",
     '  /stage calm [on | off]  whether the cartoons hold still, changing only when something happens',
-    "  /stage dj [on | off]    Clawd DJ: while Spotify plays, Clawd at the decks and the track's name (Windows)",
+    "  /stage dj [on | off]    Clawd DJ: while Spotify plays, Clawd at the decks and the track's name (Windows, macOS, Linux)",
     "  /stage dj party [on | off]  the DJ's full light show: speakers, floor, booth and box lighting up with the beat (off by default)",
     `  /stage width [<n> | full]  how wide the cartoons may grow under the bar (${DEFAULT_WIDTH} columns by default, ${WIDTH_MAX} at most)`,
     `  /stage log [n]          the last n moves (${LOG_DEFAULT}; up to ${HISTORY_MAX}) with how long each stage lasted`,
@@ -268,14 +269,32 @@ export function calmText(isOn: boolean, fileCalm?: boolean): string {
   return fileCalm === undefined ? state : `${state} This project's workflow file starts it ${fileCalm ? 'on' : 'off'}.`
 }
 
+// Where DJ mode can't read, and macOS's Automation permission (Clawd DJ
+// everywhere).
+export const DJ_NEEDS_TERMINAL = 'DJ mode needs Claude Code in a terminal on Windows, macOS or Linux.'
+export const DJ_NEEDS_PLAYERCTL = 'DJ mode on Linux needs playerctl (from your package manager): it reads Spotify through MPRIS.'
+export const DJ_NO_WSL = "DJ mode can't reach Spotify on Windows from WSL: run Claude Code in a Windows terminal for it."
+export const DJ_ASKING = 'DJ mode on: reading Spotify timed out. If macOS is asking whether your terminal may control Spotify, allow it, and the music shows.'
+export const DJ_DENIED = "DJ mode on, but macOS doesn't let your terminal control Spotify: switch it on in System Settings › Privacy & Security › Automation, under your terminal's name."
+
+// Why DJ mode can't read on a platform readerFor has no reader for.
+export function djBlockedText(platform: Platform): string {
+  if (platform === 'linux-missing') return DJ_NEEDS_PLAYERCTL
+  if (platform === 'wsl') return DJ_NO_WSL
+
+  return DJ_NEEDS_TERMINAL
+}
+
 // /stage dj's answer: whether DJ mode is on, and what the last read
 // heard. The track goes to the person only (the answer's text, never
-// Claude's context).
-export const DJ_NEEDS_WINDOWS = "DJ mode needs Claude Code in a Windows terminal: it reads Spotify through Windows' media session."
-// isBroken: the DJ picture failed this load, and the usual cartoons show.
-export function djText(isOn: boolean, music: Music, isBroken = false): string {
+// Claude's context). isBroken: the DJ picture failed this load, and the
+// usual cartoons show. problem: what macOS's Automation permission left
+// (asking, denied).
+export function djText(isOn: boolean, music: Music, isBroken = false, problem: DjProblem = null): string {
   if (!isOn) return "DJ mode is off. /stage dj on: while Spotify plays, Clawd DJs and the track's name shows."
   if (isBroken) return 'DJ mode on, but the DJ picture failed this session (the debug log says why): the usual cartoons show. /stage dj on tries again.'
+  if (problem === 'asking') return DJ_ASKING
+  if (problem === 'denied') return DJ_DENIED
   if (music.isPlaying && music.track) return `DJ mode on: ${trackLine(music.track)}`
 
   return 'DJ mode on: waiting for Spotify to play. /stage dj off turns it off.'

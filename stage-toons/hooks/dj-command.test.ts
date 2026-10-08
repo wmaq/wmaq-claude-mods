@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { djPartyText, djText, parseCommand, unknownText } from './command'
+import { DJ_ASKING, DJ_DENIED, DJ_NEEDS_PLAYERCTL, DJ_NEEDS_TERMINAL, DJ_NO_WSL, djBlockedText, djPartyText, djText, parseCommand, unknownText } from './command'
 import { demoFor, DJ_DEMO_CHANGE_MS, DJ_DEMO_SECONDS, DJ_DEMO_TRACKS, djDemoAt, startDemo } from './demo'
 import { createMod } from './mod'
 import { heard, NO_MUSIC, type NowPlaying } from './nowplaying'
@@ -41,6 +41,26 @@ test("/stage dj's answer: off, waiting for Spotify, or the track playing", () =>
   // answer says so rather than naming a track that isn't drawn.
   expect(djText(true, heard(NO_MUSIC, FIGURE), true)).toBe('DJ mode on, but the DJ picture failed this session (the debug log says why): the usual cartoons show. /stage dj on tries again.')
   expect(djText(false, NO_MUSIC, true)).toBe("DJ mode is off. /stage dj on: while Spotify plays, Clawd DJs and the track's name shows.")
+})
+
+test("/stage dj's answer while macOS's Automation permission is asked for or denied; the track once a read goes through", () => {
+  expect(DJ_ASKING).toBe('DJ mode on: reading Spotify timed out. If macOS is asking whether your terminal may control Spotify, allow it, and the music shows.')
+  expect(DJ_DENIED).toBe("DJ mode on, but macOS doesn't let your terminal control Spotify: switch it on in System Settings › Privacy & Security › Automation, under your terminal's name.")
+  expect(djText(true, NO_MUSIC, false, 'asking')).toBe(DJ_ASKING)
+  expect(djText(true, NO_MUSIC, false, 'denied')).toBe(DJ_DENIED)
+  expect(djText(true, heard(NO_MUSIC, FIGURE), false, null)).toBe('DJ mode on: ♪ Linkin Park – Figure.09')
+  // Off says off, whatever the last read left; a broken picture says so first.
+  expect(djText(false, NO_MUSIC, false, 'denied')).toBe("DJ mode is off. /stage dj on: while Spotify plays, Clawd DJs and the track's name shows.")
+  expect(djText(true, NO_MUSIC, true, 'denied')).toContain('the DJ picture failed this session')
+})
+
+test("where DJ mode can't read: no terminal or another OS, Linux without playerctl, WSL", () => {
+  expect(DJ_NEEDS_TERMINAL).toBe('DJ mode needs Claude Code in a terminal on Windows, macOS or Linux.')
+  expect(DJ_NEEDS_PLAYERCTL).toBe('DJ mode on Linux needs playerctl (from your package manager): it reads Spotify through MPRIS.')
+  expect(DJ_NO_WSL).toBe("DJ mode can't reach Spotify on Windows from WSL: run Claude Code in a Windows terminal for it.")
+  expect(djBlockedText('none')).toBe(DJ_NEEDS_TERMINAL)
+  expect(djBlockedText('linux-missing')).toBe(DJ_NEEDS_PLAYERCTL)
+  expect(djBlockedText('wsl')).toBe(DJ_NO_WSL)
 })
 
 test('the DJ demo: a long title, the second track from 8 s, two dancers where the floor has room', () => {

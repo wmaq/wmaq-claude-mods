@@ -113,7 +113,7 @@ test('off Windows DJ mode stays off, with no read', async ($, on) => {
   const { world } = engine(on)
   const s = spotify(on)
   await $.session.start({ ...START, cwd: '/home/me/proj' })
-  expect(text(await runStage($, 'dj on'))).toBe("DJ mode needs Claude Code in a Windows terminal: it reads Spotify through Windows' media session.")
+  expect(text(await runStage($, 'dj on'))).toBe('DJ mode needs Claude Code in a terminal on Windows, macOS or Linux.')
   expect(s.argv).toHaveLength(0)
   expect(world.store.dj).toBe(undefined)
   expect(text(await runStage($, 'dj'))).toBe(OFF)
@@ -125,7 +125,7 @@ test('kept on from a Windows session, DJ mode off Windows says it needs Windows,
   await $.session.start({ ...START, cwd: '/home/me/proj' })
   await clock.advance(60_000)
   expect(s.argv).toHaveLength(0)
-  expect(text(await runStage($, 'dj'))).toBe("DJ mode needs Claude Code in a Windows terminal: it reads Spotify through Windows' media session.")
+  expect(text(await runStage($, 'dj'))).toBe('DJ mode needs Claude Code in a terminal on Windows, macOS or Linux.')
 })
 
 test('while Spotify plays the area shows the DJ picture and its box; one paused read keeps it, the second gives the area back', async ($, on) => {
@@ -212,6 +212,6 @@ test('/stage demo dj plays Clawd DJ with its line under the bar; dj is in the he
   await mountBand($)
   expect(text(await runStage($, 'demo dj'))).toBe('Playing Clawd DJ for 20 s: a long title, a track change, two helpers dancing. /stage demo stop ends it.')
   expect(await bandText($)).toContain('DJ demo: Clawd at the decks · /stage demo stop ends it')
-  expect(text(await runStage($, 'help'))).toContain("/stage dj [on | off]    Clawd DJ: while Spotify plays, Clawd at the decks and the track's name (Windows)")
+  expect(text(await runStage($, 'help'))).toContain("/stage dj [on | off]    Clawd DJ: while Spotify plays, Clawd at the decks and the track's name (Windows, macOS, Linux)")
   expect(text(await runStage($, 'help'))).toContain("/stage dj party [on | off]  the DJ's full light show: speakers, floor, booth and box lighting up with the beat")
 })
