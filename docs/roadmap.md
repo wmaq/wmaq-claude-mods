@@ -8,17 +8,17 @@ the workflow's step 10).
 
 ### Where things stand
 
-0.14.0 is on `main`: automatic moves and history with cost per stage, 41
+0.15.0 is on `main`: automatic moves and history with cost per stage, 41
 scenes dealt like a deck and played in the area below the bar with Z
 layers and a dissolve at every change of picture, an area that grows with
 the terminal (`/stage width`) with scenes that spread their action across
-it, calm mode (`/stage calm`), Clawd DJ while Spotify plays (`/stage dj`), Clawd's pop-ups for the work at hand and a
+it, calm mode (`/stage calm`), Clawd DJ while Spotify plays on Windows, macOS and Linux (`/stage dj`), Clawd's pop-ups for the work at hand and a
 task count on the bar, four waiting scenes seating up to 8 helpers, 5 idle
 routines with a prop show-off and a celebration, Done after a merge,
 per-project settings, and the frame tool (`tools/frames/`) for checking
 the drawing from a cloud session. Phases 1 to 4, 6 and 7 of the plan below
-are done; what is left is the pre-release (8a, then 8b) and the release
-(9). History: `stage-toons/CHANGELOG.md`. Sources for what comes next:
+are done, and 8a's first half (Clawd DJ on macOS and Linux); what is left
+is the pre-release (8a's leftovers, then 8b) and the release (9). History: `stage-toons/CHANGELOG.md`. Sources for what comes next:
 the research report
 (`docs/research/2026-10-04-stage-toons-improvement-ideas.md`, ideas
 #1-#30) and the code review (`docs/reviews/2026-10-04-code-review.md`).
@@ -117,6 +117,16 @@ line). `toon.ts`, `TOON_ROWS` and `TOON_MIN` keep
   answers "Playing" and ends at once; `hearSkill`'s local `heard`
   shadows `nowplaying`'s. After a hot reload with music playing, the
   area dissolves to the usual picture and back within the first read.
+- **Clawd DJ everywhere (8a, the final review's minors):** after a
+  `uname` that timed out, `/stage dj on` tells a person in a macOS
+  terminal that DJ mode "needs a terminal on Windows, macOS or Linux"
+  (a retry fixes it); a read in flight after `/stage dj off` rewrites
+  `djProblem`, `music` and `hasDjRead` (harmless: the answers and the
+  picture look at `isDj`); `DJ_NEEDS_PLAYERCTL` and the README don't say
+  to type `/stage dj on` again once playerctl is installed; no test of
+  `/stage dj off` while a check or read runs, and `register-dj` compares
+  the Windows argv's first four elements only; `Outcome` and
+  `ReadFailure` could move from `nowplaying.ts` to `readers.ts`.
 
 ### The plan after the frame tool (agreed 2026-10-04, reordered 2026-10-06)
 
@@ -153,15 +163,13 @@ place, in 0.9.0; 4b, smoother scenes, in 0.10.0; 4c, Clawd follows the
 work, and 4d, more waiting scenes, together in 0.11.0; 4e, a wider
 canvas (#25), in 0.12.0, which finished phase 4, richer art; phase 6,
 calm mode (#10) and scene polish, in 0.13.0, ahead of phase 5 as
-reordered; phase 7, Clawd DJ, in 0.14.0.)
+reordered; phase 7, Clawd DJ, in 0.14.0; 8a's first half, Clawd DJ on
+macOS and Linux, in 0.15.0.)
 
 **Phase 8: pre-release.**
-- **8a, leftovers and Clawd DJ everywhere.**
-  - Fix the open leftovers above that are still worth fixing (Clawd DJ's
-    final-review minors included).
-  - Clawd DJ on macOS and Linux: read the playing track with `osascript`
-    (macOS) and `playerctl` over MPRIS (Linux), each proven first with a
-    live probe, as the Windows read was.
+- **8a, the leftovers** (Clawd DJ on macOS and Linux, its first half,
+  shipped in 0.15.0): fix the open leftovers above that are still worth
+  fixing (Clawd DJ's final-review minors included, both rounds).
 - **8b, a full code review** of the mod and the frame tool (correctness,
   performance, security), and fixes for what it finds.
 - **8b, `/stage help` as a guide to the mod** (the person, 2026-10-08):

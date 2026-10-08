@@ -6,6 +6,29 @@ release (departures from the spec, review findings, live checks) are in its
 spec and plan under `docs/superpowers/`, the hand-offs in `docs/handoffs/`
 and the git history.
 
+## 0.15.0 (2026-10-09)
+
+Roadmap phase 8a, its first half: Clawd DJ on macOS and Linux, built and
+tested live on a Mac with the person (Spotify playing, paused, quit,
+denied then allowed). Spec:
+`docs/superpowers/specs/2026-10-09-clawd-dj-everywhere-design.md`; plan:
+`docs/superpowers/plans/2026-10-09-clawd-dj-everywhere.md`; the probes:
+`docs/ideas/clawd-dj-probe-macos/`, `docs/ideas/clawd-dj-probe-linux/`.
+- **`/stage dj` on macOS**, through `osascript` (JXA): it asks whether
+  Spotify runs before asking Spotify, so it never launches it. The first
+  read raises macOS's Automation prompt for the terminal; `/stage dj`
+  says so while it waits, and where to switch it on if it was denied.
+  Allowed later, the music comes back at the next read, with no command.
+- **`/stage dj` on Linux (untested)**, through `playerctl` over MPRIS;
+  without playerctl, or under WSL, `/stage dj on` says what it needs.
+  The Linux probe runs before the release (phase 9).
+- One reader per platform (`hooks/readers.ts`), all ending in the same
+  track, so the scene, the box and the poll are unchanged. The platform
+  comes from `uname -sr`, once per load, shared while it runs; a check
+  that didn't answer is asked again (the final review's finding).
+- Not seen live: Spotify open with nothing loaded (the script answers
+  nothing playing; unit-tested).
+
 ## 0.14.0 (2026-10-08)
 
 Roadmap phase 7, Clawd DJ, built locally (it reads the person's Spotify)
