@@ -17,15 +17,16 @@ task count on the bar, four waiting scenes seating up to 8 helpers, 5 idle
 routines with a prop show-off and a celebration, Done after a merge,
 per-project settings, and the frame tool (`tools/frames/`) for checking
 the drawing from a cloud session. Phases 1 to 4, 6 and 7 of the plan below
-are done; phase 5, easy to extend, is next. History: `stage-toons/CHANGELOG.md`. Sources for what
-comes next: the research report
+are done; what is left is the pre-release (8a, then 8b) and the release
+(9). History: `stage-toons/CHANGELOG.md`. Sources for what comes next:
+the research report
 (`docs/research/2026-10-04-stage-toons-improvement-ideas.md`, ideas
 #1-#30) and the code review (`docs/reviews/2026-10-04-code-review.md`).
 
 ### Open leftovers, not scheduled
 
 Minor findings accepted as they are; pick them up when work passes by.
-Phase 8's cleanup takes the ones still worth fixing. Leftovers the plan
+Phase 8a fixes the ones still worth fixing. Leftovers the plan
 schedules are listed in their phase instead.
 - **Waiting toon (0.5):** with the waiting toon broken (it threw), the idle
   routine stands in and can doze while agents still work. `/stage demo
@@ -140,6 +141,10 @@ Decided in the discussions:
   scenes and other mods are easy to add; then calm mode and scene polish,
   then Clawd DJ; a full review, cleanup and community readiness close the
   plan, and then a release. Everything else is parked.
+- **To the release (2026-10-08).** Phase 5 (scene authoring, presets and
+  the stage contract) moved to parked. Two phases are left: a pre-release
+  in two parts (the leftovers and Clawd DJ on macOS and Linux, then a full
+  code review and its fixes) and the release.
 
 The phases run in order; each feature takes the full workflow, spec and
 plan included. (Phases 1 and 2, the polish pass and the hook wins, shipped
@@ -150,45 +155,61 @@ canvas (#25), in 0.12.0, which finished phase 4, richer art; phase 6,
 calm mode (#10) and scene polish, in 0.13.0, ahead of phase 5 as
 reordered; phase 7, Clawd DJ, in 0.14.0.)
 
-**Phase 5: easy to extend.**
-- **Scene authoring** (#26): a data format for scenes (sprites and
-  keyframed actors), a sandboxed interpreter, `/stage preview <scene>`, a
-  validation harness and a skill that teaches an agent to make one, so new
-  scenes are easy to add. Large: claude-toons needed about 3,000 lines for
-  this.
-- **Workflow presets** (#18): a file that "extends the default", and
-  presets for spec-kit and Kiro.
-- **A public stage contract** (#30): document the stage state other mods
-  can read (the existing `PluginState` keys) first; a `$.stage` noun or a
-  `stage-toons:auditor` agent type later, if other mods need more. The
-  scene format and the presets file are contracts too, so they are
-  documented to the same standard.
+**Phase 8: pre-release.**
+- **8a, leftovers and Clawd DJ everywhere.**
+  - Fix the open leftovers above that are still worth fixing (Clawd DJ's
+    final-review minors included); move the rest to a short "known
+    limits" list or drop them.
+  - Clawd DJ on macOS and Linux: read the playing track with `osascript`
+    (macOS) and `playerctl` over MPRIS (Linux), each proven first with a
+    live probe, as the Windows read was.
+- **8b, a full code review** of the mod and the frame tool (correctness,
+  performance, security), and fixes for what it finds.
 
-**Phase 8: review, cleanup and community readiness, then a release.**
-- A full code review of the mod and the frame tool.
-- Clean up the open leftovers above that are still worth fixing.
-- Documentation cleanup (README, CLAUDE.md, CHANGELOG) and a full test
-  pass.
-- **Community readiness** (#22): a GIF for the README, a CHANGELOG drawn
-  from this roadmap, release tags, CI running `validate` and `test`, a
-  "not affiliated with Anthropic" line. The GIF needs the frame tool to
-  write GIFs (out of its first scope) or a screen recording.
-- Then a release.
+**Phase 9: the release.**
+- Documentation cleanup (CLAUDE.md, CHANGELOG, specs and hand-offs
+  pointed to where they belong) and a README cleanup.
+- A "not affiliated with Anthropic" line.
+- Release tags.
+- The release.
 
-**Parked** (2026-10-06, the person: not in the plan for now):
-achievements for finished stages (#28); a timeline pane for `/stage log`
-and `/stage time` (#19; whether the app places plugin panes for a cloud
-session is unconfirmed); the Svg rendition (#24) for the desktop app (the only
-element known to reach it; needs the person's devices to check first),
-VS Code and mobile; #13 (un-defer `set_stage`: tokens on every request for
-one tool); #14 (a status line; off by default if ever built). From Clawd
-DJ's design (2026-10-07, the person): more players than Spotify (Windows'
-current media session, or a setting); Japanese, Chinese and Korean titles
-(wide characters) in the now-playing box; a `$.process.spawn` watcher in
-place of the poll (needs a probe of its life across a hot reload and
-`/clear`); macOS and Linux reads (osascript; playerctl over MPRIS), each
-needing a probe; following the song's tempo (the media session gives
-none: it would take audio analysis outside the mod's sandbox).
+**Parked** (the person, 2026-10-06 and 2026-10-08: not in the plan for
+now):
+- **Scene authoring** (#26; phase 5 until 2026-10-08): a data format for
+  scenes (sprites and keyframed actors), a sandboxed interpreter, `/stage
+  preview <scene>`, a validation harness and a skill that teaches an agent
+  to make one. Large: claude-toons needed about 3,000 lines for this.
+- **Workflow presets** (#18; parked 2026-10-06, Claude Code first): a
+  workflow file that builds on a preset. Agreed before it was parked:
+  `"extends": "<preset>"`, and `track` and `side` as lists in which a bare
+  id keeps the preset's stage, an object with a preset id changes only the
+  fields it gives, a new id adds a whole stage, and a stage left out is
+  dropped. The spec-kit and Kiro presets are dropped.
+- **A public stage contract** (#30; parked with #18): document the
+  `PluginState` keys other mods can read; a `$.stage` noun or a
+  `stage-toons:auditor` agent type later, if needed. A probe on 2.1.292
+  showed it works today: a mod whose `plugin.json` lists `"dependencies":
+  ["stage-toons"]` gets stage-toons' contract laid into its types and
+  reads `progress` and `scene` with `$.state.get` (writes stay the
+  owner's).
+- From community readiness (#22), what the release leaves out: a GIF for
+  the README (the frame tool would have to write GIFs, or a screen
+  recording), CI running `validate` and `test`, a CHANGELOG drawn from
+  this roadmap.
+- Achievements for finished stages (#28); a timeline pane for `/stage log`
+  and `/stage time` (#19; whether the app places plugin panes for a cloud
+  session is unconfirmed); the Svg rendition (#24) for the desktop app
+  (the only element known to reach it; needs the person's devices to
+  check first), VS Code and mobile; #13 (un-defer `set_stage`: tokens on
+  every request for one tool); #14 (a status line; off by default if ever
+  built).
+- From Clawd DJ's design (2026-10-07, the person): more players than
+  Spotify (Windows' current media session, or a setting); Japanese,
+  Chinese and Korean titles (wide characters) in the now-playing box; a
+  `$.process.spawn` watcher in place of the poll (needs a probe of its
+  life across a hot reload and `/clear`); following the song's tempo (the
+  media session gives none: it would take audio analysis outside the
+  mod's sandbox).
 
 **Dropped:** #29 (pet or drag Clawd with the pointer; the person,
 2026-10-05: not worth it in a terminal). **Ruled out** by the research:
