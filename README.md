@@ -12,6 +12,8 @@ hooks that change what Claude Code shows and does. They need Claude Code
 |---|---|---|
 | [stage-toons](stage-toons/README.md) | A stepped progress bar of your development workflow above the prompt, with pixel-art cartoons of Clawd while Claude works | 1.0.0 ([changes](stage-toons/CHANGELOG.md)) |
 
+![Clawd DJ: Clawd at the decks while Spotify plays, switched on with /stage dj](docs/media/clawd-dj.gif)
+
 The repository is a plugin marketplace:
 
 ```sh

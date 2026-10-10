@@ -15,7 +15,8 @@ before the next one starts:
 
 1. Roadmap discussion / new features brainstorming
 2. Brainstorm one feature (superpowers:brainstorming)
-3. Spec, in `docs/superpowers/specs/`
+3. Spec, in `docs/superpowers/specs/` (git-ignored, as are the plans: the
+   working papers stay local and are never committed)
 4. Spec audit: a Fable subagent (Agent tool, `model: fable`) reviews the
    spec; apply what holds up, then the user approves
 5. Plan, in `docs/superpowers/plans/` (superpowers:writing-plans)

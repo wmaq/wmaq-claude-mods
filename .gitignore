@@ -3,3 +3,5 @@ frames-*.png
 # A type-check without noEmit writes .js beside the sources; tsx then loads
 # it instead of the .ts (the mods are TypeScript only).
 */hooks/**/*.js
+# Specs and plans are working papers, kept local.
+docs/superpowers/
