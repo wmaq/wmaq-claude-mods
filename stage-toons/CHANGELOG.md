@@ -1,12 +1,39 @@
 # Changelog
 
-What each stage-toons release shipped, newest first. What is still ahead,
-and the open leftovers, are in `docs/roadmap.md`. The details of each
-release (departures from the spec, review findings, live checks) are in its
-spec and plan under `docs/superpowers/`, the hand-offs in `docs/handoffs/`
-and the git history.
+What each stage-toons release shipped, newest first. What is still ahead
+is in [`docs/roadmap.md`](../docs/roadmap.md).
 
-## 0.17.0 (2026-10-10)
+## 1.0.0 (2026-10-10)
+
+The first public release. Nothing changed in the mod since 0.17.0; this
+release is about the repository: a README to start from, CI, a license
+at the root, and tags for every release. What 1.0.0 is, in short:
+- **A stepped bar of your workflow** above the prompt (ten stages from
+  roadmap to cleanup, two side stages, and Done past the end, or your own
+  in `.claude/stage-toons.json`). Claude moves it with a `set_stage`
+  tool, you with `/stage`, and rules move it by themselves on plain
+  steps: a skill loaded, a spec or plan written, a Fable audit, a merge.
+- **Clawd below the bar:** 41 pixel-art scenes dealt per stage while
+  Claude works, with what Claude is doing over his head and a line at
+  key moments; five idle routines and a doze between turns, a prop when
+  a step is finished and a celebration in Done; a desk row of helpers in
+  their models' colours while agents work, in four scenes; Clawd DJ while
+  Spotify plays (Windows, macOS, Linux); calm mode; an area as wide as
+  you let it.
+- **History:** `/stage log` and `/stage time`, with the time and the cost
+  of every stage, per feature.
+- **Cheap:** no model requests; a system prompt section of about 270
+  tokens.
+
+## Development releases
+
+Before 1.0 the mod was built in a private repository, a release every
+day or two. The entries below are that log, in the words of the time;
+the details (departures from the spec, review findings, live checks) are
+in each release's spec and plan under `docs/superpowers/`, the hand-offs
+in `docs/handoffs/` and the git history.
+
+### 0.17.0 (2026-10-10)
 
 Roadmap phase 8b, the pre-release's second half: a full code review and
 its fixes, and `/stage help` as a guide, each from a short design in
@@ -34,7 +61,7 @@ branch, which found a gap in the first S1 fix.
   dead code went, one hash serves eight scenes, and the test files are
   named by subject. The review's minor items are on the roadmap.
 
-## 0.16.0 (2026-10-10)
+### 0.16.0 (2026-10-10)
 
 Roadmap phase 8a, its second half: the open leftovers worth fixing,
 picked with the person from the list every release since 0.5 had left
@@ -49,7 +76,9 @@ herdr).
   `-q` push shows nothing either, and a push of several branches counts
   the first). The default moves to Done on `push main`, `push master`
   or `gh pr merge`; a workflow file from `/stage workflow init` before
-  0.16 keeps its older `bash` rule (the README says how to change it).
+  0.16 keeps its older `bash` rule, which also fires on a push that
+  didn't go through: change it to `{ "push": "main", "from":
+  ["user-test", "cleanup"] }`.
 - Leaving Done for a new round, Claude's note asks for the new
   feature's name (a reopen doesn't); `/stage demo idle` gives each prop
   one whole 6 s loop.
@@ -69,7 +98,7 @@ herdr).
   some); on a wide room the DJ's dancers walk in from behind the far
   speaker.
 
-## 0.15.0 (2026-10-09)
+### 0.15.0 (2026-10-09)
 
 Roadmap phase 8a, its first half: Clawd DJ on macOS and Linux, built and
 tested live on a Mac with the person (Spotify playing, paused, quit,
@@ -94,7 +123,7 @@ denied then allowed). Spec:
 - Not seen live: Spotify open with nothing loaded (the script answers
   nothing playing; unit-tested).
 
-## 0.14.0 (2026-10-08)
+### 0.14.0 (2026-10-08)
 
 Roadmap phase 7, Clawd DJ, built locally (it reads the person's Spotify)
 from a cloud session's mock of the scene, and tested live against
@@ -135,7 +164,7 @@ first, then cut into tasks and replayed byte for byte); the mock:
   command's read inside its budget; a broken DJ picture said so and
   retried). The live test passed every check on the person's terminal.
 
-## 0.13.0 (2026-10-07)
+### 0.13.0 (2026-10-07)
 
 Roadmap phase 6, calm mode (6a) and scene polish (6b, 6c), built by a
 cloud session and tested locally, every check passing with no code
@@ -167,7 +196,7 @@ tests: `docs/handoffs/2026-10-07-stage-toons-6a-6b-local-test.md`,
   Claude testing (41 in `/stage demo`). A reaction in a narrow toon keeps
   following a walking Clawd.
 
-## 0.12.0 (2026-10-06)
+### 0.12.0 (2026-10-06)
 
 Roadmap phase 4e, a wider canvas, built by a cloud session and tested
 locally, all six checks passing. Spec and plan:
@@ -197,7 +226,7 @@ Hand-off: `docs/handoffs/2026-10-06-stage-toons-wider-canvas.md`.
 - The frame tool draws any size (`--columns 48,120,200`, `--rows 7` to 9,
   `band --width`).
 
-## 0.11.0 (2026-10-06)
+### 0.11.0 (2026-10-06)
 
 Roadmap phases 4c and 4d, built by a cloud session overnight and tested
 locally together, all nine checks passing. Specs and plans:
@@ -224,7 +253,7 @@ combined checklist `docs/handoffs/2026-10-06-stage-toons-4c-4d-test-checklist.md
 - The frame tool draws the layer (`scene --mode/--phase/--what/--say`,
   `demo-work`) and the waiting scenes (`waiting --scene/--demo`).
 
-## 0.10.0 (2026-10-06)
+### 0.10.0 (2026-10-06)
 
 Roadmap phase 4b, smoother scenes, built by a cloud session from the
 approved spec and plan (`docs/superpowers/specs/2026-10-05-stage-toons-smoother-scenes-design.md`,
@@ -246,7 +275,7 @@ tested locally, all ten of the hand-off's checks passing. Hand-off:
 - The frame tool draws each sheet on one mod, so it shows the dissolves,
   and has a `turn` command.
 
-## 0.9.0 (2026-10-05)
+### 0.9.0 (2026-10-05)
 
 Roadmap phase 4a, Clawd in one place, built by a cloud session from the
 approved spec and plan (`docs/superpowers/specs/2026-10-05-stage-toons-scenes-below-bar-design.md`,
@@ -265,7 +294,7 @@ tested locally. Hand-off: `docs/handoffs/2026-10-05-stage-toons-scenes-below-bar
   fighting over the picture. Each load writes a `loadId` to `$.state`,
   and a loop stops once it names another load.
 
-## 0.8.0 (2026-10-05)
+### 0.8.0 (2026-10-05)
 
 Roadmap phase 3, "done" after a merge (#17), built by a cloud session from
 the approved spec and plan (`docs/superpowers/specs/2026-10-05-stage-toons-done-design.md`,
@@ -287,7 +316,7 @@ locally, the hot reload over a 0.7.0 session included. Hand-off:
 - The frame tool draws `idle celebrate`, `idle show-off:<id>` and
   `band --idle <routine>`.
 
-## 0.7.0 (2026-10-05)
+### 0.7.0 (2026-10-05)
 
 Roadmap phases 1 and 2, built by a cloud session while the person was
 away (designs audited by Fable and approved by Cloudie, double-checked by
@@ -313,7 +342,7 @@ Termie) and tested locally. Hand-offs:
   workflow reload` naming the settings it applied, and a note that costs
   count from the mod's load.
 
-## 0.6.4 (2026-10-04)
+### 0.6.4 (2026-10-04)
 
 The register split and the frame tool, built by a cloud session from the
 person's approved plans and tested locally. Hand-off:
@@ -329,7 +358,7 @@ deferred minor findings are scheduled in the roadmap's phase 1).
   PNG contact sheets, so a cloud session can see what the mod draws. Spec
   and plan `2026-10-04-stage-toons-frame-tool`.
 
-## 0.6.3 (2026-10-04)
+### 0.6.3 (2026-10-04)
 
 From the person's local test of 0.6.2, designed in chat.
 - A helper keeps its model's colour through a reload: each spawn leaves
@@ -338,7 +367,7 @@ From the person's local test of 0.6.2, designed in chat.
   it shares with the default by id; an `auto` field on any stage keeps the
   file's own rules alone.
 
-## 0.6.2 (2026-10-04)
+### 0.6.2 (2026-10-04)
 
 The code review's fixes (`docs/reviews/2026-10-04-code-review.md`), one
 commit each.
@@ -355,7 +384,7 @@ commit each.
 - Checked live afterwards, C4: a collapsed band redraws every 4 to 8 s
   until the deep sleep; bounded, left as it is.
 
-## 0.6.1 (2026-10-04)
+### 0.6.1 (2026-10-04)
 
 The research's Tier 0, designed in chat.
 - Two sessions on one project no longer lose moves: every change starts
@@ -368,7 +397,7 @@ The research's Tier 0, designed in chat.
 - The band measures text in terminal cells (CJK, emoji).
 - Progress of projects untouched for 180 days is pruned, at most weekly.
 
-## 0.6.0 (2026-10-04)
+### 0.6.0 (2026-10-04)
 
 Automatic stage moves and stage history. Spec and plan
 `2026-10-04-stage-toons-auto-moves-history`.
@@ -380,7 +409,7 @@ Automatic stage moves and stage history. Spec and plan
 - **History:** entries record the feature, `by: auto` and why, and
   Claude's working time; 200 kept. `/stage log [n]` and `/stage time`.
 
-## 0.5.0 (2026-10-04)
+### 0.5.0 (2026-10-04)
 
 The waiting toon. Spec and plan `2026-10-04-stage-toons-waiting-toon`.
 - The idle Clawd moves to an area below the bar (48 x 7), shown from 30
@@ -390,12 +419,12 @@ The waiting toon. Spec and plan `2026-10-04-stage-toons-waiting-toon`.
   seats and a queue.
 - `/stage demo waiting`.
 
-## 0.4.2 (2026-10-04)
+### 0.4.2 (2026-10-04)
 
 Claude Code 2.1.289's new agent statuses: an auditor is gone only when the
 list shows it ended or no longer shows it.
 
-## 0.4 step 2 (2026-10-04)
+### 0.4 step 2 (2026-10-04)
 
 Plan `2026-10-03-stage-toons-scene-variety-step2`.
 - 12 more scenes, the third of each default stage (treasure-map,
@@ -403,7 +432,7 @@ Plan `2026-10-03-stage-toons-scene-variety-step2`.
   cake, recycling, bug-net, dice); the library demo plays 37.
 - Three more idle routines: coffee, reading, yo-yo.
 
-## 0.4 step 1 (2026-10-03)
+### 0.4 step 1 (2026-10-03)
 
 Scene variety. Spec `2026-10-03-stage-toons-scene-variety-design`, plan
 `...-step1`.
@@ -413,13 +442,13 @@ Scene variety. Spec `2026-10-03-stage-toons-scene-variety-design`, plan
 - Idle routines: classic and Nyan Clawd.
 - `/stage demo <stage>` and `/stage demo idle`.
 
-## 0.3.1 (2026-10-03)
+### 0.3.1 (2026-10-03)
 
 From the first run on macOS: a side stage reads "Debugging (side stage)"
 to the model and `/stage`; the prompt section says to load `set_stage`
 with ToolSearch when it is deferred.
 
-## 0.3.0 (2026-10-03)
+### 0.3.0 (2026-10-03)
 
 A scene library and custom workflows. Spec and plan
 `2026-10-03-stage-toons-workflows`.
@@ -432,14 +461,14 @@ A scene library and custom workflows. Spec and plan
   load), so scenes from outside the mod need a data format.
 - Installable from this repository's marketplace.
 
-## 0.2 (2026-10-03)
+### 0.2 (2026-10-03)
 
 Designed in chat from the first test.
 - The idle Clawd while Claude waits: blinks, glances, taps, dozes.
 - `/stage demo [seconds]` and `/stage demo stop`.
 - The toon is 7 rows (14 pixels).
 
-## 0.1 (2026-10-03)
+### 0.1 (2026-10-03)
 
 The progress bar, `set_stage` and `/stage`, saved progress per project, 12
 scenes and 4 reactions, and Fable's arrival while a Fable subagent runs.

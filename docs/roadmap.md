@@ -8,7 +8,7 @@ the workflow's step 10).
 
 ### Where things stand
 
-0.17.0 is on `main`: automatic moves and history with cost per stage, 41
+1.0.0, the first public release, is on `main`: automatic moves and history with cost per stage, 41
 scenes dealt like a deck and played in the area below the bar with Z
 layers and a dissolve at every change of picture, an area that grows with
 the terminal (`/stage width`) with scenes that spread their action across
@@ -16,8 +16,8 @@ it, calm mode (`/stage calm`), Clawd DJ while Spotify plays on Windows, macOS an
 task count on the bar, four waiting scenes seating up to 8 helpers, 5 idle
 routines with a prop show-off and a celebration, Done after a merge,
 per-project settings, `/stage help` as a guide to every feature, and the frame tool (`tools/frames/`) for checking
-the drawing from a cloud session. Phases 1 to 4 and 6 to 8 of the plan
-below are done; what is left is the release (9).
+the drawing from a cloud session. The plan below is finished (phase 5
+was parked); what comes next is for the next roadmap discussion.
 History: `stage-toons/CHANGELOG.md`. Sources for what comes next: the
 research report (`docs/research/2026-10-04-stage-toons-improvement-ideas.md`,
 ideas #1-#30) and the full code review
@@ -99,22 +99,8 @@ canvas (#25), in 0.12.0, which finished phase 4, richer art; phase 6,
 calm mode (#10) and scene polish, in 0.13.0, ahead of phase 5 as
 reordered; phase 7, Clawd DJ, in 0.14.0; 8a's first half, Clawd DJ on
 macOS and Linux, in 0.15.0, and its second, the leftovers, in 0.16.0;
-8b, the full code review and `/stage help` as a guide, in 0.17.0.)
-
-**Phase 9: the release.**
-- Documentation cleanup (CLAUDE.md, the CHANGELOG, `docs/`) and a
-  README cleanup.
-- A "not affiliated with Anthropic" line.
-- A GIF for the README: the frame tool writing GIFs, or a screen
-  recording.
-- The CHANGELOG made ready for readers (`stage-toons/CHANGELOG.md` has
-  every release since 0.1) and linked from the README.
-- Maybe CI, after a probe: the frame tool's tests need only Node, so they
-  can run on GitHub Actions as they are; whether `claude plugin validate`
-  and `claude plugin test` run there (Claude Code installed on the runner,
-  with or without a sign-in) is unknown.
-- Release tags.
-- The release.
+8b, the full code review and `/stage help` as a guide, in 0.17.0;
+phase 9, the release, as 1.0.0.)
 
 **Parked** (the person, 2026-10-06 and 2026-10-08: not in the plan for
 now):

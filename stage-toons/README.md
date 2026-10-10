@@ -6,13 +6,42 @@ bar while Claude works. When a Fable subagent comes in to audit or to
 consult, a second, violet Clawd with a monocle walks on stage to review the
 work.
 
+![stage-toons: the bar above the prompt, and Clawd at work below it](../docs/media/stage-toons.gif)
+
 ```
  ●━●━●━●━◉─○─○─○─○─○  5/10 Plan · stage-toons
  Writing the implementation plan
 ```
 
+- **A bar Claude moves** through your workflow (the default below, or
+  your own), and that moves by itself on plain steps: a skill loaded, a
+  spec written, a merge pushed.
+- **41 pixel-art scenes** play while Claude works, with what Claude is
+  doing over Clawd's head; an idle Clawd between turns; a row of helpers
+  while agents work; Clawd DJ while Spotify plays.
+- **History:** `/stage log` and `/stage time` show how long each stage
+  took and what it cost.
+- **Local and cheap:** no model requests; about 270 tokens of system
+  prompt.
+
 Inspired by [claude-toons](https://github.com/achimala/claude-toons) by
-Anshu Chimala, whose Clawd sprite it borrows (MIT; see `NOTICE`).
+Anshu Chimala, whose Clawd sprite it borrows (MIT; see `NOTICE`). What
+changed in each release is in the [CHANGELOG](CHANGELOG.md).
+
+## Install
+
+Needs Claude Code 2.1.288 or later with plugin hook modules (early
+access). The cartoons draw in the terminal; the desktop app shows the bar
+as text.
+
+```sh
+claude plugin marketplace add wmaq/claude-mods
+claude plugin install stage-toons@claude-mods
+```
+
+Restart Claude Code; the mod then loads in every session. `/stage help`
+is a guide to everything below. To run it from a clone, or to update, see
+[Install, in full](#install-in-full).
 
 ## The stages
 
@@ -129,11 +158,7 @@ shows nothing; a push of several branches at once counts only the first. `gh pr 
 after `;`, `&&` or `|`, so a commit message that mentions one doesn't;
 `gh pr merge --auto` merges nothing yet and doesn't either. A push or
 merge the rules miss is a `/stage done` away; a default branch with
-another name, such as `trunk`, needs a `push` rule of its own (below).
-A workflow file written by `/stage workflow init` before 0.16 holds the
-older push rule, a `bash` pattern on the command, which also fires on a
-push that didn't go through: change it to `{ "push": "main", "from":
-["user-test", "cleanup"] }`. From Done only a skill
+another name, such as `trunk`, needs a `push` rule of its own (below). From Done only a skill
 you type moves the bar by itself (`/superpowers:brainstorming` starts the
 next feature): the chores after a merge, Claude's own, stay in Done. Only
 the main conversation counts, not subagents or teammates, and only files
@@ -381,7 +406,7 @@ characters of each, up to the line's first 500: a word past a command's
 most 8 `*`. The file's `when` lines are shown to Claude in the
 system prompt, as CLAUDE.md is, and its labels, messages and rules in the
 `[stage-toons]` notes Claude gets when the stage moves. A workflow file in which no stage has an
-`auto` field (as `/stage workflow init` wrote before 0.6) takes the
+`auto` field takes the
 default's rules for the stages it shares with the default by id; give any
 stage an `auto` list, even an empty one, and the file has only its own.
 
@@ -420,14 +445,9 @@ but from Done only a skill you type moves the work:
 
 A stage lists 1 to 5 scenes, dealt like a shuffled deck: each time the
 work enters the stage it shows the next one, every scene once before any
-repeats, never the same twice in a row. The
-older `"scene": "bug-hunt"` still works. A workflow file keeps its own
-lists: a file written by `/stage workflow init` before 0.4.1 names two
-scenes per stage, so add the new ones to it (or delete the file to use the
-default) to see them. In the same way, a file written before 0.13.0
-lists `fireworks` alone in its `done` scenes and three scenes for
-`claude-test`: add `rocket` and `victory-lap` to the first, `bowling` to
-the second.
+repeats, never the same twice in a row. A
+single `"scene": "bug-hunt"` works too. A workflow file keeps its own
+lists: scenes added to the mod later reach it only when you add them.
 
 Scenes: road-trip, light-bulbs, writing-desk, proofread-page,
 stepping-stones, proofread-checklist, bricklaying, test-tubes, gift,
@@ -459,9 +479,7 @@ letters, digits and dashes, and not one of `/stage`'s words (`next`,
 `bubbles`, `calm`, `dj`, `width`, `log`, `time`, `help`, `done`). A mistake in the file is reported with where it
 is, and the session keeps a working workflow.
 
-## Install
-
-Needs Claude Code 2.1.288 or later with plugin hook modules (early access).
+## Install, in full
 
 The repository is a plugin marketplace. Add it once, install the mod, and
 restart Claude Code; it then loads in every session:
@@ -507,9 +525,6 @@ that folder's full path, such as `/home/you/src/claude-mods/stage-toons` or
 To update, run `git pull` in the clone. Don't load it this way while the
 marketplace copy is enabled: two stage-toons would load.
 
-The cartoons draw only in the terminal; the desktop app shows the bar as
-text.
-
 ## What it costs
 
 The cartoons are drawn locally: the mod makes no model requests. What it
@@ -534,10 +549,16 @@ npx -y -p typescript@5 tsc -p stage-toons
 ```
 
 `tsc` needs the editor types the engine writes into
-`stage-toons/.claude-plugin/types/` the first time it loads the mod.
+`stage-toons/.claude-plugin/types/` the first time it loads the mod. CI
+runs the first two on every pull request. `tools/frames/` renders the
+drawing to PNG contact sheets, and `CLAUDE.md` at the repository root
+has the engine notes learned building the mod.
 
 ## Credits
 
-Written by wmaq with Claude. The Clawd sprite is adapted from claude-toons
-(MIT, Copyright (c) 2026 Anshu Chimala). stage-toons is MIT licensed; see
-`LICENSE`.
+Written by wmaq with Claude Code. The Clawd sprite is adapted from
+claude-toons (MIT, Copyright (c) 2026 Anshu Chimala). stage-toons is MIT
+licensed; see `LICENSE`.
+
+An independent project, not affiliated with or endorsed by Anthropic.
+Claude and Claude Code are trademarks of Anthropic.
