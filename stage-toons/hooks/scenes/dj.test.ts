@@ -70,6 +70,14 @@ test("Clawd's head for the pop-ups: column 15, his top row with the beat's dip; 
   expect(djHead(input(0.2), { columns: 30, rows: 7 }).x).toBe(12)
 })
 
+test('on a wide room the dancers walk in and out behind the far speaker, never over it', () => {
+  // The far speaker's cabinets: the 7 columns from 9 short of the right edge.
+  const cabinets = (b: PixelBuffer) => Array.from({ length: b.h }, (_, y) => Array.from({ length: 7 }, (_, i) => at(b, b.w - 9 + i, y)).join(',')).join('|')
+  for (let t = 0; t < 4; t += 0.05) {
+    expect(cabinets(djFrame(input(t, { dancers: twoDancers(120) }), WIDE))).toBe(cabinets(djFrame(input(t), WIDE)))
+  }
+})
+
 test("the dance floor's spots: from 72 columns between the speakers, narrower right of the near one", () => {
   const xs = (columns: number) => {
     const spots = djSpots(columns)
@@ -165,12 +173,12 @@ test("a track change: the right record off for half a beat, the arm up for the b
 
 // Recorded from the drawing as it shipped (phase 7, gentle by default and
 // the party lights, after the person's look); a change on purpose records
-// them again.
+// them again (8a: the wide dancers walk in behind the far speaker).
 const GOLDEN = {
   small: '9b25dd9c',
   smallDancing: '2b923d12',
   wide: 'a44737b5',
-  wideDancing: '1bb39cb3',
+  wideDancing: '25d0cbf4',
   wideCalm: '14e5439c',
-  wideParty: '24995585',
+  wideParty: 'aaf862ab',
 }

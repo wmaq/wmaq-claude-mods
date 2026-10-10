@@ -71,6 +71,23 @@ test('fireworks: the starfield fills the area, rockets go up in the wings, and C
   for (let t = 0; t < 8; t += 0.1) expect(clawd(WIDE, t)).toBe(clawd({ columns: 48, rows: 7 }, t))
 })
 
+test('fireworks: a wing rocket whose burst would cross the right edge does not go up', () => {
+  // A burst's sparks reach 5 columns either side of its rocket.
+  const bursts = (columns: number) => {
+    const xs: number[] = []
+    for (let t = 0; t < 8; t += 0.05) {
+      const b = draw('fireworks', t, { columns, rows: 9 })
+      for (const c of [C.red, C.blue, C.gold, C.green]) xs.push(...columnsOf(b, c).map(x => x - (b.ox ?? 0)))
+    }
+
+    return xs
+  }
+  // At 80 columns the rocket at 84 would spill its sparks into 79: it stays down.
+  expect(Math.max(...bursts(80))).toBe(60 + 5)
+  // At 90 its whole burst fits.
+  expect(Math.max(...bursts(90))).toBe(84 + 5)
+})
+
 test('fishing: the water runs to the edge, its ripples tiled every 25 columns', () => {
   const b = draw('fishing', 0)
   for (const y of [11, 12, 13]) expect(gaps(b, y, 21, 200)).toEqual([])

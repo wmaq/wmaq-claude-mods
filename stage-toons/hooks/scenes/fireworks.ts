@@ -35,6 +35,8 @@ const WING_PAIRS: readonly (readonly Rocket[])[] = [
   ],
 ]
 
+// How far a burst's sparks fly from its rocket, in columns.
+const REACH = 5
 // The eight directions a burst's sparks fly, unit steps.
 const RAYS = [0, 1, 2, 3, 4, 5, 6, 7].map(k => ({ x: Math.cos((k * Math.PI) / 4), y: Math.sin((k * Math.PI) / 4) }))
 
@@ -61,7 +63,7 @@ function drawRocket(b: PixelBuffer, r: Rocket, t: number) {
     return
   }
   const k = age - RISE
-  const radius = Math.min(5, 1 + Math.floor(k * 8))
+  const radius = Math.min(REACH, 1 + Math.floor(k * 8))
   const fall = Math.floor(k * k * 3)
   // Late in the burst the sparks twinkle out, every other frame.
   const isFading = k > BURST * 0.6
@@ -104,7 +106,10 @@ export const fireworks: Scene = {
   front: (b, t) => {
     for (const r of ROCKETS) drawRocket(b, r, t)
     for (let g = 0; 48 * (g + 1) < rightOf(b); g++) {
-      for (const r of WING_PAIRS[g % WING_PAIRS.length]!) drawRocket(b, { ...r, x: r.x + 48 * g }, t)
+      for (const r of WING_PAIRS[g % WING_PAIRS.length]!) {
+        // A burst the right edge would cut stays down: its sparks would spill in.
+        if (r.x + 48 * g + REACH < rightOf(b)) drawRocket(b, { ...r, x: r.x + 48 * g }, t)
+      }
     }
   },
 }

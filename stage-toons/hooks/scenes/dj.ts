@@ -293,7 +293,8 @@ export function djSpots(columns: number): Spots {
   return { count, x: spot => from + spot * SPOT_GAP }
 }
 
-// The dancers: each helper walks in from the right edge, dances at its
+// The dancers: each helper walks in from the right edge (on a wide room
+// from behind the far speaker), dances at its
 // spot (a hop on its beat, the dancers in turn, its claws up then; a step
 // to the side and back every two beats), and walks out when its agent
 // ends. In calm mode each one present stands at its spot.
@@ -413,9 +414,7 @@ export function djScene(input: DjInput): Scene {
       drawFloor(b, t, input.isParty)
       drawEqualiser(b, t)
       drawBall(b, t, input.isParty)
-      const { right } = areaOf(b)
-      drawSpeaker(b, t, SPEAKER_X, right >= WIDE_ROOM, input.isParty)
-      if (right >= WIDE_ROOM) drawSpeaker(b, t, right - 9, true, input.isParty)
+      drawSpeaker(b, t, SPEAKER_X, areaOf(b).right >= WIDE_ROOM, input.isParty)
     },
     actors: [
       {
@@ -441,6 +440,16 @@ export function djScene(input: DjInput): Scene {
       { kind: 'prop', z: 2, draw: (b, t) => drawBooth(b, t, input.isCalm ? null : input.sinceChange, input.isParty) },
       { kind: 'prop', z: 3, draw: drawNotes },
       { kind: 'prop', z: 4, draw: (b, t) => drawDancers(b, t, input.dancers, input.now, input.isCalm) },
+      // The far speaker, in front of the dancers: they walk in and out
+      // from behind it.
+      {
+        kind: 'prop',
+        z: 5,
+        draw: (b, t) => {
+          const { right } = areaOf(b)
+          if (right >= WIDE_ROOM) drawSpeaker(b, t, right - 9, true, input.isParty)
+        },
+      },
     ],
     front: (b, t) => drawNowPlaying(b, t, input),
   }
