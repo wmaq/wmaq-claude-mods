@@ -123,6 +123,10 @@ declare module 'claude-code' {
       // Whether the DJ picture has its full light show (/stage dj party):
       // kept across a reload, as dj is.
       djParty: boolean
+      // The tokens of the subagent turns that ended since the main turn's
+      // last end, credited with its next end: kept across a reload, so a
+      // reload mid-turn loses none.
+      turnTokens: { usd: number; in: number; out: number }
     }
   }
 }

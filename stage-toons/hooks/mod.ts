@@ -8,7 +8,7 @@ import type { BandSite } from './band'
 import { COMMAND, toolNameFor } from './prompt'
 import type { Demo } from './demo'
 import { createDirector, type Director } from './director'
-import { type Cost, type EntryKey, NO_COST } from './history'
+import type { EntryKey } from './history'
 import { type Music, NO_MUSIC, type PollState, type ReadFailure } from './nowplaying'
 import { DEEP_SLEEP_MS, DOZE_MS } from './idle'
 import type { DjProblem, Platform } from './readers'
@@ -165,9 +165,6 @@ export type Mod = {
   // The history entry that time goes to, found again by stage and start
   // in a copy another session saved.
   workEntry: EntryKey | null
-  // The tokens of the turns that ended since the main turn's last end (its
-  // subagents'), credited with the next main turn's end.
-  turnTokens: Cost
   // Whether a newer version's progress is in the store: nothing is saved.
   isReadOnly: boolean
   // Clawd DJ (/stage dj): whether it is on, what the reads of Spotify
@@ -240,7 +237,6 @@ export const createMod = (): Mod => ({
   expandedSkill: null,
   workSince: null,
   workEntry: null,
-  turnTokens: NO_COST,
   isReadOnly: false,
   isDj: false,
   isDjParty: false,

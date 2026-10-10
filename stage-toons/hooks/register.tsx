@@ -86,6 +86,8 @@ const kindsAtom = atom({ plugin: 'stage-toons', key: 'agentKinds' } as const, {}
 // The session's cost already credited to the history (null: not known yet):
 // kept across reloads, so dollars are neither lost nor counted twice.
 const usdAtom = atom({ plugin: 'stage-toons', key: 'usdCredited' } as const, null)
+// The subagent tokens waiting for the main turn's end: kept across reloads.
+const turnTokensAtom = atom({ plugin: 'stage-toons', key: 'turnTokens' } as const, NO_COST)
 // Claude's task list, as the bar counts it: kept across reloads.
 const tasksAtom = atom({ plugin: 'stage-toons', key: 'tasks' } as const, {})
 // Whether Clawd's pop-ups show, for this session, as autoAtom is.
@@ -1269,7 +1271,8 @@ export const register: Register = on => {
   on('turn.complete', async ($, e, next) => {
     if (e.agentId !== undefined) {
       // Its tokens wait for the main turn's end, to go to the entry with it.
-      mod.turnTokens = addCost(mod.turnTokens, tokensOf(e.usage))
+      const counted = tokensOf(e.usage)
+      await update($, turnTokensAtom, waiting => addCost(waiting, counted))
       // A subagent's turn: the end of an auditor, perhaps. Its helper gets
       // up at once, whatever the list says yet.
       if (mod.auditors.delete(e.agentId) && mod.auditors.size === 0) await setAuditing($, mod, false)
@@ -1285,8 +1288,13 @@ export const register: Register = on => {
     mod.expandedSkill = null
     // The tokens so far, this turn's own with its subagents': a background
     // agent's turn that ends after this goes to the next main turn's.
-    const tokens = addCost(mod.turnTokens, tokensOf(e.usage))
-    mod.turnTokens = NO_COST
+    let waiting = NO_COST
+    await update($, turnTokensAtom, before => {
+      waiting = before
+
+      return NO_COST
+    })
+    const tokens = addCost(waiting, tokensOf(e.usage))
     // The idle clock starts at the turn's end, not after the queue's wait:
     // a later start would restart the idle routine, a second dissolve.
     mod.idleSince = await $.clock.now()

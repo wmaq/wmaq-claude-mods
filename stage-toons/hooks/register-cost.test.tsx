@@ -203,3 +203,26 @@ test('a turn with tokens and no working time still credits its tokens', async ($
   expect(saved(world.store).history[0]).toEqual(expect.objectContaining({ cost: { usd: 0, in: 7, out: 3 } }))
   expect(saved(world.store).history[0]!.workMs).toBeUndefined()
 })
+
+test("a hot reload keeps the subagent tokens an earlier load counted: they go to the main turn's entry", async ($, on) => {
+  const { world } = engine(on)
+  ledger(on, 1)
+  // The earlier load heard a subagent's turn end (300 in, 30 out) before the main turn's.
+  let isWritten = false
+  on('state.set', ($, e, next) => {
+    if ((e as unknown as { key: string }).key === 'turnTokens') isWritten = true
+
+    return next(e)
+  })
+  on('state.get', ($, e, next) => (e.key === 'turnTokens' && !isWritten ? { value: { value: { usd: 0, in: 300, out: 30 }, version: 0 } } : next(e)))
+  await $.session.start(START)
+  await setStage($, { stage: 'spec', message: 'Writing it' })
+  await startTurn($)
+  await endTurn($, usage(100, 10, 0, 0), 'agent-1')
+  await endTurn($, usage(200, 40))
+  expect(saved(world.store).history[0]!.cost).toEqual(expect.objectContaining({ in: 600, out: 80 }))
+  // Credited once: the next turn starts from nothing.
+  await startTurn($)
+  await endTurn($, usage(1, 1))
+  expect(saved(world.store).history[0]!.cost).toEqual(expect.objectContaining({ in: 601, out: 81 }))
+})
