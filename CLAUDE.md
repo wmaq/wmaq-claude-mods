@@ -1,4 +1,4 @@
-# claude-mods
+# wmaq-claude-mods
 
 Claude Code mods (plugins of function hooks, an early-access feature) built
 by wmaq with Claude. Each mod is a folder at the repository root, listed in
@@ -6,7 +6,7 @@ the marketplace manifest `.claude-plugin/marketplace.json`.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with an area below the bar where Clawd lives: the stage's pixel-art scene while Claude works, an idle Clawd between turns, and a desk row of helpers while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 1.0.0 (the first public release: READMEs, CI, tags; 0.17.0 a full code review fixed, and `/stage help` as a guide; 0.16.0 fixed the leftovers of every release, Done on a push that went through among them; 0.15.0 brought Clawd DJ on macOS and Linux, read through `osascript` or `playerctl`, 0.14.0 Clawd DJ on Windows); the frame tool in `tools/frames/`; releases in `stage-toons/CHANGELOG.md`; the plan ahead in `docs/roadmap.md`, ideas in `docs/research/`; the latest review in `docs/reviews/` |
+| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with an area below the bar where Clawd lives: the stage's pixel-art scene while Claude works, an idle Clawd between turns, and a desk row of helpers while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 1.0.0 (the first public release: READMEs, CI, tags; 0.17.0 a full code review fixed, and `/stage help` as a guide; 0.16.0 fixed the leftovers of every release, Done on a push that went through among them; 0.15.0 brought Clawd DJ on macOS and Linux, read through `osascript` or `playerctl`, 0.14.0 Clawd DJ on Windows); the frame tool in `tools/frames/`; releases in `stage-toons/CHANGELOG.md`; the plan ahead in `docs/roadmap.md`; the latest review in `docs/reviews/` |
 
 ## The workflow
 
@@ -56,9 +56,9 @@ It names this session's hot-reload folder,
 `~/.claude/dev-mods/<session id>/`, and starts the engine's watch on it.
 
 - **Disable the installed copy while developing.** With a mod installed from
-  the marketplace (`claude plugin install <mod>@claude-mods`), a hot-reload
-  copy loads a second one. `claude plugin disable <mod>@claude-mods` before,
-  `claude plugin enable <mod>@claude-mods` after.
+  the marketplace (`claude plugin install <mod>@wmaq-claude-mods`), a hot-reload
+  copy loads a second one. `claude plugin disable <mod>@wmaq-claude-mods` before,
+  `claude plugin enable <mod>@wmaq-claude-mods` after.
 
 - **Hot reload uses a copy, not a link.** On Windows a directory junction
   into the hot-reload folder loads the mod once, but saves through it never

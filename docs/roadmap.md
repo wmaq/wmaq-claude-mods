@@ -19,9 +19,8 @@ per-project settings, `/stage help` as a guide to every feature, and the frame t
 the drawing from a cloud session. The plan below is finished (phase 5
 was parked); what comes next is for the next roadmap discussion.
 History: `stage-toons/CHANGELOG.md`. Sources for what comes next: the
-research report (`docs/research/2026-10-04-stage-toons-improvement-ideas.md`,
-ideas #1-#30) and the full code review
-(`docs/reviews/2026-10-10-code-review.md`).
+research report of 2026-10-04 (ideas #1-#30, a working paper not kept
+here) and the full code review (`docs/reviews/2026-10-10-code-review.md`).
 
 ### Open leftovers, not scheduled
 

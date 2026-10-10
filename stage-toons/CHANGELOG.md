@@ -29,9 +29,8 @@ at the root, and tags for every release. What 1.0.0 is, in short:
 
 Before 1.0 the mod was built in a private repository, a release every
 day or two. The entries below are that log, in the words of the time;
-the details (departures from the spec, review findings, live checks) are
-in each release's spec and plan under `docs/superpowers/`, the hand-offs
-in `docs/handoffs/` and the git history.
+the specs, plans and hand-offs they name were working papers, not kept
+in this repository; the git history has the rest.
 
 ### 0.17.0 (2026-10-10)
 

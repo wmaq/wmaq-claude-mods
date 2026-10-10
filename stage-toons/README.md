@@ -35,8 +35,8 @@ access). The cartoons draw in the terminal; the desktop app shows the bar
 as text.
 
 ```sh
-claude plugin marketplace add wmaq/claude-mods
-claude plugin install stage-toons@claude-mods
+claude plugin marketplace add wmaq/wmaq-claude-mods
+claude plugin install stage-toons@wmaq-claude-mods
 ```
 
 Restart Claude Code; the mod then loads in every session. `/stage help`
@@ -485,15 +485,15 @@ The repository is a plugin marketplace. Add it once, install the mod, and
 restart Claude Code; it then loads in every session:
 
 ```sh
-claude plugin marketplace add wmaq/claude-mods
-claude plugin install stage-toons@claude-mods
+claude plugin marketplace add wmaq/wmaq-claude-mods
+claude plugin install stage-toons@wmaq-claude-mods
 ```
 
 To update:
 
 ```sh
-claude plugin marketplace update claude-mods
-claude plugin update stage-toons@claude-mods
+claude plugin marketplace update wmaq-claude-mods
+claude plugin update stage-toons@wmaq-claude-mods
 ```
 
 ### From a clone
@@ -502,12 +502,12 @@ To run the mod from your own copy instead, clone the repository wherever
 you keep your code:
 
 ```sh
-git clone https://github.com/wmaq/claude-mods.git
+git clone https://github.com/wmaq/wmaq-claude-mods.git
 ```
 
 The mod is the `stage-toons` folder inside it. Below, `<path>` stands for
-that folder's full path, such as `/home/you/src/claude-mods/stage-toons` or
-`C:\src\claude-mods\stage-toons`.
+that folder's full path, such as `/home/you/src/wmaq-claude-mods/stage-toons` or
+`C:\src\wmaq-claude-mods\stage-toons`.
 
 - For one session: `claude --plugin-dir <path>`.
 - For every session, add the folder to the `env` block of

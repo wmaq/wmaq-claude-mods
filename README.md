@@ -1,6 +1,6 @@
-# claude-mods
+# wmaq-claude-mods
 
-[![check](https://github.com/wmaq/claude-mods/actions/workflows/check.yml/badge.svg)](https://github.com/wmaq/claude-mods/actions/workflows/check.yml)
+[![check](https://github.com/wmaq/wmaq-claude-mods/actions/workflows/check.yml/badge.svg)](https://github.com/wmaq/wmaq-claude-mods/actions/workflows/check.yml)
 
 Mods for [Claude Code](https://claude.com/claude-code): plugins of function
 hooks that change what Claude Code shows and does. They need Claude Code
@@ -15,8 +15,8 @@ hooks that change what Claude Code shows and does. They need Claude Code
 The repository is a plugin marketplace:
 
 ```sh
-claude plugin marketplace add wmaq/claude-mods
-claude plugin install stage-toons@claude-mods
+claude plugin marketplace add wmaq/wmaq-claude-mods
+claude plugin install stage-toons@wmaq-claude-mods
 ```
 
 ## How it was made
@@ -24,8 +24,8 @@ claude plugin install stage-toons@claude-mods
 Built by wmaq with Claude Code: most commits are co-written with Claude.
 Each feature went through the workflow stage-toons draws: a brainstorm, a
 written spec audited by a second model, a plan audited the same way,
-test-driven development, a review, and testing in a live session. Those
-documents are kept in [`docs/`](docs/README.md); [`CLAUDE.md`](CLAUDE.md)
+test-driven development, a review, and testing in a live session (more
+in [`docs/`](docs/README.md)). [`CLAUDE.md`](CLAUDE.md)
 is the project's instructions for Claude, with the engine behaviour
 learned along the way. What is planned next is in
 [docs/roadmap.md](docs/roadmap.md).

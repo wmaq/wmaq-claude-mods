@@ -1,5 +1,5 @@
 {
-  "name": "claude-mods",
+  "name": "wmaq-claude-mods",
   "owner": { "name": "wmaq" },
   "description": "Claude Code mods built by wmaq with Claude",
   "plugins": [
