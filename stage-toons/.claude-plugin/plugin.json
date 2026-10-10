@@ -1,6 +1,6 @@
 {
   "name": "stage-toons",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "A stepped progress bar of your workflow above the prompt, with pixel-art Clawd scenes while Claude works and while it waits on agents",
   "author": { "name": "wmaq" },
   "license": "MIT",

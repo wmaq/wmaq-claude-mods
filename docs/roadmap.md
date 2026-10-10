@@ -8,20 +8,20 @@ the workflow's step 10).
 
 ### Where things stand
 
-0.16.0 is on `main`: automatic moves and history with cost per stage, 41
+0.17.0 is on `main`: automatic moves and history with cost per stage, 41
 scenes dealt like a deck and played in the area below the bar with Z
 layers and a dissolve at every change of picture, an area that grows with
 the terminal (`/stage width`) with scenes that spread their action across
 it, calm mode (`/stage calm`), Clawd DJ while Spotify plays on Windows, macOS and Linux (`/stage dj`), Clawd's pop-ups for the work at hand and a
 task count on the bar, four waiting scenes seating up to 8 helpers, 5 idle
 routines with a prop show-off and a celebration, Done after a merge,
-per-project settings, and the frame tool (`tools/frames/`) for checking
-the drawing from a cloud session. Phases 1 to 4, 6, 7 and 8a of the plan
-below are done; what is left is the pre-release's second part (8b) and
-the release (9). History: `stage-toons/CHANGELOG.md`. Sources for what comes next:
-the research report
-(`docs/research/2026-10-04-stage-toons-improvement-ideas.md`, ideas
-#1-#30) and the code review (`docs/reviews/2026-10-04-code-review.md`).
+per-project settings, `/stage help` as a guide to every feature, and the frame tool (`tools/frames/`) for checking
+the drawing from a cloud session. Phases 1 to 4 and 6 to 8 of the plan
+below are done; what is left is the release (9).
+History: `stage-toons/CHANGELOG.md`. Sources for what comes next: the
+research report (`docs/research/2026-10-04-stage-toons-improvement-ideas.md`,
+ideas #1-#30) and the full code review
+(`docs/reviews/2026-10-10-code-review.md`).
 
 ### Open leftovers, not scheduled
 
@@ -98,17 +98,8 @@ work, and 4d, more waiting scenes, together in 0.11.0; 4e, a wider
 canvas (#25), in 0.12.0, which finished phase 4, richer art; phase 6,
 calm mode (#10) and scene polish, in 0.13.0, ahead of phase 5 as
 reordered; phase 7, Clawd DJ, in 0.14.0; 8a's first half, Clawd DJ on
-macOS and Linux, in 0.15.0, and its second, the leftovers, in 0.16.0.)
-
-**Phase 8: pre-release.**
-- **8b, a full code review** of the mod and the frame tool (correctness,
-  performance, security), and fixes for what it finds.
-- **8b, `/stage help` as a guide to the mod** (the person, 2026-10-08):
-  today it lists the commands only; it should also sum up every feature
-  in Claude Code (the bar and its automatic moves, the scenes, Clawd's
-  pop-ups, the waiting toon, the idle Clawd, Done, calm mode, the width,
-  Clawd DJ, the history and the cost per stage), each with the commands
-  that go with it.
+macOS and Linux, in 0.15.0, and its second, the leftovers, in 0.16.0;
+8b, the full code review and `/stage help` as a guide, in 0.17.0.)
 
 **Phase 9: the release.**
 - Documentation cleanup (CLAUDE.md, the CHANGELOG, `docs/`) and a

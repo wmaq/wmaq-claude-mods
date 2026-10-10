@@ -6,7 +6,7 @@ the marketplace manifest `.claude-plugin/marketplace.json`.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with an area below the bar where Clawd lives: the stage's pixel-art scene while Claude works, an idle Clawd between turns, and a desk row of helpers while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.16.0 (the leftovers of every release fixed or parked: Done on a push that went through, a quiet collapsed band, Clawd DJ's edge cases; 0.15.0 brought Clawd DJ on macOS and Linux, read through `osascript` or `playerctl`, 0.14.0 Clawd DJ on Windows); the frame tool in `tools/frames/`; releases in `stage-toons/CHANGELOG.md`; the plan ahead in `docs/roadmap.md`, ideas in `docs/research/`; the latest review in `docs/reviews/` |
+| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with an area below the bar where Clawd lives: the stage's pixel-art scene while Claude works, an idle Clawd between turns, and a desk row of helpers while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.17.0 (a full code review fixed, and `/stage help` as a guide; 0.16.0 fixed the leftovers of every release, Done on a push that went through among them; 0.15.0 brought Clawd DJ on macOS and Linux, read through `osascript` or `playerctl`, 0.14.0 Clawd DJ on Windows); the frame tool in `tools/frames/`; releases in `stage-toons/CHANGELOG.md`; the plan ahead in `docs/roadmap.md`, ideas in `docs/research/`; the latest review in `docs/reviews/` |
 
 ## The workflow
 
@@ -241,6 +241,12 @@ Learned fixing the leftovers on 2.1.296:
   with the same `requestId` (`above-prompt`, always) is taken. A paint
   loop that asks for a redraw on refusals restarts for ever while
   collapsed; stage-toons' waits with a blit a second.
+- `validate` refuses an atom passed into a helper (`update($, setting,
+  ...)` with `setting` a parameter): each `read`/`update` names its atom
+  where it is called. The store's key may be passed.
+- `/clear` raises `session.end` with `reason: 'clear'` and no
+  `session.start` (the types say so); stage-toons rebuilds its prompt
+  section then. Whether `$.state` survives a `/clear` is not probed yet.
 - A `context` line added to a tool's result is the quickest probe of an
   engine value: a throwaway mod that adds it to every Bash result shows
   it to Claude in the session (the `git-probe` of 8a).
@@ -295,6 +301,9 @@ Learned fixing the leftovers on 2.1.296:
   `e.argv` and `e.init?.timeoutMs` as the mod passed them; a hook that
   throws is a rejection. `ui.log` lines can be caught the same way
   (`on('ui.log', ($, e) => ...)`, answer `{ value: undefined }`).
+- A test hook that throws is skipped ("test's state.set hook was
+  skipped"), not a failed call: answer `{ deny }` to make the mod's call
+  reject (a failing `$.state` write, say).
 - `claude plugin test` runs every test file and exits 1 on any failure,
   the load-sensitive timeouts too: when a script needs a pass/fail, check
   that the failures are only those named.

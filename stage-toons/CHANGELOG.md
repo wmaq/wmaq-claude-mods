@@ -6,6 +6,34 @@ release (departures from the spec, review findings, live checks) are in its
 spec and plan under `docs/superpowers/`, the hand-offs in `docs/handoffs/`
 and the git history.
 
+## 0.17.0 (2026-10-10)
+
+Roadmap phase 8b, the pre-release's second half: a full code review and
+its fixes, and `/stage help` as a guide, each from a short design in
+chat. The review (`docs/reviews/2026-10-10-code-review.md`) had five
+Fable reviewers (core, drawing, security, the frame tool and tests, and
+a ponytail audit for duplication), then a final Fable review of the
+branch, which found a gap in the first S1 fix.
+- **`/stage help` is a guide**: an overview of the features, a page per
+  topic (`bar`, `auto`, `scenes`, `popups`, `waiting`, `idle`, `done`,
+  `calm`, `width`, `dj`, `history`) with its commands and, for a
+  setting, what it is now; `/stage help commands` is the full list.
+- **A workflow file's `bash` rule can no longer hang the session**: at
+  most 4 repeats a rule, and each command of a line read on its own
+  (`^` and `$` at its ends), its first 60 characters: at worst about
+  0.1 s a call, where a chain of `.*` took 84 s.
+- Control characters (a terminal's escapes) are refused in a workflow
+  file and dropped from a stage's message and feature; error lists stop
+  at too many stages and quote the file's values escaped.
+- A scene whose hero or focus throws falls back to the standing scene,
+  as one whose drawing throws did; a `/clear` rebuilds the stage section
+  of the system prompt.
+- Smaller fixes: the DJ box's title measured once a frame, a resize mid
+  frame, a reload's double credit, the frame tool's mixed-width sheets.
+  The settings commands share one store writer and one answer builder;
+  dead code went, one hash serves eight scenes, and the test files are
+  named by subject. The review's minor items are on the roadmap.
+
 ## 0.16.0 (2026-10-10)
 
 Roadmap phase 8a, its second half: the open leftovers worth fixing,
