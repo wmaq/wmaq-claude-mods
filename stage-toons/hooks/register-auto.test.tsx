@@ -248,3 +248,30 @@ test('a note rides on a result that reports an error too', async ($, on) => {
   const failed = await callTool($, 'Bash', { command: 'false' })
   expect(failed.context?.[0]).toContain('[stage-toons] The stage moved by itself to 6/10 Plan audit')
 })
+
+test("a failed step of the move queue goes to the debug log, never fails the call it rides on, and doesn't hold up the next move", async ($, on) => {
+  const logs: string[] = []
+  on('ui.log', ($, e) => {
+    logs.push(e.text)
+
+    return { value: undefined }
+  })
+  let isFailing = false
+  on('state.set', ($, e, next) => {
+    if ((e as unknown as { key: string }).key === 'progress' && isFailing) {
+      isFailing = false
+
+      return { deny: 'state down' } as never
+    }
+
+    return next(e)
+  })
+  engine(on)
+  await $.session.start(START)
+  isFailing = true
+  const answer = await callTool($, 'Skill', skill('superpowers:brainstorming'))
+  expect(answer.deny).toBeUndefined()
+  expect(logs.some(line => line.startsWith('stage-toons: an automatic move failed: '))).toBe(true)
+  await setStage($, { stage: 'plan', message: 'Planning' })
+  expect(text(await runStage($, ''))).toContain('Stage 5/10 Plan')
+})

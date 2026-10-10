@@ -433,41 +433,51 @@ async function pruneStore($: EngineInterface, mod: Mod, now: number) {
   }
 }
 
-// /stage auto on or off, kept for every project.
+// A setting the person changed, kept in the store for every project; a
+// store that fails keeps it for this session ($.state, which the engine
+// reads by atom where each setter writes it). The paint loop reads it at
+// its next frame.
+async function keep($: EngineInterface, key: string, value: unknown) {
+  try {
+    await $.store.set(key, value)
+  } catch {
+    // Lasts for this session.
+  }
+}
+
 async function setAuto($: EngineInterface, mod: Mod, isOn: boolean) {
-  mod.isAuto = isOn
-  await update($, autoAtom, () => isOn)
-  try {
-    await $.store.set(AUTO_KEY, isOn)
-  } catch {
-    // Lasts for this session.
-  }
+  await update($, autoAtom, () => (mod.isAuto = isOn))
+  await keep($, AUTO_KEY, isOn)
 }
 
-// /stage bubbles on or off, kept for every project. The paint loop reads
-// it at its next frame.
 async function setBubbles($: EngineInterface, mod: Mod, isOn: boolean) {
-  mod.isBubbles = isOn
-  await update($, bubblesAtom, () => isOn)
-  try {
-    await $.store.set(BUBBLES_KEY, isOn)
-  } catch {
-    // Lasts for this session.
-  }
+  await update($, bubblesAtom, () => (mod.isBubbles = isOn))
+  await keep($, BUBBLES_KEY, isOn)
 }
 
-// /stage calm on or off, kept for every project. The paint loop reads it
-// at its next frame; the band is drawn again, which wakes a loop the deep
-// sleep stopped.
+// The band is drawn again, which wakes a loop the deep sleep stopped.
 async function setCalm($: EngineInterface, mod: Mod, isOn: boolean) {
-  mod.isCalm = isOn
-  await update($, calmAtom, () => isOn)
+  await update($, calmAtom, () => (mod.isCalm = isOn))
+  await keep($, CALM_KEY, isOn)
   $.ui.invalidate('ui.render')
-  try {
-    await $.store.set(CALM_KEY, isOn)
-  } catch {
-    // Lasts for this session.
-  }
+}
+
+async function setDjParty($: EngineInterface, mod: Mod, isOn: boolean) {
+  await update($, djPartyAtom, () => (mod.isDjParty = isOn))
+  await keep($, DJ_PARTY_KEY, isOn)
+  $.ui.invalidate('ui.render')
+}
+
+// The band redraws at its new size.
+async function setWidth($: EngineInterface, mod: Mod, width: WidthSetting) {
+  await update($, widthAtom, () => (mod.width = width))
+  await keep($, WIDTH_KEY, width)
+  $.ui.invalidate('ui.render')
+}
+
+async function setHidden($: EngineInterface, mod: Mod, isHidden: boolean) {
+  await update($, hiddenAtom, () => (mod.isHidden = isHidden))
+  await keep($, HIDDEN_KEY, isHidden)
 }
 
 // The platform check, run where the cwd isn't Windows: uname -sr, and on
@@ -657,31 +667,31 @@ async function djStatus($: EngineInterface, mod: Mod): Promise<string> {
 // The columns the band has for the area, null before a band was drawn.
 const roomOf = (mod: Mod): number | null => (mod.lastBand === null ? null : Math.min(mod.lastBand.columns - 1, WIDTH_MAX))
 
-// What a help topic's page ends with: the answer its feature's own
-// command gives now, for a feature with a setting.
-async function helpNow($: EngineInterface, mod: Mod, topic: string | null, p: Progress, now: number): Promise<string | undefined> {
-  const settings = (await read($, workflowAtom))?.settings
-  if (topic === 'bar') return `${showText(mod.workflow, p, now)}\n${hideText((await read($, hiddenAtom)) === true, settings?.hide)}`
-  if (topic === 'auto') return autoText(mod.workflow, mod.isAuto, settings?.auto)
-  if (topic === 'popups') return bubblesText(mod.isBubbles, settings?.bubbles)
-  if (topic === 'calm') return calmText(mod.isCalm, settings?.calm)
-  if (topic === 'width') return widthText(mod.width, roomOf(mod), settings?.width)
-  if (topic === 'dj') return `${await djStatus($, mod)}\n${djPartyText(mod.isDjParty)}`
+type Setting = 'auto' | 'bubbles' | 'calm' | 'width' | 'hide' | 'dj' | 'dj-party'
 
-  return undefined
+// What a setting's command answers: the setting now, and what the
+// project's workflow file starts it with, if it says.
+async function settingText($: EngineInterface, mod: Mod, setting: Setting): Promise<string> {
+  const settings = (await read($, workflowAtom))?.settings
+  if (setting === 'auto') return autoText(mod.workflow, mod.isAuto, settings?.auto)
+  if (setting === 'bubbles') return bubblesText(mod.isBubbles, settings?.bubbles)
+  if (setting === 'calm') return calmText(mod.isCalm, settings?.calm)
+  if (setting === 'width') return widthText(mod.width, roomOf(mod), settings?.width)
+  if (setting === 'hide') return hideText(mod.isHidden, settings?.hide)
+  if (setting === 'dj') return djStatus($, mod)
+
+  return djPartyText(mod.isDjParty)
 }
 
-// /stage dj party on or off, kept for every project, as calm is; the band
-// is drawn again, so the next frame has it.
-async function setDjParty($: EngineInterface, mod: Mod, isOn: boolean) {
-  mod.isDjParty = isOn
-  await update($, djPartyAtom, () => isOn)
-  $.ui.invalidate('ui.render')
-  try {
-    await $.store.set(DJ_PARTY_KEY, isOn)
-  } catch {
-    // Lasts for this session.
-  }
+// What a help topic's page ends with: the answer its feature's own
+// commands give now, for a feature with a setting.
+async function helpNow($: EngineInterface, mod: Mod, topic: string | null, p: Progress, now: number): Promise<string | undefined> {
+  if (topic === 'bar') return `${showText(mod.workflow, p, now)}\n${await settingText($, mod, 'hide')}`
+  if (topic === 'popups') return settingText($, mod, 'bubbles')
+  if (topic === 'dj') return `${await settingText($, mod, 'dj')}\n${await settingText($, mod, 'dj-party')}`
+  if (topic === 'auto' || topic === 'calm' || topic === 'width') return settingText($, mod, topic)
+
+  return undefined
 }
 
 async function setAuditing($: EngineInterface, mod: Mod, isAuditing: boolean) {
@@ -748,19 +758,6 @@ async function readWorkflowFile($: EngineInterface): Promise<FileWorkflow> {
   }
 }
 
-// /stage width <n> or full, kept for every project. The band redraws at
-// its new size.
-async function setWidth($: EngineInterface, mod: Mod, width: WidthSetting) {
-  mod.width = width
-  await update($, widthAtom, () => width)
-  try {
-    await $.store.set(WIDTH_KEY, width)
-  } catch {
-    // Lasts for this session.
-  }
-  $.ui.invalidate('ui.render')
-}
-
 const sessionWorkflowOf = (file: FileWorkflow): SessionWorkflow =>
   file.kind === 'ok' ? { workflow: file.workflow, source: 'file', ...(file.settings ? { settings: file.settings } : {}) } : { workflow: DEFAULT_WORKFLOW, source: 'default' }
 
@@ -769,67 +766,32 @@ const sessionWorkflowOf = (file: FileWorkflow): SessionWorkflow =>
 // person's own (the store's), else as the session has it. Nothing is
 // saved: the store keeps the person's own settings.
 async function applySettings($: EngineInterface, mod: Mod, settings: WorkflowSettings | undefined) {
-  let isAuto = await read($, autoAtom)
-  if (settings?.auto !== undefined) isAuto = settings.auto
-  else {
-    try {
-      isAuto = (await $.store.get(AUTO_KEY)) !== false
-    } catch {
-      // As this session had it.
-    }
-  }
   const wasHidden = await read($, hiddenAtom)
-  let isHidden = wasHidden
-  if (settings?.hide !== undefined) isHidden = settings.hide
-  else {
-    try {
-      isHidden = (await $.store.get(HIDDEN_KEY)) === true
-    } catch {
-      // As this session had it.
-    }
-  }
-  let isBubbles = await read($, bubblesAtom)
-  if (settings?.bubbles !== undefined) isBubbles = settings.bubbles
-  else {
-    try {
-      isBubbles = (await $.store.get(BUBBLES_KEY)) !== false
-    } catch {
-      // As this session had it.
-    }
-  }
-  // Off unless the store says on (bubbles is the other way round).
   const wasCalm = await read($, calmAtom)
-  let isCalm = wasCalm
-  if (settings?.calm !== undefined) isCalm = settings.calm
-  else {
-    try {
-      isCalm = (await $.store.get(CALM_KEY)) === true
-    } catch {
-      // As this session had it.
-    }
-  }
   const wasWidth = await read($, widthAtom)
-  let width = wasWidth
-  if (settings?.width !== undefined) width = settings.width
-  else {
-    try {
-      const kept = await $.store.get(WIDTH_KEY)
-      width = isWidth(kept) ? kept : DEFAULT_WIDTH
-    } catch {
-      // As this session had it.
-    }
+  mod.isAuto = await startValue($, settings?.auto, AUTO_KEY, kept => kept !== false, await read($, autoAtom))
+  mod.isHidden = await startValue($, settings?.hide, HIDDEN_KEY, kept => kept === true, wasHidden)
+  mod.isBubbles = await startValue($, settings?.bubbles, BUBBLES_KEY, kept => kept !== false, await read($, bubblesAtom))
+  // Off unless the store says on (bubbles is the other way round).
+  mod.isCalm = await startValue($, settings?.calm, CALM_KEY, kept => kept === true, wasCalm)
+  mod.width = await startValue($, settings?.width, WIDTH_KEY, kept => (isWidth(kept) ? kept : DEFAULT_WIDTH), wasWidth)
+  await update($, autoAtom, () => mod.isAuto)
+  await update($, hiddenAtom, () => mod.isHidden)
+  await update($, bubblesAtom, () => mod.isBubbles)
+  await update($, calmAtom, () => mod.isCalm)
+  await update($, widthAtom, () => mod.width)
+  if (mod.isHidden !== wasHidden || mod.width !== wasWidth || mod.isCalm !== wasCalm) $.ui.invalidate('ui.render')
+}
+
+// A setting at the start: the file's where it sets one, else the store's
+// (what kept makes of it), else the session's.
+async function startValue<T>($: EngineInterface, fromFile: T | undefined, key: string, kept: (stored: unknown) => T, session: T): Promise<T> {
+  if (fromFile !== undefined) return fromFile
+  try {
+    return kept(await $.store.get(key))
+  } catch {
+    return session
   }
-  mod.isAuto = isAuto
-  mod.isHidden = isHidden
-  mod.isBubbles = isBubbles
-  mod.isCalm = isCalm
-  mod.width = width
-  await update($, autoAtom, () => isAuto)
-  await update($, hiddenAtom, () => isHidden)
-  await update($, bubblesAtom, () => isBubbles)
-  await update($, calmAtom, () => isCalm)
-  await update($, widthAtom, () => width)
-  if (isHidden !== wasHidden || width !== wasWidth || isCalm !== wasCalm) $.ui.invalidate('ui.render')
 }
 
 // Registers set_stage for the workflow; false when the engine refused.
@@ -1159,28 +1121,28 @@ export const register: Register = on => {
     if (cmd.kind === 'auto') {
       if (cmd.isOn !== null) await setAuto($, mod, cmd.isOn)
 
-      return { text: autoText(mod.workflow, mod.isAuto, (await read($, workflowAtom))?.settings?.auto) }
+      return { text: await settingText($, mod, 'auto') }
     }
     if (cmd.kind === 'bubbles') {
       if (cmd.isOn !== null) await setBubbles($, mod, cmd.isOn)
 
-      return { text: bubblesText(mod.isBubbles, (await read($, workflowAtom))?.settings?.bubbles) }
+      return { text: await settingText($, mod, 'bubbles') }
     }
     if (cmd.kind === 'calm') {
       if (cmd.isOn !== null) await setCalm($, mod, cmd.isOn)
 
-      return { text: calmText(mod.isCalm, (await read($, workflowAtom))?.settings?.calm) }
+      return { text: await settingText($, mod, 'calm') }
     }
     if (cmd.kind === 'dj-party') {
       if (cmd.isOn !== null) await setDjParty($, mod, cmd.isOn)
 
-      return { text: djPartyText(mod.isDjParty) }
+      return { text: await settingText($, mod, 'dj-party') }
     }
-    if (cmd.kind === 'dj') return { text: cmd.isOn !== null ? await setDj($, mod, cmd.isOn) : await djStatus($, mod) }
+    if (cmd.kind === 'dj') return { text: cmd.isOn !== null ? await setDj($, mod, cmd.isOn) : await settingText($, mod, 'dj') }
     if (cmd.kind === 'width') {
       if (cmd.width !== null) await setWidth($, mod, cmd.width)
 
-      return { text: widthText(mod.width, roomOf(mod), (await read($, workflowAtom))?.settings?.width) }
+      return { text: await settingText($, mod, 'width') }
     }
     if (cmd.kind === 'width-usage') return { text: WIDTH_USAGE }
     if (cmd.kind === 'help') return { text: helpText(mod.workflow, cmd.topic, await helpNow($, mod, cmd.topic, before, now)) }
@@ -1218,16 +1180,9 @@ export const register: Register = on => {
     if (cmd.kind === 'workflow-init') return { text: await initWorkflow($, mod) }
     if (cmd.kind === 'workflow-reload') return reloadWorkflow($, mod, now)
     if (cmd.kind === 'hide') {
-      const isHidden = !(await read($, hiddenAtom))
-      mod.isHidden = isHidden
-      await update($, hiddenAtom, () => isHidden)
-      try {
-        await $.store.set(HIDDEN_KEY, isHidden)
-      } catch {
-        // Lasts for this session.
-      }
+      await setHidden($, mod, !(await read($, hiddenAtom)))
 
-      return { text: hideText(isHidden, (await read($, workflowAtom))?.settings?.hide) }
+      return { text: await settingText($, mod, 'hide') }
     }
     // Untracked, a message would be shown nowhere and lost at the first stage.
     if (cmd.kind === 'message' && before.stage === null) return { text: 'a message belongs to a stage; set one first (/stage next, or /stage <id>).' }
