@@ -6,6 +6,41 @@ release (departures from the spec, review findings, live checks) are in its
 spec and plan under `docs/superpowers/`, the hand-offs in `docs/handoffs/`
 and the git history.
 
+## 0.16.0 (2026-10-10)
+
+Roadmap phase 8a, its second half: the open leftovers worth fixing,
+picked with the person from the list every release since 0.5 had left
+(16 fixed, 8 parked on the roadmap, the rest dropped), with a short
+design in chat instead of a spec and plan, two live probes, and a Fable
+review of the branch. Built and tested on Linux (CachyOS, Ghostty in
+herdr).
+- **Done on a push that went through.** A new rule kind, `{ "push":
+  "main" }`, reads the branch Claude Code's own Bash result says a push
+  updated (`gitOperation`): up to date, `--dry-run`, rejected, deleted
+  or failed-behind-a-chain pushes no longer reach Done (probed: a quiet
+  `-q` push shows nothing either, and a push of several branches counts
+  the first). The default moves to Done on `push main`, `push master`
+  or `gh pr merge`; a workflow file from `/stage workflow init` before
+  0.16 keeps its older `bash` rule (the README says how to change it).
+- Leaving Done for a new round, Claude's note asks for the new
+  feature's name (a reopen doesn't); `/stage demo idle` gives each prop
+  one whole 6 s loop.
+- Cost per stage: subagent tokens waiting for the main turn's end are
+  kept in `$.state`, so a hot reload loses none.
+- A collapsed band no longer restarts its paint loop every 2 s: checked
+  live, the band's hook still runs while collapsed and expanding draws
+  nothing new, but the next blit is taken, so the loop waits with a
+  blit a second (every 2 s with Clawd deep asleep).
+- Clawd DJ: a read that returns after `/stage dj off` is dropped and the
+  poll ends at once; titles are composed (accents written apart count as
+  one character, in the box and Clawd's labels); the poll reads at once
+  when the area shows again (or Claude starts work) instead of up to
+  30 s later; a `uname` that timed out says so; the playerctl message
+  says to type `/stage dj on` again.
+- Scenes: fireworks keeps every spark inside the area (80 columns spilled
+  some); on a wide room the DJ's dancers walk in from behind the far
+  speaker.
+
 ## 0.15.0 (2026-10-09)
 
 Roadmap phase 8a, its first half: Clawd DJ on macOS and Linux, built and

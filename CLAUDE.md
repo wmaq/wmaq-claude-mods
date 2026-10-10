@@ -6,7 +6,7 @@ the marketplace manifest `.claude-plugin/marketplace.json`.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with an area below the bar where Clawd lives: the stage's pixel-art scene while Claude works, an idle Clawd between turns, and a desk row of helpers while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.15.0 (Clawd DJ, `/stage dj`, on Windows, macOS and Linux: while Spotify plays, Clawd at the decks and the track's name, read through Windows' media session, `osascript` or `playerctl`; Linux probed after the release; 0.14.0 brought Clawd DJ on Windows, 0.13.0 calm mode and scene polish); the frame tool in `tools/frames/`; releases in `stage-toons/CHANGELOG.md`; the plan ahead in `docs/roadmap.md`, ideas in `docs/research/`; the latest review in `docs/reviews/` |
+| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with an area below the bar where Clawd lives: the stage's pixel-art scene while Claude works, an idle Clawd between turns, and a desk row of helpers while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.16.0 (the leftovers of every release fixed or parked: Done on a push that went through, a quiet collapsed band, Clawd DJ's edge cases; 0.15.0 brought Clawd DJ on macOS and Linux, read through `osascript` or `playerctl`, 0.14.0 Clawd DJ on Windows); the frame tool in `tools/frames/`; releases in `stage-toons/CHANGELOG.md`; the plan ahead in `docs/roadmap.md`, ideas in `docs/research/`; the latest review in `docs/reviews/` |
 
 ## The workflow
 
@@ -228,6 +228,23 @@ Learned probing Clawd DJ on Linux on 2.1.296:
   names (`dj-probe-linux+stage-toons: …`), not only the one that
   answered.
 
+Learned fixing the leftovers on 2.1.296:
+
+- Core's Bash result carries `gitOperation` (`push: { branch }`, `pr: {
+  action }`, `commit`, `branch`), read from git's output, not the
+  command: a push that went through has it (piped through `tail` too,
+  `HEAD:main` too); an up-to-date, `--dry-run`, rejected or deleting push
+  has none, and neither has a quiet `-q` one; a push of two branches
+  names the first. stage-toons' `push` rules read it.
+- A collapsed `AbovePrompt` band still runs its `ui.render` hook, and its
+  blits are refused; expanding it runs nothing new, but the next blit
+  with the same `requestId` (`above-prompt`, always) is taken. A paint
+  loop that asks for a redraw on refusals restarts for ever while
+  collapsed; stage-toons' waits with a blit a second.
+- A `context` line added to a tool's result is the quickest probe of an
+  engine value: a throwaway mod that adds it to every Bash result shows
+  it to Claude in the session (the `git-probe` of 8a).
+
 ### The test kit (`claude-code/testing`)
 
 - Register every test hook before the test's first `$` call.
@@ -254,7 +271,10 @@ Learned probing Clawd DJ on Linux on 2.1.296:
   `on('state.get', ($, e, next) => (e.key === 'warned' ? { value: { value: true, version: 1 } } : next(e)))`.
   Pin a key that way only when the mod never writes it: `update` on a
   pinned key retries without end. For a key it writes (`usdCredited`),
-  answer the earlier load's value only until the mod's first write.
+  answer the earlier load's value only until the mod's first write;
+  for one it writes with `update` (`turnTokens`), answer it with
+  `version: 0`, the version the kit's unset key has, or the write's
+  `ifVersion` misses and the retry reads the kit's own value.
 - `fs.*` test hooks receive resolved absolute paths, not the relative path
   the mod passed; match files by the part the test names.
 - `ui.redraw()` redraws whether or not the mod asked to be: count

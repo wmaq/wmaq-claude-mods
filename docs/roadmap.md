@@ -8,7 +8,7 @@ the workflow's step 10).
 
 ### Where things stand
 
-0.15.0 is on `main`: automatic moves and history with cost per stage, 41
+0.16.0 is on `main`: automatic moves and history with cost per stage, 41
 scenes dealt like a deck and played in the area below the bar with Z
 layers and a dissolve at every change of picture, an area that grows with
 the terminal (`/stage width`) with scenes that spread their action across
@@ -16,9 +16,9 @@ it, calm mode (`/stage calm`), Clawd DJ while Spotify plays on Windows, macOS an
 task count on the bar, four waiting scenes seating up to 8 helpers, 5 idle
 routines with a prop show-off and a celebration, Done after a merge,
 per-project settings, and the frame tool (`tools/frames/`) for checking
-the drawing from a cloud session. Phases 1 to 4, 6 and 7 of the plan below
-are done, and 8a's first half (Clawd DJ on macOS and Linux); what is left
-is the pre-release (8a's leftovers, then 8b) and the release (9). History: `stage-toons/CHANGELOG.md`. Sources for what comes next:
+the drawing from a cloud session. Phases 1 to 4, 6, 7 and 8a of the plan
+below are done; what is left is the pre-release's second part (8b) and
+the release (9). History: `stage-toons/CHANGELOG.md`. Sources for what comes next:
 the research report
 (`docs/research/2026-10-04-stage-toons-improvement-ideas.md`, ideas
 #1-#30) and the code review (`docs/reviews/2026-10-04-code-review.md`).
@@ -86,42 +86,9 @@ work, and 4d, more waiting scenes, together in 0.11.0; 4e, a wider
 canvas (#25), in 0.12.0, which finished phase 4, richer art; phase 6,
 calm mode (#10) and scene polish, in 0.13.0, ahead of phase 5 as
 reordered; phase 7, Clawd DJ, in 0.14.0; 8a's first half, Clawd DJ on
-macOS and Linux, in 0.15.0.)
+macOS and Linux, in 0.15.0, and its second, the leftovers, in 0.16.0.)
 
 **Phase 8: pre-release.**
-- **8a, the leftovers** (Clawd DJ on macOS and Linux, its first half,
-  shipped in 0.15.0). Picked with the person on 2026-10-10:
-  - **Cost per stage:** subagent tokens are summed in the mod, not
-    `$.state`: a hot reload mid-turn loses them, and those of background
-    agents ending in an untracked turn are dropped.
-  - **Done:** the push rule also matches `git push origin main
-    --dry-run`, `git push origin :main` and a push that failed (seen
-    2026-10-10, a commit refused for want of a git identity): move only
-    on a push that went through. After a typed skill moves the work out
-    of Done, the note to Claude doesn't ask for the new feature's name,
-    so the bar reads "no feature" until `set_stage` names one. The README
-    doesn't say that a `master` or `trunk` default branch needs its own
-    `done` rule (or `/stage done`); or the default rule could match them.
-    `/stage demo idle` gives each prop 2 s, too short for the turn-over
-    and the glance.
-  - **A collapsed band:** collapsed while Claude works, the band restarts
-    the paint loop about every 2 s, each restart asking for the agent list
-    and spending 24 refused blits.
-  - **Scenes:** fireworks' decorative rocket just past the edge of an
-    80-column area spills a few spark pixels into it; on a wide room the
-    DJ's dancers walk in over the far speaker.
-  - **Clawd DJ:** a read in flight when `/stage dj off` is typed lands
-    after it (`mod.music` stale until the next `on`'s read, and
-    `djProblem`, `hasDjRead` rewritten), with no test of `/stage dj off`
-    while a check or read runs, and `register-dj` comparing the Windows
-    argv's first four elements only; the box's scroll counts uncomposed
-    code points (normalise in `parseNowPlaying`), and `layer.ts` measures
-    labels by `.length` while `drawText` draws code points; the poll's
-    30 s sleep isn't woken when the area shows again; after a `uname`
-    that timed out, `/stage dj on` tells a person in a macOS terminal
-    that DJ mode "needs a terminal on Windows, macOS or Linux";
-    `DJ_NEEDS_PLAYERCTL` and the README don't say to type `/stage dj on`
-    again once playerctl is installed.
 - **8b, a full code review** of the mod and the frame tool (correctness,
   performance, security), and fixes for what it finds.
 - **8b, `/stage help` as a guide to the mod** (the person, 2026-10-08):
