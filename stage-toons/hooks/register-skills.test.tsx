@@ -112,4 +112,17 @@ test('after Done, a skill the person types starts a new round by itself; one Cla
   const shown = text(await runStage($, ''))
   expect(shown).toContain('2/10 Brainstorm by auto (skill superpowers:brainstorming)')
   expect(shown).toContain('no feature')
+  // Claude is asked for the new feature's name.
+  const note = (await callTool($, 'Read', { file_path: 'x' })).context?.find(line => line.startsWith('[stage-toons]')) ?? ''
+  expect(note).toContain('A new feature starts: pass its name as feature.')
+})
+
+test('a move within the track asks for no feature name', async ($, on) => {
+  engineWithSkills(on)
+  await $.session.start(START)
+  await typeCommand($, 'superpowers:brainstorming')
+  await expand($, 'brainstorming')
+  const note = (await callTool($, 'Read', { file_path: 'x' })).context?.find(line => line.startsWith('[stage-toons]')) ?? ''
+  expect(note).toContain('2/10 Brainstorm')
+  expect(note).not.toContain('A new feature starts')
 })

@@ -43,9 +43,10 @@ export type DemoFrame = { index: number; shot: Shot; sceneMs: number }
 export type IdleDemoFrame = { index: number; routine: IdleId | null; ms: number }
 
 // The idle demo plays every routine, the celebration, the show-off (each
-// prop for SHOW_OFF_DEMO_MS in turn), then the doze.
+// prop for SHOW_OFF_DEMO_MS in turn: one loop of the routine, through the
+// turn-over and the glance), then the doze.
 export const IDLE_DEMO_LENGTH = IDLE_IDS.length + 3
-export const SHOW_OFF_DEMO_MS = 2000
+export const SHOW_OFF_DEMO_MS = 6000
 // The work demo's script: what Claude does in each step, as the layer
 // shows it.
 export type WorkStep = { name: string; mode?: SpinnerMode; phase?: Phase; what?: string; say?: LineMoment; isFailure?: boolean }

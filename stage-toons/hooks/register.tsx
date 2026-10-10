@@ -313,17 +313,21 @@ async function autoMove($: EngineInterface, mod: Mod, signal: Signal) {
   // Matched again on the store's copy, which another session may have moved.
   let target: StageId = ''
   let via = ''
+  let isNewRound = false
   const after = await move($, mod, now, from => {
     const match = autoMatch(mod.workflow, from, signal, mod.isWindows)
     if (match === null) return null
     target = match.stage
     via = viaOf(signal, match.rule)
+    isNewRound = isDone(from.stage)
 
     return applyMove(mod.workflow, from, { stage: target, by: 'auto', via, at: now })
   })
   if (after === null) return
+  // Out of Done, a new round: the bar has no feature until Claude names one.
+  const newRound = isNewRound ? ' A new feature starts: pass its name as feature.' : ''
   mod.notes.push(
-    `[stage-toons] The stage moved by itself to ${stageLabel(mod.workflow, target)} (${via}). Now: ${describe(mod.workflow, after)}. Call ${mod.toolName} if a more specific message or another stage fits.`,
+    `[stage-toons] The stage moved by itself to ${stageLabel(mod.workflow, target)} (${via}). Now: ${describe(mod.workflow, after)}. Call ${mod.toolName} if a more specific message or another stage fits.${newRound}`,
   )
 }
 
