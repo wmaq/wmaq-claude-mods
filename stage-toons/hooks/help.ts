@@ -124,7 +124,8 @@ export function helpText(w: Workflow, topic: string | null, now?: string): strin
     const pad = Math.max(...HELP_TOPICS.map(id => id.length)) + 2
 
     return [
-      'stage-toons: a progress bar of your workflow above the prompt, and Clawd acting out the work in the area below it.',
+      // The engine puts the plugin's name before the answer.
+      'A progress bar of your workflow above the prompt, and Clawd acting out the work in the area below it.',
       '',
       ...HELP_TOPICS.map(id => `  ${id.padEnd(pad)}${TOPICS[id].summary}`),
       '',

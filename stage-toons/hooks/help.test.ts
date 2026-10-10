@@ -15,6 +15,8 @@ test('/stage help takes a topic, commands, or a word it answers with the topics'
 
 test('the overview names every topic and where to go next', () => {
   const text = helpText(W, null)
+  // The engine puts stage-toons: before it.
+  expect(text.startsWith('A progress bar of your workflow')).toBe(true)
   for (const id of HELP_TOPICS) expect(text).toMatch(new RegExp(`^  ${id} +\\S`, 'm'))
   expect(text).toContain('/stage help <topic>')
   expect(text).toContain('/stage help commands')
