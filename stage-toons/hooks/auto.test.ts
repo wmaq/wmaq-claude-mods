@@ -92,7 +92,9 @@ test('agents match by model family; inheriting it from a parent on it does not c
 
 test('bash rules are regular expressions on the command', () => {
   expect(ruleMatches({ bash: 'git merge\\b' }, { kind: 'bash', command: 'git checkout main && git merge feat' }, false)).toBe(true)
-  expect(ruleMatches({ bash: '^git merge' }, { kind: 'bash', command: 'git checkout main && git merge feat' }, false)).toBe(false)
+  // Each command of a line is read on its own: ^ matches at its start.
+  expect(ruleMatches({ bash: '^git merge' }, { kind: 'bash', command: 'git checkout main && git merge feat' }, false)).toBe(true)
+  expect(ruleMatches({ bash: '^git merge' }, { kind: 'bash', command: 'echo git merge feat' }, false)).toBe(false)
 })
 
 test('the default rules carry a superpowers run forward through the track', () => {
@@ -151,7 +153,9 @@ test('why a move happened, cut to 60 characters', () => {
 test('patterns that can backtrack for ever, or hold more than 4 repeats, are refused with their path; safe ones pass', () => {
   const BS = String.fromCharCode(92)
   const greedy = `^(${BS}S+${BS}s*)+merge$`
-  for (const risky of ['^(a|a)*$', greedy, '(a+)+', '(x(ab)*)+', '(?:a|b){2,}', '.*.*.*.*.*X', '.?.?.?.?.?X', 'a*a+a?a{2}a{1,}b']) expect(patternProblem(risky)).not.toBeNull()
+  // A ? after an escape, a class or a literal } is a repeat of its own.
+  const optional = (atom: string) => `${atom}?`.repeat(5) + 'X'
+  for (const risky of ['^(a|a)*$', greedy, '(a+)+', '(x(ab)*)+', '(?:a|b){2,}', '.*.*.*.*.*X', '.?.?.?.?.?X', 'a*a+a?a{2}a{1,}b', optional(`${BS}(`), optional(`${BS}*`), optional(`${BS}?`), optional('}'), optional('[ab]')]) expect(patternProblem(risky)).not.toBeNull()
   // The ? of (?: and a lazy ? are no repeats; escaped and bracketed ones neither.
   for (const safe of ['git merge', '^git (merge|rebase)', '(ab)+', 'a+b*', '[(+*?]+', `x${BS}(a+${BS})*`, '(a|b)?', '(?:a)*?b+?c??', `${BS}*${BS}+${BS}?.*.*.*.*`]) expect(patternProblem(safe)).toBeNull()
   const errors: string[] = []
@@ -163,13 +167,14 @@ test('patterns that can backtrack for ever, or hold more than 4 repeats, are ref
   ])
 })
 
-test('a rule reads each command of a line on its own, its first 60 characters, up to 500 in all', () => {
+test('a rule reads each command of a line on its own, without its separators, its first 60 characters, up to 500 in all', () => {
   const run = (bash: string, command: string) => ruleMatches({ bash }, { kind: 'bash', command }, false)
   // ^ and $ match at each command's ends.
-  expect(run('^ls$', 'git merge && ls')).toBe(false)
+  expect(run('^ls$', 'git merge && ls')).toBe(true)
+  expect(run('^ls$', 'git merge && ls -l')).toBe(false)
   expect(run('merge$', 'git merge && ls')).toBe(true)
-  expect(run('^git push', 'cd x && git push')).toBe(false)
-  expect(run(`[;&|]${String.fromCharCode(92)}s*git push`, 'cd x && git push')).toBe(true)
+  expect(run('^git push', 'cd x && git push')).toBe(true)
+  expect(run('^git push$', 'cd x && git push | tail -1')).toBe(true)
   // A long command before it doesn't hide a later one, but a command's 61st character on is unread.
   expect(run('gh pr merge', `git commit -m "${'word '.repeat(60)}" && gh pr merge 12`)).toBe(true)
   expect(run('merge', `${'x'.repeat(60)} merge`)).toBe(false)

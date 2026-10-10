@@ -3,7 +3,7 @@
 // is the workflow stage-toons ships with.
 
 import type { AutoRule, DoneDef, StageDef, Workflow, WorkflowSettings } from '../types'
-import { chars, hasControl, quoted, rulesAt, unknownFrom } from './auto'
+import { chars, hasControl, keyName, quoted, rulesAt, unknownFrom } from './auto'
 import { STAGE_W } from './scene'
 import type { LibraryScene } from './scenes'
 import { allStages, DONE_ID, DONE_MESSAGE, DONE_SCENES, doneOf } from './track'
@@ -158,7 +158,7 @@ function stageAt(item: unknown, path: string, errors: string[], sceneNames: read
   }
   const raw = item as Record<string, unknown>
   const before = errors.length
-  for (const key of Object.keys(raw)) if (!(FIELDS as readonly string[]).includes(key)) errors.push(`${path}.${key}: not a field (${FIELDS.join(', ')})`)
+  for (const key of Object.keys(raw)) if (!(FIELDS as readonly string[]).includes(key)) errors.push(`${path}.${keyName(key)}: not a field (${FIELDS.join(', ')})`)
   const text: Partial<Record<TextField, string>> = {}
   for (const field of TEXT_FIELDS) {
     const value = raw[field]
@@ -217,7 +217,7 @@ function doneAt(value: unknown, errors: string[], sceneNames: readonly string[])
   }
   const raw = value as Record<string, unknown>
   const before = errors.length
-  for (const key of Object.keys(raw)) if (!(DONE_FIELDS as readonly string[]).includes(key)) errors.push(`done.${key}: not a field (${DONE_FIELDS.join(', ')})`)
+  for (const key of Object.keys(raw)) if (!(DONE_FIELDS as readonly string[]).includes(key)) errors.push(`done.${keyName(key)}: not a field (${DONE_FIELDS.join(', ')})`)
   let message: string | undefined
   if (raw.message !== undefined) {
     if (typeof raw.message !== 'string') errors.push('done.message: must be text')
@@ -248,7 +248,7 @@ export function parseWorkflow(json: string, sceneNames: readonly string[]): { wo
   if (typeof data !== 'object' || data === null || Array.isArray(data)) return { errors: ['the file must hold an object with "track" and, if any, "side"'] }
   const top = data as Record<string, unknown>
   const errors: string[] = []
-  for (const key of Object.keys(top)) if (!(TOP_FIELDS as readonly string[]).includes(key)) errors.push(`${key}: not a field (${TOP_FIELDS.join(', ')})`)
+  for (const key of Object.keys(top)) if (!(TOP_FIELDS as readonly string[]).includes(key)) errors.push(`${keyName(key)}: not a field (${TOP_FIELDS.join(', ')})`)
   const track = stagesAt(top.track, 'track', 1, TRACK_MAX, errors, sceneNames)
   const side = top.side === undefined ? [] : stagesAt(top.side, 'side', 0, SIDE_MAX, errors, sceneNames)
   const seen = new Set<string>()

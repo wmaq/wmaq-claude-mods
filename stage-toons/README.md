@@ -374,10 +374,11 @@ a push went through to), and may add `from`, the stages it fires from:
 Up to 8 rules a stage. A `bash` rule may hold at most 4 repeats (`*`,
 `+`, `?`, `{n,m}`) and may not repeat a group that itself repeats or
 chooses (`(a+)*`, `(a|b)+`), which can take too long to match. It reads
-each command of a line on its own (split before `;`, `&`, `|` and line
+each command of a line on its own (split at `;`, `&`, `|` and line
 ends, so `^` and `$` match at each command's ends), the first 60
-characters of each, up to the line's first 500; a glob holds at most 8
-`*`. The file's `when` lines are shown to Claude in the
+characters of each, up to the line's first 500: a word past a command's
+60th character, such as a late `--auto`, goes unread. A glob holds at
+most 8 `*`. The file's `when` lines are shown to Claude in the
 system prompt, as CLAUDE.md is, and its labels, messages and rules in the
 `[stage-toons]` notes Claude gets when the stage moves. A workflow file in which no stage has an
 `auto` field (as `/stage workflow init` wrote before 0.6) takes the

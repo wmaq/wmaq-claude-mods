@@ -275,6 +275,7 @@ test("control characters in the file's text are refused, with their path; values
   expect(errorsOf({ track: [stage('a', { when: 'one\nline' })] })).toEqual(['track[0].when: control characters'])
   expect(errorsOf({ track: [stage('a')], done: { message: `x${ESC}[2J` } })).toEqual(['done.message: control characters'])
   expect(errorsOf({ track: [stage('a', { auto: [{ skill: `s${ESC}` }] })] })).toEqual(['track[0].auto[0].skill: control characters'])
+  expect(errorsOf({ track: [stage('a', { [`x${ESC}`]: 1 })] })[0]).toBe('track[0]."x\\u001b": not a field (id, label, message, when, scene, scenes, auto)')
   expect(errorsOf({ track: [stage('a', { scene: `x${ESC}[2J${'y'.repeat(60)}` })] })[0]).toMatch(/^track\[0\]\.scene "x\\u001b\[2Jy{34}…" is not a scene/)
 })
 

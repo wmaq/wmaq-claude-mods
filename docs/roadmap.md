@@ -49,6 +49,18 @@ tidying the 8b review will meet again) are gone, and these stay parked.
   the mod is public.
 - **Clawd DJ on Linux:** a shell with no session bus (over SSH or a tty)
   was not probed (2026-10-10); the reader counts its failure as `exit`.
+- **From the 8b review** (`docs/reviews/2026-10-10-code-review.md`),
+  minor and left for when work passes by: check `loadId` once a second,
+  not every frame (P3); the first `/stage dj on` on Linux or macOS can
+  spend its whole 10 s budget (S5); five gating hooks have no `.catch`,
+  worth code only if a probe shows a prompt lost (E1); unit tests for
+  `reseat` and `redance` (T2) and for the frame tool's golden-hash claim
+  (F4); one wall-clock test (T3, for CI); test helpers copied across the
+  register tests and a `boot` helper (L2, L12); the frame tool's own copy
+  of `golden.ts`' builders (L6); `short` in `auto.ts` is `cut`, kept
+  apart by an import cycle (L7); the band hook's demo line (L10); about
+  80 exports nothing imports (L11); a tab in a workflow file's text is
+  refused as a control character with no hint which.
 
 ### The plan after the frame tool (agreed 2026-10-04, reordered 2026-10-06)
 

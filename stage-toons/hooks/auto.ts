@@ -50,6 +50,8 @@ export const hasControl = (text: string): boolean => /[\u0000-\u001f\u007f-\u009
 // A file's value quoted in an error: its escapes written out, cut to 40
 // characters.
 export const quoted = (text: string): string => JSON.stringify(chars(text) > 40 ? `${Array.from(text).slice(0, 39).join('')}…` : text)
+// A key of the file in an error: bare when it is a plain word, else quoted.
+export const keyName = (key: string): string => (/^[\w-]{1,40}$/.test(key) ? key : quoted(key))
 
 // One rule: exactly one kind, and perhaps from. The ids in from are checked
 // against the workflow once all its stages are read (unknownFrom).
@@ -61,7 +63,7 @@ function ruleAt(item: unknown, path: string, errors: string[]): AutoRule | null 
   }
   const raw = item as Record<string, unknown>
   const before = errors.length
-  for (const key of Object.keys(raw)) if (!(FIELDS as readonly string[]).includes(key)) errors.push(`${path}.${key}: not a field (${FIELDS.join(', ')})`)
+  for (const key of Object.keys(raw)) if (!(FIELDS as readonly string[]).includes(key)) errors.push(`${path}.${keyName(key)}: not a field (${FIELDS.join(', ')})`)
   const kinds = KINDS.filter(k => raw[k] !== undefined)
   if (kinds.length !== 1) {
     errors.push(`${path}: ${kinds.length === 0 ? 'needs one of' : 'has more than one of'} ${KINDS.join(', ')}`)
@@ -137,36 +139,47 @@ const BACKSLASH = String.fromCharCode(92)
 // are none). Escapes and character classes are skipped.
 export function patternProblem(source: string): string | null {
   type Group = { hasRepeat: boolean; hasChoice: boolean }
+  type Token = 'repeat' | 'open' | 'other'
   const stack: Group[] = [{ hasRepeat: false, hasChoice: false }]
   const isRepeat = (c: string | undefined) => c === '*' || c === '+' || c === '{'
   let repeats = 0
+  // What the last token was: a ? after a repeat makes it lazy, after ( it
+  // starts (?: or (?=; anywhere else it is a repeat of its own.
+  let last: Token = 'other'
   for (let i = 0; i < source.length; i++) {
     const c = source[i]!
     const top = stack[stack.length - 1]!
+    const bounds = c === '{' ? /^\{\d+(,\d*)?\}/.exec(source.slice(i)) : null
+    let token: Token = 'other'
     if (c === BACKSLASH) i += 1
     else if (c === '[') {
       for (i += 1; i < source.length && source[i] !== ']'; i++) if (source[i] === BACKSLASH) i += 1
-    } else if (c === '(') stack.push({ hasRepeat: false, hasChoice: false })
-    else if (c === '|') top.hasChoice = true
-    else if (c === '?' && /[(*+?}]/.test(source[i - 1] ?? '(')) continue
-    else if (isRepeat(c) || c === '?') {
+    } else if (c === '(') {
+      stack.push({ hasRepeat: false, hasChoice: false })
+      token = 'open'
+    } else if (c === '|') top.hasChoice = true
+    else if (c === '?' && last !== 'other') token = last === 'repeat' ? 'other' : 'open'
+    else if (c === '*' || c === '+' || c === '?' || bounds) {
       repeats += 1
       if (c !== '?') top.hasRepeat = true
+      if (bounds) i += bounds[0].length - 1
+      token = 'repeat'
     } else if (c === ')' && stack.length > 1) {
       const group = stack.pop()!
       const isRepeated = isRepeat(source[i + 1])
       if (isRepeated && (group.hasRepeat || group.hasChoice)) return 'a repeated group holding another repeat or a choice, as in (a+)* or (a|b)+, can take too long'
       if (group.hasRepeat || isRepeated) stack[stack.length - 1]!.hasRepeat = true
     }
+    last = token
   }
 
   return repeats > REPEATS_MAX ? `${repeats} repeats (*, +, ?, {n,m}) can take too long; at most ${REPEATS_MAX}` : null
 }
 
-// The commands of a line a bash rule reads, each starting at its
-// separator (; & | or a line end), so ^ and (?:^|[;&|\n]) match there,
-// and ending before the next, so $ does.
-const commandsOf = (command: string): string[] => command.slice(0, COMMAND_MAX).split(/(?=[;&|\n])/).map(part => part.slice(0, SEGMENT_MAX).trimEnd())
+// The commands of a line a bash rule reads, split at ; & | and line ends,
+// each without its separators and spaces around, so ^ and $ match at its
+// ends.
+const commandsOf = (command: string): string[] => command.slice(0, COMMAND_MAX).split(/[;&|\n]+/).map(part => part.trim().slice(0, SEGMENT_MAX).trimEnd())
 
 // Rules' regular expressions, compiled once each.
 const compiled = new Map<string, RegExp>()
