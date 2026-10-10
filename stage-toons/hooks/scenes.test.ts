@@ -228,7 +228,7 @@ const BATCH_2 = [
 ]
 
 // crash-test's camera leaves Clawd for the car's run (its own test, in
-// scene-polish-6c.test.ts).
+// scenes-polish-2.test.ts).
 test('batch 2: at 30 columns, the narrowest the demo plays at, the crop still shows most of Clawd', () => {
   for (const id of BATCH_2.filter(id => id !== 'crash-test')) {
     const scene = SCENES[id]!
@@ -237,7 +237,7 @@ test('batch 2: at 30 columns, the narrowest the demo plays at, the crop still sh
 })
 
 // The scenes that fade at their loop point are measured with the fade in
-// scene-polish.test.ts.
+// scenes-polish.test.ts.
 test('batch 2: no scene jumps at its loop point', () => {
   const changed = (a: PixelBuffer, b: PixelBuffer) => [...a.px].filter((c, i) => c !== b.px[i]).length
   for (const id of [...BATCH_2, 'dishes'].filter(id => SCENES[id]!.fadesAtLoop !== true)) {
@@ -272,7 +272,7 @@ test('batch 2, part 1: each new scene shows what it is about', () => {
   // The scroll unrolls along the floor, written as it goes.
   expect(has('scroll', C.paper, 0.5)).toBeLessThan(has('scroll', C.paper, 5))
   expect(has('scroll', C.ink, 0.5)).toBeLessThan(has('scroll', C.ink, 5))
-  // stamp, reworked in phase 6c: scene-polish-6c.test.ts.
+  // stamp, reworked in phase 6c: scenes-polish-2.test.ts.
 })
 
 test('batch 2, part 2: each new scene shows what it is about', () => {
@@ -293,7 +293,7 @@ test('batch 2, part 2: each new scene shows what it is about', () => {
   expect(has('workbench', C.blue, 3)).toBe(0)
   expect(has('workbench', C.blue, 3.7)).toBe(1)
   expect(has('workbench', C.gray, 6.6)).toBe(0)
-  // crash-test, reworked in phase 6c: scene-polish-6c.test.ts.
+  // crash-test, reworked in phase 6c: scenes-polish-2.test.ts.
 })
 
 test('batch 2, part 3: each new scene shows what it is about', () => {
@@ -305,7 +305,7 @@ test('batch 2, part 3: each new scene shows what it is about', () => {
   // The third ball misses the bin: it lies on the floor past it.
   expect(at('recycling', C.white, 4.5).every(p => p.x >= 44 && p.y >= 11)).toBe(true)
   expect(has('recycling', C.white, 4.5)).toBe(2)
-  // bug-net and dice, reworked in phase 6c: scene-polish-6c.test.ts.
+  // bug-net and dice, reworked in phase 6c: scenes-polish-2.test.ts.
 })
 
 test('the kit draws a line with both ends and every pixel between', () => {

@@ -1,9 +1,12 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { HistoryEntry, Progress } from '../types'
-import { costText, credit, creditAt, currentEntry, currentIndex, duration, logText, timeText, tokenCount } from './history'
+import { costText, creditAt, currentEntry, currentIndex, duration, logText, timeText, tokenCount } from './history'
 import { cellWidth, freshProgress } from './stages'
 import { DEFAULT_WORKFLOW as W } from './workflow'
+
+// Claude's working time added to the current entry.
+const credit = (p: Progress, ms: number): Progress => creditAt(p, currentEntry(p), ms)
 
 const MIN = 60_000
 const H = 60 * MIN

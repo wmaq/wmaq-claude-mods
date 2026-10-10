@@ -70,9 +70,6 @@ export function creditAt(p: Progress, key: EntryKey | null, ms: number, cost?: C
   }
 }
 
-// Claude's working time added to the current entry.
-export const credit = (p: Progress, ms: number): Progress => creditAt(p, currentEntry(p), ms)
-
 export function duration(ms: number): string {
   const minutes = Math.floor(Math.max(0, ms) / 60_000)
   if (minutes < 1) return '<1m'

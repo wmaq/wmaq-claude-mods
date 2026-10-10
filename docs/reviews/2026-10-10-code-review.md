@@ -304,3 +304,17 @@ unchanged. Not checked: the terminal's handling of the escapes in S2,
 `$.state` across `/clear` (C1), Bun's timings (Node measured; the same
 class of regex engine), and 37 of the 45 scene files line by line for
 leanness.
+
+## What was done with it
+
+Fixed on `stage-toons-8b`: S1 (at most 4 repeats; each command of a
+line read on its own, its first 60 characters: about 0.1 s at worst),
+S2, S3, S4, D1, D2, C1, C2, P1, T1, F1-F3, L1, L3-L5 (the atoms stay
+where each setter names them: `validate` refuses an atom passed into a
+helper), L8, L9, L13, M5. Two fixes were tried and undone, as the tests
+showed them wrong: **P2** (an idle teammate that works again raises no
+event, so the list must be polled while one is known) and **C3**
+(pruning is awaited so its work is done when `session.start` returns;
+at most about 50 store reads a week). L7 went to the roadmap: `cut`
+can't move into `auto.ts` without an import cycle. The rest of the
+smaller items are on the roadmap's open leftovers.

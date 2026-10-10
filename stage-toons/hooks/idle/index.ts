@@ -64,7 +64,8 @@ const drawn = (r: IdleRoutine, idleMs: number): PixelBuffer => {
 
 // The box idleMs into an idle period: the routine, or the doze after
 // DOZE_MS. A routine that throws is replaced by classic from then on
-// (broken), and reported once (onBreak).
+// (broken), and reported once (onBreak). For the tests: the mod places
+// the routine in the area (frames.ts).
 export const idleFrame = (routine: IdleId, idleMs: number, broken: Set<IdleId> = new Set(), onBreak?: (id: IdleId, error: unknown) => void): PixelBuffer =>
   idleMs >= DOZE_MS ? dozeFrame(idleMs) : routineFrame(routine, idleMs, broken, onBreak)
 

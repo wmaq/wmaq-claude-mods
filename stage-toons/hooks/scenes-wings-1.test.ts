@@ -8,7 +8,7 @@ import { C } from './scenes/kit'
 
 // The scenes whose wings this file covers: each a themed set piece past the
 // core. bug-net and dice, reworked across the whole width in phase 6c, are
-// held by scene-polish.test.ts and scene-polish-6c.test.ts.
+// held by scenes-polish.test.ts and scenes-polish-2.test.ts.
 const WINGED = ['blueprint', 'bug-hunt', 'cake', 'clipboard', 'control-panel', 'dishes', 'fable-audit', 'gift', 'ladder']
 const scene = (id: string): Scene => SCENES[id]!
 const at = (id: string, t: number, columns: number, rows = 9): PixelBuffer => renderFull(scene(id), t, null, t, { columns, rows } satisfies AreaSize)

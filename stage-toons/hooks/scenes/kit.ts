@@ -46,6 +46,13 @@ export const C = {
 export const every = (t: number, period: number): number => Math.floor(t / period)
 // A short blink every few seconds; seed staggers Clawds.
 export const blinking = (t: number, seed = 0): boolean => (t + seed) % 3.1 < 0.15
+// A small hash of n and a seed, in [0, 1), for a scene's speckle and picks.
+export const hash = (n: number, seed: number): number => {
+  let h = Math.imul(n + seed, 0x27d4eb2d)
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b)
+
+  return ((h ^ (h >>> 13)) >>> 0) / 0x100000000
+}
 export const wave = (t: number, period: number): number => Math.sin((t / period) * Math.PI * 2)
 export const lerp = (a: number, b: number, k: number): number => a + (b - a) * Math.max(0, Math.min(1, k))
 export const still = (x: number, y: number) => (): Point => ({ x, y })
@@ -67,7 +74,6 @@ export const TICK: Sprite = { palette: { x: C.green }, frames: [['...x', '..x.',
 export const BULB_ON: Sprite = { palette: { y: C.gold, g: C.gray }, frames: [['.y.', 'yyy', '.y.', '.g.']] }
 export const BULB_OFF: Sprite = { palette: { y: C.bulbOff, g: C.gray }, frames: [['.y.', 'yyy', '.y.', '.g.']] }
 export const FLAG: Sprite = { palette: { p: C.woodDark, f: C.red }, frames: [['pff', 'pf.', 'p..', 'p..']] }
-export const PAGE: Sprite = { palette: { w: C.paper, l: C.ink }, frames: [['wwww', 'wllw', 'wwww', 'wllw', 'wwww']] }
 export const CHECKLIST: Sprite = { palette: { w: C.paper, g: C.green, l: C.ink }, frames: [['wwwww', 'wgwll', 'wwwww', 'wgwll', 'wwwww']] }
 export const SCROLL: Sprite = {
   palette: { w: C.paper, s: C.paperShade, l: C.ink },
@@ -75,7 +81,6 @@ export const SCROLL: Sprite = {
 }
 export const GLASS: Sprite = { palette: { r: C.gray, g: C.glass, h: C.woodDark }, frames: [['.rr..', 'rggr.', 'rggr.', '.rrh.', '....h']] }
 export const STONE: Sprite = { palette: { s: C.gray, d: C.darkGray }, frames: [['.ss.', 'dddd']] }
-export const BRICK: Sprite = { palette: { b: C.brick, m: C.mortar }, frames: [['bbbm', 'bbbm']] }
 export const TUBE: Sprite = { palette: { g: C.glass, l: C.liquid }, frames: [['g.g', 'g.g', 'g.g', 'glg', 'glg', 'glg', '.g.']] }
 export const GIFT: Sprite = { palette: { r: C.red, y: C.gold }, frames: [['.y..y.', 'yyyyyy', 'rrryrr', 'rrryrr', 'rrryrr', 'rrryrr']] }
 export const BROOM: Sprite = { palette: { w: C.wood, b: C.gold }, frames: [['..w', '..w', '.w.', '.w.', 'bbb', 'bbb']] }

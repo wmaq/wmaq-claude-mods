@@ -9,7 +9,7 @@
 
 import { fillRect, type PixelBuffer, rightOf, setPixel } from '../pixels'
 import { type Area, areaOf, CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
-import { blinking, C, lerp, reach } from './kit'
+import { blinking, C, lerp, reach, hash as seededHash } from './kit'
 import { fade } from './layers'
 
 const PAGES = 4
@@ -71,12 +71,7 @@ const CABINET_LINE = fade(C.gray, 0.86)
 const HANDLE = fade(C.gray, 0.6)
 
 // A small hash, for the shelves' books and the board's cards.
-const hashOf = (n: number) => {
-  let h = Math.imul(n + 11, 0x27d4eb2d)
-  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b)
-
-  return ((h ^ (h >>> 13)) >>> 0) / 0x100000000
-}
+const hashOf = (n: number) => seededHash(n, 11)
 
 // The library: bookcases from the area's left edge to its right, a plank
 // every five rows up into the headroom and an upright every 23 columns;

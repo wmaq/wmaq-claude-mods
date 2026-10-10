@@ -8,7 +8,7 @@
 
 import { fillRect, type PixelBuffer, rightOf, setPixel, topOf } from '../pixels'
 import { type Area, areaOf, type Scene } from '../scene'
-import { blinking, C, every, lerp, reach, still } from './kit'
+import { blinking, C, every, lerp, reach, still, hash as seededHash } from './kit'
 import { fade } from './layers'
 
 const LOOP = 13
@@ -80,12 +80,7 @@ const isWriting = (t: number, area: Area) => {
 }
 
 // A small hash, for the bookcases' books.
-const hash = (n: number) => {
-  let h = Math.imul(n + 11, 0x27d4eb2d)
-  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b)
-
-  return ((h ^ (h >>> 13)) >>> 0) / 0x100000000
-}
+const hash = (n: number) => seededHash(n, 11)
 
 // The study's wall across the area, still: in turn a tall window and a
 // bookcase, every BAY columns, the first window over Clawd's corner (on 48 columns, a

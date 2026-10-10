@@ -19,7 +19,6 @@ import { AREA_W, type Helper, helperAt, SEATS, type SeatLog, seatX } from './sea
 export const BELT_X = 16
 export const BOX_GAP = 12
 export const BOX_SPEED = 8
-export const BOX_W = 6
 export const FLASH_MS = 125
 export const BELT = C.darkGray
 export const BELT_MARK = C.gray

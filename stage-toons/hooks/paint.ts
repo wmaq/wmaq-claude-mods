@@ -47,12 +47,15 @@ export function animate(ports: Ports, mod: Mod, site: Site) {
           isReplaced = true
           break
         }
-        const { requestId, columns, rows } = site
         const now = await ports.now()
+        // Read after the await: a resize may land during it.
+        const { requestId, columns, rows } = site
         if (polledAt === -Infinity) {
           polledAt = now
           await ports.pollAgents()
         } else if (!isWaiting && mod.roster.size > 0 && now - polledAt >= AGENT_POLL_MS) {
+          // Idle teammates included: one that works again raises no event,
+          // only the list shows it.
           polledAt = now
           void ports.pollAgents()
         }

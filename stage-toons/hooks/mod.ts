@@ -40,7 +40,7 @@ export const PROBE_MS = 1000
 // The Raster the mod repaints: the band's area, keyed 'area', at the size
 // the band's hook worked out (band.ts' areaSize). lastCells
 // and blittedAt: the frame the Raster shows and when it was sent; isAsleep:
-// the area stopped on its still picture (P1).
+// the area stopped on its still picture (the deep sleep).
 export type Site = {
   requestId: string | undefined
   columns: number

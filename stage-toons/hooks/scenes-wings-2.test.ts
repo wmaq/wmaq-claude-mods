@@ -8,8 +8,8 @@ import { C } from './scenes/kit'
 import { CHALK } from './scenes/light-bulbs'
 
 // proofread-page, proofread-checklist, scroll and sticky-notes, reworked
-// across the whole width in phase 6c, are held by scene-polish.test.ts and
-// scene-polish-6c.test.ts.
+// across the whole width in phase 6c, are held by scenes-polish.test.ts and
+// scenes-polish-2.test.ts.
 const WINGED = ['light-bulbs', 'mystery-box', 'red-pen', 'scales', 'stepping-stones', 'thought-clouds', 'treasure-map']
 const scene = (id: string): Scene => SCENES[id]!
 // A scene on an area of that size, its background on the same unwrapped time.

@@ -8,7 +8,7 @@
 import { CLAWD_W, clawdAnchors } from '../clawd'
 import { fillRect, type PixelBuffer, rightOf, setPixel, topOf } from '../pixels'
 import { type Area, areaOf, CLAWD_TOP, type Scene } from '../scene'
-import { blinking, C, lerp, reach } from './kit'
+import { blinking, C, lerp, reach, hash as seededHash } from './kit'
 import { eachItem, fade, type LayerSpec, mix, scrolled, wrap } from './layers'
 
 // Only the clouds scroll; the skylines and the crane stand still.
@@ -49,12 +49,7 @@ const clawdX = (t: number, area: Area) => Math.round(WALL_X + Math.min(1, t / BU
 const isStriking = (t: number) => !isDone(t) && Math.floor(t * 8) % 2 === 1
 
 // A small hash, for the skylines' buildings and the bricks' shades.
-const hash = (n: number) => {
-  let h = Math.imul(n + 7, 0x27d4eb2d)
-  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b)
-
-  return ((h ^ (h >>> 13)) >>> 0) / 0x100000000
-}
+const hash = (n: number) => seededHash(n, 7)
 
 type Skyline = { seed: number; top: number; spread: number; body: number; roof: number; hasWindows: boolean; wide: number; gap: number }
 const FAR_SKYLINE: Skyline = { seed: 40, top: -2, spread: 5, body: FAR_CITY, roof: FAR_CITY_EDGE, hasWindows: false, wide: 5, gap: 9 }

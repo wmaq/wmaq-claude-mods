@@ -7,7 +7,7 @@
 
 import { fillRect, type PixelBuffer, rightOf, setPixel, topOf } from '../pixels'
 import { type Area, areaOf, CLAWD_TOP, type Scene } from '../scene'
-import { blinking, C, every, lerp, reach, still } from './kit'
+import { blinking, C, every, lerp, reach, still, hash as seededHash } from './kit'
 import { fade } from './layers'
 
 const LOOP = 10
@@ -33,12 +33,7 @@ const FLAME = fade(C.gold, 0.5)
 const FLAME_LOW = fade(C.gold, 0.62)
 
 // A small hash, for the words' lengths.
-const hash = (n: number) => {
-  let h = Math.imul(n + 5, 0x27d4eb2d)
-  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b)
-
-  return ((h ^ (h >>> 13)) >>> 0) / 0x100000000
-}
+const hash = (n: number) => seededHash(n, 5)
 
 const longestOn = (area: Area) => Math.max(SHORTEST, reach(area, START_X, MAX, ROLL_W + 2))
 

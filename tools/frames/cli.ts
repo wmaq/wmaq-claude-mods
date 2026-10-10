@@ -33,7 +33,7 @@ const USAGE = `usage: npx -y tsx tools/frames/cli.ts <what> [options]
        [--agents a,b] [--auditing] [--working] [--scene id] [--workflow file.json] [--idle routine]
        [--tasks done/total]
   turn [--stage id] [--scene id] [--idle routine] [--start MS] [--end MS]
-  demo-work [--stage id] [--scene id] [--seconds N]
+  demo-work [--stage id] [--scene id] [--workflow file.json] [--seconds N]
   stills scenes|idle|waiting   every picture's still in calm mode, one frame each
 calm mode: --calm on scene, idle, waiting (not --demo), dj (not --demo), band and turn
 the area (all but band): --columns N[,N...] (120; scene's --width is another name) --rows N (7 to 9; 9)
@@ -302,7 +302,7 @@ function stills(args: Args): { path: string; width: number; height: number } {
   const frames = drawn.flatMap(d => d.frames)
   const captions = drawn.flatMap(d => d.captions.map(c => (isList ? `${c}, ${d.columns} cols` : c)))
   const isWide = Math.max(...frames.map(f => f.cols)) > 64
-  const sheet = contactSheet(frames, captions, numberOpt(opts, 'columns-per-row', isWide ? 2 : 4, 1))
+  const sheet = contactSheet(frames, captions, numberOpt(opts, 'columns-per-row', isList ? Math.max(...drawn.map(d => d.frames.length)) : isWide ? 2 : 4, 1))
   const { width, height, rgba } = toRgba(sheet, numberOpt(opts, 'scale', 1, 1))
   const path = opts.get('out') ?? `frames-stills-${kind}.png`
   writeFileSync(path, encodePng(width, height, rgba))

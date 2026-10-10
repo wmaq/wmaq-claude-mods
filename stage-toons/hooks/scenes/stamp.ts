@@ -8,7 +8,7 @@
 
 import { fillRect, type PixelBuffer, setPixel } from '../pixels'
 import { type Area, areaOf, drawSprite, type Scene, type Sprite } from '../scene'
-import { blinking, C, every, reach } from './kit'
+import { blinking, C, every, reach, hash as seededHash } from './kit'
 import { fade, wrap } from './layers'
 
 const PER_PAGE = 1.5
@@ -44,12 +44,7 @@ const CUBBY = fade(C.wood, 0.84)
 const CUBBY_BACK = fade(C.woodDark, 0.93)
 const LETTERS = [C.paper, C.paperShade, C.sky].map(c => fade(c, 0.84))
 
-const hashOf = (n: number) => {
-  let h = Math.imul(n + 3, 0x27d4eb2d)
-  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b)
-
-  return ((h ^ (h >>> 13)) >>> 0) / 0x100000000
-}
+const hashOf = (n: number) => seededHash(n, 3)
 
 // How far the belt has moved, in columns: a gap a page, then a pause.
 function travel(t: number): number {

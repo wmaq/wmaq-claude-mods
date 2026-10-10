@@ -401,7 +401,9 @@ async function creditTurn($: EngineInterface, mod: Mod, durationMs: number, toke
   const { progress, raw } = await latestProgress($, mod, now)
   const entry = since !== null ? counted : currentEntry(progress)
   if (entry === null) return
-  const ms = since !== null ? now - since : Math.min(Math.max(0, durationMs), now - entry.at)
+  // After a reload mid-turn, from the entry's start or the last save,
+  // whichever is later: a move during the turn credited its time so far.
+  const ms = since !== null ? now - since : Math.min(Math.max(0, durationMs), now - Math.max(entry.at, raw.updatedAt))
   const after = creditAt(raw, entry, ms, cost)
   if (after === raw) {
     // The entry is gone from the copy (an older version's session cut the history).

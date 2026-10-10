@@ -275,5 +275,7 @@ export function renderSeamed(scene: Scene, time: number, mood: Mood = null, size
   return dissolve(held, now, into / (FADE_MS / 1000), Math.floor(time / scene.loop))
 }
 
+// A scene alone at one moment, for the tests: the mod draws through
+// toon.ts' composeFrame.
 export const renderScene = (scene: Scene, time: number, width: number, mood: Mood = null, rows = STAGE_SIZE.rows): PixelBuffer =>
   crop(renderSeamed(scene, time, mood, { columns: width, rows }), focusAt(scene, time, { columns: width, rows }), width)

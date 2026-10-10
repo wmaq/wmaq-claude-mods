@@ -8,7 +8,7 @@
 
 import { fillRect, type PixelBuffer, rightOf, setPixel } from '../pixels'
 import { type Area, areaOf, CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
-import { blinking, BOX, C, lerp, reach, still } from './kit'
+import { blinking, BOX, C, lerp, reach, still, hash as seededHash } from './kit'
 import { drawLit } from './layers'
 
 const LOOP = 8
@@ -70,12 +70,7 @@ function lightAt(x: number, y: number, aim: { x: number; y: number }): number {
 }
 
 const BOOKS = [C.red, C.blue, C.green, C.gold, C.paperShade, C.violet]
-const hash = (n: number) => {
-  let h = Math.imul(n + 11, 0x27d4eb2d)
-  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b)
-
-  return ((h ^ (h >>> 13)) >>> 0) / 0x100000000
-}
+const hash = (n: number) => seededHash(n, 11)
 
 // The far layer: two shelves along the back wall from SHELVES_X to the
 // edge, books, jars and the odd box along them, with gaps; the uprights.

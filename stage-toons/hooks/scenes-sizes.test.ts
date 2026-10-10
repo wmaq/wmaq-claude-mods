@@ -133,7 +133,7 @@ function wingsDiffer(a: PixelBuffer, b: PixelBuffer): number {
 // Scenes whose wings go on through the loop point by design rather than by a
 // fixed step: thought-clouds' drift on unwrapped time (its own test), and
 // the fading scenes' (their held last moment dissolves into the start; the
-// phase's own are measured over the whole area in scene-polish.test.ts).
+// phase's own are measured over the whole area in scenes-polish.test.ts).
 const UNSTEPPED = (s: Scene) => s.id === 'thought-clouds' || s.fadesAtLoop === true
 
 for (const columns of [120, 200]) {

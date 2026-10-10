@@ -10,7 +10,7 @@
 import { CLAWD_W } from '../clawd'
 import { fillRect, type PixelBuffer, setPixel } from '../pixels'
 import { type Area, areaOf, CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
-import { blinking, C, every, reach } from './kit'
+import { blinking, C, every, reach, hash as seededHash } from './kit'
 import { eachColumn, fade, wrap } from './layers'
 
 const LOOP = 14
@@ -55,12 +55,7 @@ const SCARF_FADE = 0.4
 const TROPHY: Sprite = { palette: { y: C.gold, w: C.white, d: C.brassDark }, frames: [['ywyyy', 'yyyyy', '.yyy.', '..y..', '.ddd.']] }
 
 // A small hash, for empty seats and shirts.
-const hash = (n: number) => {
-  let h = Math.imul(n + 11, 0x27d4eb2d)
-  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b)
-
-  return ((h ^ (h >>> 13)) >>> 0) / 0x100000000
-}
+const hash = (n: number) => seededHash(n, 11)
 
 // A leg's progress, 0 to 1, with its speed building and dropping at the
 // ends: a quick start, a steady run, a short slow-down.

@@ -294,8 +294,6 @@ export function autoMatch(w: Workflow, p: Progress, signal: Signal, isWindows: b
   return null
 }
 
-export const autoTarget = (w: Workflow, p: Progress, signal: Signal, isWindows: boolean): StageId | null => autoMatch(w, p, signal, isWindows)?.stage ?? null
-
 const short = (text: string, max: number): string => {
   const clean = text.replace(/\s+/g, ' ').trim()
   const list = Array.from(clean)

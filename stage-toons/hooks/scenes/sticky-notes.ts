@@ -7,7 +7,7 @@
 
 import { fillRect, type PixelBuffer, rightOf, setPixel, topOf } from '../pixels'
 import { type Area, areaOf, CLAWD_TOP, drawSprite, type Scene, type Sprite } from '../scene'
-import { blinking, C, every, lerp, reach } from './kit'
+import { blinking, C, every, lerp, reach, hash as seededHash } from './kit'
 import { fade } from './layers'
 
 const LOOP = 13
@@ -48,12 +48,7 @@ const SHADE = fade(C.gray, 0.72)
 const CORD = fade(C.gray, 0.8)
 
 // A small hash, for the notes' colours and the cork's grain.
-const hash = (n: number) => {
-  let h = Math.imul(n + 3, 0x27d4eb2d)
-  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b)
-
-  return ((h ^ (h >>> 13)) >>> 0) / 0x100000000
-}
+const hash = (n: number) => seededHash(n, 3)
 
 const wayOf = (area: Area) => reach(area, START_X, MAX)
 const walkOf = (area: Area) => Math.max(0, wayOf(area) - STEP_BACK)

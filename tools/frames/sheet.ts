@@ -18,7 +18,7 @@ export function contactSheet(frames: readonly Canvas[], captions: readonly strin
   frames.forEach((frame, i) => {
     const col = 1 + (i % across) * (tileCols + 1)
     const row = 1 + Math.floor(i / across) * (tileRows + 1)
-    const tile = createCanvas(tileCols, tileRows)
+    const tile = createCanvas(tileCols, tileRows, GAP)
     blitCanvas(tile, frame, 0, 0)
     drawText(tile, 0, tileRows - 1, captions[i] ?? '', { dim: true })
     blitCanvas(sheet, tile, col, row)

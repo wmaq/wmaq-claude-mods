@@ -8,7 +8,7 @@ import { C } from './scenes/kit'
 import { type Cast, heroOnScreen } from './toon'
 
 // Phase 6c's scenes, each showing what it is about across the width (the
-// rules every polished scene keeps are in scene-polish.test.ts).
+// rules every polished scene keeps are in scenes-polish.test.ts).
 const scene = (id: string): Scene => SCENES[id]!
 const MID: AreaSize = { columns: 120, rows: 9 }
 const draw = (id: string, t: number, size: AreaSize = MID) => renderFull(scene(id), t, null, t, size)

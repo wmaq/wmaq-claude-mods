@@ -1,9 +1,11 @@
 import { expect, test } from 'claude-code/testing'
 
-import type { Progress, StageId } from '../types'
-import { autoMatch, autoTarget, TYPED_SKILL_MS, typedSkill, globRegExp, hasRules, patternProblem, relativePath, ruleMatches, rulesAt, ruleText, type Signal, unknownFrom, viaOf } from './auto'
+import type { Progress, StageId, Workflow } from '../types'
+import { autoMatch, TYPED_SKILL_MS, typedSkill, globRegExp, hasRules, patternProblem, relativePath, ruleMatches, rulesAt, ruleText, type Signal, unknownFrom, viaOf } from './auto'
 import { freshProgress } from './stages'
 import { DEFAULT_WORKFLOW as W } from './workflow'
+
+const autoTarget = (w: Workflow, p: Progress, signal: Signal, isWindows: boolean): StageId | null => autoMatch(w, p, signal, isWindows)?.stage ?? null
 
 const at = (stage: StageId | null, lastTrackStage: StageId | null = stage): Progress => ({ ...freshProgress(0), stage, lastTrackStage })
 const skill = (name: string): Signal => ({ kind: 'skill', name })

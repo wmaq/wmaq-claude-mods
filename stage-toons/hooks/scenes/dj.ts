@@ -381,8 +381,9 @@ function drawNowPlaying(b: PixelBuffer, t: number, input: DjInput) {
   // (the area's cell row 2).
   const col = x + (b.ox ?? 0) + 2
   const row = (y + (b.oy ?? 0) + 2) / 2
-  for (let i = 0; i < textCells(text); i++) clearCell(b, col + i, row)
-  fillRect(b, x + 2, y + 2, textCells(text), 2, BOX)
+  const cells = textCells(text)
+  for (let i = 0; i < cells; i++) clearCell(b, col + i, row)
+  fillRect(b, x + 2, y + 2, cells, 2, BOX)
   drawText(b, col, row, text, C.paper)
 }
 
