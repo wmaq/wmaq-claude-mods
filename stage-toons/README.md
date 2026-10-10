@@ -98,7 +98,7 @@ You can move it yourself with `/stage`:
 | `/stage width [<n> \| full]` | How wide the cartoons may grow under the bar: up to n columns (120 by default; 48 to 512), or the band's whole width |
 | `/stage log [n]` | The last n moves (15; up to 200) with how long each stage lasted |
 | `/stage time` | Time per feature and per stage |
-| `/stage help` | The list of commands (a `/stage` it doesn't understand answers one line, with the stage you may have meant) |
+| `/stage help [<topic> \| commands]` | A guide to the mod: a line per feature; `/stage help <topic>` (`bar`, `auto`, `scenes`, `popups`, `waiting`, `idle`, `done`, `calm`, `width`, `dj`, `history`) explains one, with its commands and its setting now; `/stage help commands` lists every command (a `/stage` it doesn't understand answers one line, with the stage you may have meant) |
 
 Claude is told about your moves.
 

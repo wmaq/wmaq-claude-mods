@@ -14,10 +14,11 @@ import { isAuditorSpawn, isFailureDue, staleAuditors } from './activity'
 import { ended, reconcileRoster, rememberKind, spawned } from './agents'
 import { autoMatch, hasRules, type Heard, isWindowsPath, relativePath, type Signal, typedSkill, viaOf } from './auto'
 import { areaSize, BAR_TONES, bandLayout, bandMode, type BandSite } from './band'
-import { autoText, bubblesText, CALM_DEMO_LINE, calmText, djBlockedText, djPartyText, djText, hideText, moveFor, parseCommand, settingsText, settingsWords, showText, unknownText, usage, WORKFLOW_FILE, workflowSummary } from './command'
+import { autoText, bubblesText, CALM_DEMO_LINE, calmText, djBlockedText, djPartyText, djText, hideText, moveFor, parseCommand, settingsText, settingsWords, showText, unknownText, WORKFLOW_FILE, workflowSummary } from './command'
 import { demoAt, demoFor, demoLine, demoStep, djDemoLine, idleDemoAt, idleDemoLine, startDemo, waitingDemoLine, workDemoAt, workDemoLine } from './demo'
 import { createDirector, react, restarted, withAuditing, withScene } from './director'
 import { areaCells, type Log } from './frames'
+import { helpText } from './help'
 import { CELEBRATE, pickIdle } from './idle'
 import { idleForMove } from './keepsake'
 import { createMod, djPollState, endDemo, type Mod, queued, reseat, takeWaiting } from './mod'
@@ -653,6 +654,23 @@ async function djStatus($: EngineInterface, mod: Mod): Promise<string> {
   return djText(mod.isDj, mod.music, mod.isDjBroken, mod.djProblem)
 }
 
+// The columns the band has for the area, null before a band was drawn.
+const roomOf = (mod: Mod): number | null => (mod.lastBand === null ? null : Math.min(mod.lastBand.columns - 1, WIDTH_MAX))
+
+// What a help topic's page ends with: the answer its feature's own
+// command gives now, for a feature with a setting.
+async function helpNow($: EngineInterface, mod: Mod, topic: string | null, p: Progress, now: number): Promise<string | undefined> {
+  const settings = (await read($, workflowAtom))?.settings
+  if (topic === 'bar') return `${showText(mod.workflow, p, now)}\n${hideText((await read($, hiddenAtom)) === true, settings?.hide)}`
+  if (topic === 'auto') return autoText(mod.workflow, mod.isAuto, settings?.auto)
+  if (topic === 'popups') return bubblesText(mod.isBubbles, settings?.bubbles)
+  if (topic === 'calm') return calmText(mod.isCalm, settings?.calm)
+  if (topic === 'width') return widthText(mod.width, roomOf(mod), settings?.width)
+  if (topic === 'dj') return `${await djStatus($, mod)}\n${djPartyText(mod.isDjParty)}`
+
+  return undefined
+}
+
 // /stage dj party on or off, kept for every project, as calm is; the band
 // is drawn again, so the next frame has it.
 async function setDjParty($: EngineInterface, mod: Mod, isOn: boolean) {
@@ -1161,12 +1179,11 @@ export const register: Register = on => {
     if (cmd.kind === 'dj') return { text: cmd.isOn !== null ? await setDj($, mod, cmd.isOn) : await djStatus($, mod) }
     if (cmd.kind === 'width') {
       if (cmd.width !== null) await setWidth($, mod, cmd.width)
-      const room = mod.lastBand === null ? null : Math.min(mod.lastBand.columns - 1, WIDTH_MAX)
 
-      return { text: widthText(mod.width, room, (await read($, workflowAtom))?.settings?.width) }
+      return { text: widthText(mod.width, roomOf(mod), (await read($, workflowAtom))?.settings?.width) }
     }
     if (cmd.kind === 'width-usage') return { text: WIDTH_USAGE }
-    if (cmd.kind === 'help') return { text: usage(mod.workflow) }
+    if (cmd.kind === 'help') return { text: helpText(mod.workflow, cmd.topic, await helpNow($, mod, cmd.topic, before, now)) }
     if (cmd.kind === 'usage') return { text: unknownText(mod.workflow, e.args) }
     if (cmd.kind === 'demo' || cmd.kind === 'demo-idle' || cmd.kind === 'demo-waiting' || cmd.kind === 'demo-work' || cmd.kind === 'demo-dj') {
       // The work demo plays over the stage's own scene; the waiting demo the

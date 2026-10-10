@@ -171,7 +171,7 @@ test('/stage demo waiting laptops plays the desk row, then the idle routine, the
   await clock.advance(3_000)
   await ui.redraw()
   expect((await ui.find({ key: 'stage-toons' }))?.text).not.toContain('Waiting demo')
-  expect(text(await runStage($, 'demo waiting 5'))).toBe('Not a /stage command: demo waiting 5. /stage help lists them all.')
+  expect(text(await runStage($, 'demo waiting 5'))).toBe('Not a /stage command: demo waiting 5. /stage help commands lists them all.')
 })
 
 test('/stage width just before /stage demo waiting: its helpers walk in from the new edge', async ($, on) => {
@@ -199,7 +199,7 @@ test('/stage demo waiting with no scene plays the next one dealt: two runs, two 
   expect(['laptops', 'building', 'rowing', 'conveyor']).toContain(second)
   expect(second).not.toBe(first)
   expect(world.agents).toEqual([])
-  expect(text(await runStage($, 'demo waiting sailing'))).toBe('Not a /stage command: demo waiting sailing. /stage help lists them all.')
+  expect(text(await runStage($, 'demo waiting sailing'))).toBe('Not a /stage command: demo waiting sailing. /stage help commands lists them all.')
 })
 
 test('agents that arrive during /stage demo waiting walk in after it', async ($, on) => {

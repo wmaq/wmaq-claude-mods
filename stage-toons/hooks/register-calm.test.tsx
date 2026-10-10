@@ -67,8 +67,18 @@ test("a hot reload keeps the session's own calm, whatever the store says", async
 test('/stage calm with a wrong word is a command with a bad argument; calm is in the help', async ($, on) => {
   engine(on)
   await $.session.start(START)
-  expect(text(await runStage($, 'calm maybe'))).toBe('Not a /stage command: calm maybe. /stage help lists them all.')
-  expect(text(await runStage($, 'help'))).toContain('/stage calm [on | off]  whether the cartoons hold still, changing only when something happens')
+  expect(text(await runStage($, 'calm maybe'))).toBe('Not a /stage command: calm maybe. /stage help commands lists them all.')
+  expect(text(await runStage($, 'help calm'))).toContain('/stage calm [on | off]  whether the cartoons hold still, changing only when something happens')
+})
+
+test("/stage help calm ends with what /stage calm answers now", async ($, on) => {
+  engine(on)
+  await $.session.start(START)
+  expect(text(await runStage($, 'help calm')).endsWith(`Now:\n  ${OFF}`)).toBe(true)
+  await runStage($, 'calm on')
+  expect(text(await runStage($, 'help calm')).endsWith(`Now:\n  ${ON}`)).toBe(true)
+  expect(text(await runStage($, 'help'))).toContain('  calm     cartoons that hold still')
+  expect(text(await runStage($, 'help waiting'))).not.toContain('Now:')
 })
 
 test('a demo started with calm mode on says it moves anyway', async ($, on) => {

@@ -7,8 +7,8 @@ import { ago, LOG_DEFAULT } from './history'
 import { type Music, trackLine } from './nowplaying'
 import type { DjProblem, Platform } from './readers'
 import { applyMove, backStage, describe, HISTORY_MAX, nextStage, parseStage, stageLabel } from './stages'
-import { isWaitingScene, WAITING_SCENE_IDS, type WaitingSceneId } from './waiting/deal'
-import { DEFAULT_WIDTH, parseWidth, WIDTH_MAX, widthSettingWords } from './width'
+import { isWaitingScene, type WaitingSceneId } from './waiting/deal'
+import { parseWidth, widthSettingWords } from './width'
 import { allStages, DONE_ID, doneOf, RESERVED_IDS, stageIds, zeroStage } from './workflow'
 
 export type Command =
@@ -37,41 +37,10 @@ export type Command =
   | { kind: 'width-usage' }
   | { kind: 'log'; count: number }
   | { kind: 'time' }
-  | { kind: 'help' }
+  | { kind: 'help'; topic: string | null }
   | { kind: 'usage' }
 
 export const WORKFLOW_FILE = '.claude/stage-toons.json'
-
-export function usage(w: Workflow): string {
-  const zero = zeroStage(w)
-  const stages = [...w.track.map((s, i) => `${i + 1} ${s.id}`), DONE_ID, ...w.side.map(s => (s === zero ? `0 ${s.id}` : s.id))]
-
-  return [
-    'Usage: /stage [n | id | next | back | feature <name> | message <text> | hide | demo [<stage> | idle | work | dj] [seconds] | demo waiting [scene] | demo stop | workflow [init | reload] | auto [on | off] | bubbles [on | off] | calm [on | off] | dj [on | off | party [on | off]] | width [<n> | full] | log [n] | time | help]',
-    '  /stage                  show the current stage and the recent moves',
-    `  /stage 5, /stage plan   move to a stage${zero ? ` (0 or ? for ${zero.label})` : ''}`,
-    '  /stage next, /stage back',
-    '  /stage done             the feature is finished (merged); the next move starts a new one',
-    '  /stage feature <name>   name the feature (/stage feature - clears it)',
-    '  /stage message <text>   set the status message',
-    '  /stage hide             hide or show the bar and the cartoons',
-    `  /stage demo [<stage> | idle] [seconds]  play every scene, one stage's scenes, or the idle routines, ${DEMO_SECONDS} s each (${DEMO_MIN} to ${DEMO_MAX}); /stage demo stop ends it`,
-    `  /stage demo waiting [scene]  play the toon shown while Claude waits on agents, about 25 s, in one of its scenes (${WAITING_SCENE_IDS.join(', ')}), or the next one dealt`,
-    `  /stage demo work [seconds]  play what Clawd shows while Claude works: thinking, each kind of tool, his lines, ${WORK_DEMO_SECONDS} s each`,
-    `  /stage demo dj [seconds]  play Clawd DJ: a long title, a track change, two helpers dancing, ${DJ_DEMO_SECONDS} s`,
-    '  /stage workflow [init | reload]  show the workflow; write the default to .claude/stage-toons.json; read the file again',
-    "  /stage auto [on | off]  show the workflow's rules for moving the stage by itself; turn them on or off",
-    "  /stage bubbles [on | off]  whether Clawd's pop-ups show: what Claude is doing over his head, and what he says",
-    '  /stage calm [on | off]  whether the cartoons hold still, changing only when something happens',
-    "  /stage dj [on | off]    Clawd DJ: while Spotify plays, Clawd at the decks and the track's name (Windows, macOS, Linux)",
-    "  /stage dj party [on | off]  the DJ's full light show: speakers, floor, booth and box lighting up with the beat (off by default)",
-    `  /stage width [<n> | full]  how wide the cartoons may grow under the bar (${DEFAULT_WIDTH} columns by default, ${WIDTH_MAX} at most)`,
-    `  /stage log [n]          the last n moves (${LOG_DEFAULT}; up to ${HISTORY_MAX}) with how long each stage lasted`,
-    '  /stage time             time per feature and per stage, wall-clock and Claude working',
-    '  /stage help             this list',
-    `Stages: ${stages.join(', ')}`,
-  ].join('\n')
-}
 
 export function parseCommand(w: Workflow, args: string): Command {
   const text = args.trim()
@@ -114,10 +83,10 @@ export function parseCommand(w: Workflow, args: string): Command {
 
     return { kind: 'usage' }
   }
+  if (word === 'help') return { kind: 'help', topic: tail === '' ? null : tail.toLowerCase().split(/\s+/).join(' ') }
   if (tail !== '') return { kind: 'usage' }
   if (word === 'next' || word === 'back' || word === 'hide') return { kind: word }
   if (word === 'time') return { kind: 'time' }
-  if (word === 'help') return { kind: 'help' }
   const stage = parseStage(w, word)
 
   return stage ? { kind: 'move', stage } : { kind: 'usage' }
@@ -133,7 +102,7 @@ export function unknownText(w: Workflow, args: string): string {
   const isCommand = first !== DONE_ID && (RESERVED_IDS as readonly string[]).includes(first)
   const meant = isCommand ? undefined : words.map(word => parseStage(w, word)).find(id => id !== undefined)
 
-  return `Not a /stage command: ${words.join(' ')}.${meant ? ` Did you mean /stage ${meant}?` : ''} /stage help lists them all.`
+  return `Not a /stage command: ${words.join(' ')}.${meant ? ` Did you mean /stage ${meant}?` : ''} /stage help commands lists them all.`
 }
 
 // Seconds as /stage demo takes them: none for the default, else 2 to 60.

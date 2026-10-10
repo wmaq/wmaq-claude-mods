@@ -1,6 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
-import { autoText, bubblesText, moveFor, parseCommand, settingsWords, showText, unknownText, usage, workflowSummary } from './command'
+import { autoText, bubblesText, moveFor, parseCommand, settingsWords, showText, unknownText, workflowSummary } from './command'
+import { usage } from './help'
 import { applyMove, freshProgress } from './stages'
 import { DEFAULT_WORKFLOW } from './workflow'
 
@@ -18,16 +19,15 @@ test('/stage arguments parse into commands', () => {
   expect(parseCommand(DEFAULT_WORKFLOW, 'feature  stage toons ')).toEqual({ kind: 'feature', name: 'stage toons' })
   expect(parseCommand(DEFAULT_WORKFLOW, 'message Writing task 3')).toEqual({ kind: 'message', text: 'Writing task 3' })
   for (const bad of ['11', 'feature', 'message', 'next please', 'plan now', 'deploy']) expect(parseCommand(DEFAULT_WORKFLOW, bad)).toEqual({ kind: 'usage' })
-  expect(parseCommand(DEFAULT_WORKFLOW, 'HELP')).toEqual({ kind: 'help' })
-  expect(parseCommand(DEFAULT_WORKFLOW, 'help me')).toEqual({ kind: 'usage' })
+  expect(parseCommand(DEFAULT_WORKFLOW, 'HELP')).toEqual({ kind: 'help', topic: null })
 })
 
 test('a /stage it does not understand answers one line, naming the stage it may have meant', () => {
-  expect(unknownText(W, ' set  roadmap ')).toBe('Not a /stage command: set roadmap. Did you mean /stage roadmap? /stage help lists them all.')
-  expect(unknownText(W, 'plan now')).toBe('Not a /stage command: plan now. Did you mean /stage plan? /stage help lists them all.')
-  expect(unknownText(W, 'bogus')).toBe('Not a /stage command: bogus. /stage help lists them all.')
+  expect(unknownText(W, ' set  roadmap ')).toBe('Not a /stage command: set roadmap. Did you mean /stage roadmap? /stage help commands lists them all.')
+  expect(unknownText(W, 'plan now')).toBe('Not a /stage command: plan now. Did you mean /stage plan? /stage help commands lists them all.')
+  expect(unknownText(W, 'bogus')).toBe('Not a /stage command: bogus. /stage help commands lists them all.')
   // A known word with a bad argument hints no stage: the seconds were wrong, not the stage.
-  expect(unknownText(W, 'demo plan 99')).toBe('Not a /stage command: demo plan 99. /stage help lists them all.')
+  expect(unknownText(W, 'demo plan 99')).toBe('Not a /stage command: demo plan 99. /stage help commands lists them all.')
 })
 
 test('/stage demo takes the library, a stage by id, or idle, with seconds per item, or stop', () => {
@@ -155,8 +155,8 @@ test('/stage shows why an automatic move happened; the summary lists rules', () 
 test('/stage done moves to Done; a word after it is not a command of its own', () => {
   expect(parseCommand(W, 'done')).toEqual({ kind: 'move', stage: 'done' })
   expect(parseCommand(W, ' DONE ')).toEqual({ kind: 'move', stage: 'done' })
-  expect(unknownText(W, 'done now')).toBe('Not a /stage command: done now. Did you mean /stage done? /stage help lists them all.')
-  expect(unknownText(W, 'demo plan 99')).toBe('Not a /stage command: demo plan 99. /stage help lists them all.')
+  expect(unknownText(W, 'done now')).toBe('Not a /stage command: done now. Did you mean /stage done? /stage help commands lists them all.')
+  expect(unknownText(W, 'demo plan 99')).toBe('Not a /stage command: demo plan 99. /stage help commands lists them all.')
 })
 
 test('/stage auto lists the rules into Done after the track', () => {

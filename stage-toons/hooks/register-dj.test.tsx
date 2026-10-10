@@ -257,8 +257,8 @@ test('/stage demo dj plays Clawd DJ with its line under the bar; dj is in the he
   await mountBand($)
   expect(text(await runStage($, 'demo dj'))).toBe('Playing Clawd DJ for 20 s: a long title, a track change, two helpers dancing. /stage demo stop ends it.')
   expect(await bandText($)).toContain('DJ demo: Clawd at the decks · /stage demo stop ends it')
-  expect(text(await runStage($, 'help'))).toContain("/stage dj [on | off]    Clawd DJ: while Spotify plays, Clawd at the decks and the track's name (Windows, macOS, Linux)")
-  expect(text(await runStage($, 'help'))).toContain("/stage dj party [on | off]  the DJ's full light show: speakers, floor, booth and box lighting up with the beat")
+  expect(text(await runStage($, 'help dj'))).toContain("/stage dj [on | off]    Clawd DJ: while Spotify plays, Clawd at the decks and the track's name (Windows, macOS, Linux)")
+  expect(text(await runStage($, 'help dj'))).toContain("/stage dj party [on | off]  the DJ's full light show: speakers, floor, booth and box lighting up with the beat")
 })
 
 test('on macOS, /stage dj on reads through osascript and names the track; the check runs once', async ($, on) => {

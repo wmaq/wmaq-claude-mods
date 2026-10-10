@@ -23,7 +23,7 @@ test('/stage dj and /stage demo dj parse; dj is one of /stage\'s words', () => {
   expect(parseCommand(DEFAULT_WORKFLOW, 'demo dj')).toEqual({ kind: 'demo-dj', seconds: DJ_DEMO_SECONDS })
   expect(parseCommand(DEFAULT_WORKFLOW, 'demo dj 5')).toEqual({ kind: 'demo-dj', seconds: 5 })
   expect(parseCommand(DEFAULT_WORKFLOW, 'demo dj 99')).toEqual({ kind: 'usage' })
-  expect(unknownText(DEFAULT_WORKFLOW, 'dj loud')).toBe('Not a /stage command: dj loud. /stage help lists them all.')
+  expect(unknownText(DEFAULT_WORKFLOW, 'dj loud')).toBe('Not a /stage command: dj loud. /stage help commands lists them all.')
   const named = parseWorkflow(JSON.stringify({ track: [{ id: 'dj', label: 'DJ', message: 'Mixing' }] }), STAGE_SCENES)
   expect('errors' in named && named.errors.some(e => e.includes('"dj" is one of /stage\'s words'))).toBe(true)
 })
