@@ -30,6 +30,11 @@ export const PLUGIN = 'stage-toons'
 // the old Raster stays mounted until the new one paints), so it waits longer.
 export const MAX_REFUSED = 3
 export const MAX_REFUSED_UNSEEN = 24
+// Refused that long by a site not yet seen, the band is collapsed: the hook
+// still draws it, and expanding it draws nothing new, but its next blit is
+// taken (checked live, 2.1.296). The loop waits for that, a blit every
+// PROBE_MS, asking for no redraw and no agent list.
+export const PROBE_MS = 1000
 
 // The Raster the mod repaints: the band's area, keyed 'area', at the size
 // the band's hook worked out (band.ts' areaSize). lastCells

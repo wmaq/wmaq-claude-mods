@@ -3,7 +3,7 @@
 // tested with stand-ins.
 
 import { demoStep } from './demo'
-import { AGENT_POLL_MS, endDemo, frameMs, isDeepAsleep, MAX_REFUSED, MAX_REFUSED_UNSEEN, type Mod, QUICK_MS, RESEND_MS, type Site } from './mod'
+import { AGENT_POLL_MS, endDemo, frameMs, isDeepAsleep, MAX_REFUSED, MAX_REFUSED_UNSEEN, type Mod, PROBE_MS, QUICK_MS, RESEND_MS, type Site } from './mod'
 
 export type Ports = {
   now: () => Promise<number>
@@ -40,7 +40,9 @@ export function animate(ports: Ports, mod: Mod, site: Site) {
       // that ended while it was away is not drawn seated, then every
       // AGENT_POLL_MS while it knows of agents.
       let polledAt = -Infinity
-      while (site.requestId !== undefined && !mod.isHidden && refused < (site.isSeen ? MAX_REFUSED : MAX_REFUSED_UNSEEN)) {
+      // Waiting for a collapsed band to show again (PROBE_MS).
+      let isWaiting = false
+      while (site.requestId !== undefined && !mod.isHidden && (isWaiting || refused < (site.isSeen ? MAX_REFUSED : MAX_REFUSED_UNSEEN))) {
         if (!(await ports.isCurrent())) {
           isReplaced = true
           break
@@ -50,7 +52,7 @@ export function animate(ports: Ports, mod: Mod, site: Site) {
         if (polledAt === -Infinity) {
           polledAt = now
           await ports.pollAgents()
-        } else if (mod.roster.size > 0 && now - polledAt >= AGENT_POLL_MS) {
+        } else if (!isWaiting && mod.roster.size > 0 && now - polledAt >= AGENT_POLL_MS) {
           polledAt = now
           void ports.pollAgents()
         }
@@ -75,6 +77,7 @@ export function animate(ports: Ports, mod: Mod, site: Site) {
           const answer = await ports.blit({ requestId, key: 'area', cells, columns, rows })
           if (answer.deny === undefined) {
             refused = 0
+            isWaiting = false
             site.isSeen = true
             site.lastCells = cells
             site.blittedAt = now
@@ -83,6 +86,7 @@ export function animate(ports: Ports, mod: Mod, site: Site) {
             // Refused: every frame is sent until one is taken, so a Raster
             // that is gone is noticed as quickly as before.
             site.lastCells = null
+            if (!site.isSeen && refused >= MAX_REFUSED_UNSEEN) isWaiting = true
           }
         }
         // Deep asleep with the still picture shown: the loop stops, and the
@@ -96,7 +100,7 @@ export function animate(ports: Ports, mod: Mod, site: Site) {
         // rate: the refusal budget counts frames, and calm mode's slow rate
         // would stretch it. A render's own frame (already shown, not yet
         // resent) waits at the slow rate.
-        const ms = mod.isCalm && refused > 0 ? QUICK_MS : frameMs(mod, now)
+        const ms = isWaiting ? PROBE_MS : mod.isCalm && refused > 0 ? QUICK_MS : frameMs(mod, now)
         await Promise.race([ports.sleep(ms), new Promise<void>(resolve => (site.wake = resolve))])
         site.wake = null
       }

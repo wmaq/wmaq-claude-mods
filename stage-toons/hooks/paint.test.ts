@@ -2,7 +2,7 @@ import { expect, test } from 'claude-code/testing'
 
 import { EMPTY_ROSTER, spawned } from './agents'
 import { DEEP_SLEEP_MS, DOZE_MS } from './idle'
-import { AGENT_POLL_MS, CALM_FRAME_MS, createMod, type Mod, QUICK_MS, RESEND_MS, type Site } from './mod'
+import { AGENT_POLL_MS, CALM_FRAME_MS, createMod, MAX_REFUSED_UNSEEN, type Mod, PROBE_MS, QUICK_MS, RESEND_MS, type Site } from './mod'
 import { animate, type Ports } from './paint'
 
 const START = 1_000_000
@@ -73,16 +73,37 @@ const working = (mod: Mod) => {
   mod.isBandWorking = true
 }
 
-test('a seen site gives up after 3 refused frames, one not yet seen after 24', async () => {
-  for (const [isSeen, expected] of [[true, 3], [false, 24]] as const) {
-    const mod = createMod()
-    working(mod)
-    const site = mounted(mod, isSeen)
-    const { ports, blits } = fake(mod, { deny: () => true })
-    animate(ports, mod, site)
-    await finished(site)
-    expect(blits.length).toBe(expected)
-  }
+test('a seen site gives up after 3 refused frames', async () => {
+  const mod = createMod()
+  working(mod)
+  const site = mounted(mod, true)
+  const { ports, blits } = fake(mod, { deny: () => true })
+  animate(ports, mod, site)
+  await finished(site)
+  expect(blits.length).toBe(3)
+})
+
+// The band collapsed: the hook still draws it, but no blit is taken until
+// the person expands it, and expanding draws nothing new (checked live).
+test('a site not yet seen, refused 24 frames, waits for it quietly: a blit a second, no redraw, no polls; a blit taken, it repaints as before', async () => {
+  const mod = createMod()
+  working(mod)
+  mod.roster = spawned(EMPTY_ROSTER, 'a1', 'claude-sonnet-5-5', START)
+  const site = mounted(mod, false)
+  const { ports, blits, events, counts } = fake(mod, { cells: (_, now) => String(now), deny: n => n <= MAX_REFUSED_UNSEEN + 10, stopAt: START + 15_000 })
+  animate(ports, mod, site)
+  await finished(site)
+  const probes = blits.slice(MAX_REFUSED_UNSEEN - 1, MAX_REFUSED_UNSEEN + 11)
+  expect(probes.slice(1).map((b, i) => b.at - probes[i]!.at)).toEqual(Array(11).fill(PROBE_MS))
+  // No poll while it waits: between the 24th blit and the first one taken.
+  const nthBlit = (n: number) => events.findIndex((event, i) => event === 'blit' && events.slice(0, i + 1).filter(e => e === 'blit').length === n)
+  expect(events.slice(nthBlit(MAX_REFUSED_UNSEEN), nthBlit(MAX_REFUSED_UNSEEN + 11))).not.toContain('poll')
+  expect(counts().invalidations).toBe(0)
+  expect(site.isSeen).toBe(true)
+  // Taken again: the quick rate.
+  const after = blits.slice(MAX_REFUSED_UNSEEN + 10)
+  expect(after.length > 20).toBe(true)
+  expect(after[1]!.at - after[0]!.at).toBe(QUICK_MS)
 })
 
 test('an unchanged frame is not sent again until RESEND_MS has passed', async () => {
@@ -168,16 +189,16 @@ test('while Claude works the area repaints about twelve times a second, and neve
   expect(site.isAsleep).toBe(false)
 })
 
-test('in calm mode a refused site keeps the quick rate: one not yet seen gives up after 24 frames within about 2 s', async () => {
+test('in calm mode a refused site keeps the quick rate: one not yet seen tries 24 frames within about 2 s, then a blit a second', async () => {
   const mod = createMod()
   awake(mod)
   mod.isCalm = true
   const site = mounted(mod, false)
-  const { ports, blits } = fake(mod, { deny: () => true })
+  const { ports, blits } = fake(mod, { deny: () => true, stopAt: START + 23 * QUICK_MS + 3 * PROBE_MS + 1 })
   animate(ports, mod, site)
   await finished(site)
-  expect(blits.length).toBe(24)
   expect(blits[23]!.at - START).toBe(23 * QUICK_MS)
+  expect(blits.slice(24).map(b => b.at - START)).toEqual([1, 2, 3].map(n => 23 * QUICK_MS + n * PROBE_MS))
 })
 
 test("in calm mode a render's own frame, shown and unchanged, waits at the slow rate until its resend", async () => {
