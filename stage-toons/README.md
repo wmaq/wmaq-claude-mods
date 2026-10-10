@@ -308,6 +308,8 @@ same one every 2 s, to learn that the area still shows).
 
 ## Clawd DJ
 
+![Clawd DJ: Clawd at the decks, the track's name by the mirror ball, the speakers and the dance floor](../docs/media/clawd-dj.gif)
+
 `/stage dj on` (in a terminal on Windows, macOS or Linux) has Clawd DJ
 while Spotify plays, for every project: behind a booth with two
 turntables, in headphones, bobbing to a 120 BPM beat (the media session
