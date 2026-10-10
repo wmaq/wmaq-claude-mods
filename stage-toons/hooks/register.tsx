@@ -1274,6 +1274,19 @@ export const register: Register = on => {
     return result
   })
 
+  // A /clear starts a conversation with a new system prompt (no
+  // session.start fires): the section is built again at the next prompt,
+  // with the stage then, and the old conversation's notes are dropped.
+  on('session.end', async ($, e, next) => {
+    const result = await next(e)
+    if (e.reason === 'clear') {
+      mod.notes = []
+      await update($, sectionAtom, () => null)
+    }
+
+    return result
+  })
+
   on('agent.spawn', async ($, e, next) => {
     const result = await next(e)
     if (result.deny !== undefined || result.agentId === undefined) return result

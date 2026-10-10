@@ -78,7 +78,7 @@ test('/stage moves, steps, names, shows and hides', async ($, on) => {
   expect(await bandText($)).toContain('5/10 Plan')
 })
 
-test('the workflow section holds the start state until a real compaction', async ($, on) => {
+test('the workflow section holds the start state until a real compaction or a /clear', async ($, on) => {
   engine(on)
   await $.session.start(START)
   const section = async () => (await $.prompt.compose(COMPOSE as never)).sections.at(-1)
@@ -98,6 +98,12 @@ test('the workflow section holds the start state until a real compaction', async
   expect(await section()).toEqual(first)
   await $.session.compact({ trigger: 'auto', messages: [SUMMARY] })
   expect((await section())?.text).toContain('At session start: 5/10 Plan')
+  // A /clear: the new conversation's prompt has the stage then.
+  await setStage($, { stage: 'develop', message: 'Building it' })
+  await $.session.end({ reason: 'other', sessionId: 's', resume: {} } as never)
+  expect((await section())?.text).toContain('At session start: 5/10 Plan')
+  await $.session.end({ reason: 'clear', sessionId: 's', resume: {} } as never)
+  expect((await section())?.text).toContain('At session start: 7/10 Develop')
 })
 
 test('a broken store keeps progress in memory and warns once', async ($, on) => {

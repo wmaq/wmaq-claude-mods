@@ -18,6 +18,22 @@ export type Cast = {
 
 export const sceneIn = (cast: Cast, id: SceneId): Scene => (cast.broken.has(id) ? undefined : cast.scenes[id]) ?? cast.scenes[FALLBACK_SCENE]!
 
+// What a scene works out (its picture, its hero, its focus) or, should
+// that throw, what the standing scene does: the scene is broken for the
+// rest of the session, reported once.
+function withScene<T>(cast: Cast, id: SceneId, work: (scene: Scene) => T): T {
+  try {
+    return work(sceneIn(cast, id))
+  } catch (error) {
+    if (!cast.broken.has(id)) {
+      cast.broken.add(id)
+      cast.onBreak(id, error)
+    }
+
+    return work(cast.scenes[FALLBACK_SCENE]!)
+  }
+}
+
 // The column a shot's camera keeps in view. A reaction plays around the
 // hero: while it lasts, a camera that panned away from a hero standing
 // still holds on the scene's own focus, and one that follows a walking hero
@@ -34,28 +50,18 @@ function focusOf(shot: Shot, scene: Scene, size: AreaSize): number {
 // Where the hero's head is on an area of this size: its centre column and
 // top row, the core's origin added and the crop's start taken off.
 export function heroOnScreen(shot: Shot, size: AreaSize, cast: Cast): Point {
-  const scene = sceneIn(cast, shot.base)
-  const head = heroAt(scene, shot.time, size)
-  const { w, ox, oy } = areaShape(size, scene.coreX)
+  return withScene(cast, shot.base, scene => {
+    const head = heroAt(scene, shot.time, size)
+    const { w, ox, oy } = areaShape(size, scene.coreX)
 
-  return { x: head.x + ox - cropStart(w, focusOf(shot, scene, size), size.columns), y: head.y + oy }
+    return { x: head.x + ox - cropStart(w, focusOf(shot, scene, size), size.columns), y: head.y + oy }
+  })
 }
 
 export function composeFrame(shot: Shot, size: AreaSize, cast: Cast): PixelBuffer {
   const time = shot.time
   const sceneOf = (id: SceneId) => sceneIn(cast, id)
-  const full = (id: SceneId, mood: Mood): PixelBuffer => {
-    try {
-      return renderSeamed(sceneOf(id), time, mood, size)
-    } catch (error) {
-      if (!cast.broken.has(id)) {
-        cast.broken.add(id)
-        cast.onBreak(id, error)
-      }
-
-      return renderSeamed(cast.scenes[FALLBACK_SCENE]!, time, mood, size)
-    }
-  }
+  const full = (id: SceneId, mood: Mood): PixelBuffer => withScene(cast, id, scene => renderSeamed(scene, time, mood, size))
   const reaction = shot.reaction ? cast.reactions[shot.reaction.id] : null
   const reactionT = shot.reaction?.t ?? 0
   let frame = full(shot.base, reaction?.mood?.(reactionT) ?? shot.mood ?? null)
@@ -69,5 +75,5 @@ export function composeFrame(shot: Shot, size: AreaSize, cast: Cast): PixelBuffe
     frame = overlay(frame, layer)
   }
 
-  return crop(frame, focusOf(shot, sceneOf(shot.base), size), size.columns)
+  return crop(frame, withScene(cast, shot.base, scene => focusOf(shot, scene, size)), size.columns)
 }

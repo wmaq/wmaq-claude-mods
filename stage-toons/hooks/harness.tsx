@@ -114,6 +114,7 @@ export function engine(on: On, preset: { store?: Record<string, unknown> } = {})
   })
   on('prompt.compose', () => ({ sections: [{ id: 'intro', text: 'You are Claude Code.', scope: 'shared' as const }] }))
   on('session.compact', () => ({ messages: [SUMMARY] }))
+  on('session.end', ($, e) => ({ sessionId: e.sessionId }))
   on('tool.register', ($, e) => {
     if (world.isRegisterBroken) throw new Error('refused')
     world.schemas.push(e.inputSchema)

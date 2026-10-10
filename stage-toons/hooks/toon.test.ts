@@ -98,3 +98,19 @@ test("the hero's head on screen: its stage column less where the raster starts, 
   expect(heroOnScreen({ base: 'workbench', time: 0, reaction: null }, { columns: 30, rows: 7 }, cast)).toEqual({ x: 12 - 11, y: CLAWD_TOP })
   expect(heroOnScreen({ base: 'workbench', time: 0, reaction: { id: 'advance', t: 0 } }, { columns: 30, rows: 7 }, cast).x).toBe(1)
 })
+
+test("a scene whose focus throws is replaced by the standing scene and reported once, the hero's head included", () => {
+  const breaks: string[] = []
+  const lost: Scene = {
+    ...solid('plan', 5),
+    focus: () => {
+      throw new Error('boom')
+    },
+  }
+  const cast = castWith({ plan: lost }, breaks)
+  const shot = { base: 'plan', time: 0, reaction: null }
+  const standing = composeFrame(shot, STAGE_SIZE, castWith({ plan: SCENES.standing! }))
+  expect(heroOnScreen(shot, STAGE_SIZE, cast)).toEqual(heroOnScreen(shot, STAGE_SIZE, castWith({ plan: SCENES.standing! })))
+  expect([...composeFrame(shot, STAGE_SIZE, cast).px]).toEqual([...standing.px])
+  expect(breaks).toEqual(['plan'])
+})
