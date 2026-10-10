@@ -33,7 +33,8 @@ export const MAX_REFUSED_UNSEEN = 24
 // Refused that long by a site not yet seen, the band is collapsed: the hook
 // still draws it, and expanding it draws nothing new, but its next blit is
 // taken (checked live, 2.1.296). The loop waits for that, a blit every
-// PROBE_MS, asking for no redraw and no agent list.
+// PROBE_MS (RESEND_MS while Clawd is deep asleep), asking for no redraw
+// and no agent list, for as long as the band stays collapsed.
 export const PROBE_MS = 1000
 
 // The Raster the mod repaints: the band's area, keyed 'area', at the size

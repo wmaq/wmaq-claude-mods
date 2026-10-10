@@ -125,7 +125,7 @@ fixing the spec during its audit, or ticking the plan's boxes while
 developing, moves nothing. A push counts when Claude Code saw it go
 through: one that was up to date, a `--dry-run`, a rejected push or a
 deleted branch doesn't, and neither does a quiet one (`git push -q`), which
-shows nothing. `gh pr merge` matches a command at the start of a line or
+shows nothing; a push of several branches at once counts only the first. `gh pr merge` matches a command at the start of a line or
 after `;`, `&&` or `|`, so a commit message that mentions one doesn't;
 `gh pr merge --auto` merges nothing yet and doesn't either. A push or
 merge the rules miss is a `/stage done` away; a default branch with

@@ -32,7 +32,7 @@ import { type KV, loadProgress, PRUNE_EVERY_MS, saveProgress, staleKeys, storeKe
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolSchema, workflowText } from './prompt'
 import type { SceneId } from './scene'
 import { STAGE_SCENES } from './scenes'
-import { applyMove, describe, freshProgress, isAdvance, reconcile, stageLabel } from './stages'
+import { applyMove, describe, freshProgress, isAdvance, isReopen, reconcile, stageLabel } from './stages'
 import { afterTaskCall, atTurnStart, countOf, isAllDone, sameCount, TASK_TOOLS } from './tasks'
 import { isDone } from './track'
 import { DEFAULT_WIDTH, isWidth, WIDTH_MAX, WIDTH_USAGE, widthText } from './width'
@@ -322,7 +322,7 @@ async function autoMove($: EngineInterface, mod: Mod, signal: Signal) {
     if (match === null) return null
     target = match.stage
     via = viaOf(signal, match.rule)
-    isNewRound = isDone(from.stage)
+    isNewRound = isDone(from.stage) && !isReopen(from, match.stage)
 
     return applyMove(mod.workflow, from, { stage: target, by: 'auto', via, at: now })
   })
@@ -580,8 +580,10 @@ function startPoll($: EngineInterface, mod: Mod, hasRead: boolean) {
         // The area shown again wakes it (the band's hook); the sleep runs
         // out unheeded.
         mod.djSleepMs = nextDelay(djPollState(mod))
-        await Promise.race([$.clock.sleep(mod.djSleepMs), new Promise<void>(resolve => (mod.djWake = resolve))])
-        mod.djWake = null
+        let wake: (() => void) | null = null
+        await Promise.race([$.clock.sleep(mod.djSleepMs), new Promise<void>(resolve => (mod.djWake = wake = resolve))])
+        // A newer loop's (dj off, then on) is its own.
+        if (mod.djWake === wake) mod.djWake = null
       }
       isFirst = false
       if (!mod.isDj || mod.djLoop !== token) break
@@ -626,6 +628,8 @@ async function setDj($: EngineInterface, mod: Mod, isOn: boolean): Promise<strin
   }
   if (!isOn) {
     mod.djLoop = null
+    // The poll's sleep ends now: it sees DJ mode off and ends.
+    mod.djWake?.()
     mod.music = NO_MUSIC
     mod.djChangedAt = null
     mod.djProblem = null
@@ -1426,8 +1430,6 @@ export const register: Register = on => {
     }
     const wasShown = band.requestId !== undefined
     band.requestId = e.requestId
-    // The DJ poll sleeping its slow pace reads at once, now the area shows.
-    if (mod.djWake !== null && nextDelay(djPollState(mod)) < mod.djSleepMs) mod.djWake()
     // As wide as the band and the width setting allow, as tall as it has
     // the rows for (band.ts).
     const size = areaSize(site, mod.width, wasShown ? band.rows : null)
@@ -1442,6 +1444,9 @@ export const register: Register = on => {
     band.lastCells = cells
     band.blittedAt = now
     animate(portsOf($, mod), mod, band)
+    // The DJ poll sleeping its slow pace reads at once, now the area shows
+    // (animate has woken it: a deep-asleep Clawd is awake until it says).
+    if (mod.djWake !== null && nextDelay(djPollState(mod)) < mod.djSleepMs) mod.djWake()
     const { Raster } = $.ui.resolve(e)
 
     return (

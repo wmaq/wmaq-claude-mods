@@ -100,7 +100,8 @@ export function animate(ports: Ports, mod: Mod, site: Site) {
         // rate: the refusal budget counts frames, and calm mode's slow rate
         // would stretch it. A render's own frame (already shown, not yet
         // resent) waits at the slow rate.
-        const ms = isWaiting ? PROBE_MS : mod.isCalm && refused > 0 ? QUICK_MS : frameMs(mod, now)
+        // Waiting while deep asleep, it looks less often.
+        const ms = isWaiting ? (isDeepAsleep(mod, now) ? RESEND_MS : PROBE_MS) : mod.isCalm && refused > 0 ? QUICK_MS : frameMs(mod, now)
         await Promise.race([ports.sleep(ms), new Promise<void>(resolve => (site.wake = resolve))])
         site.wake = null
       }

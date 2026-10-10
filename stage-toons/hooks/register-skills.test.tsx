@@ -126,3 +126,17 @@ test('a move within the track asks for no feature name', async ($, on) => {
   expect(note).toContain('2/10 Brainstorm')
   expect(note).not.toContain('A new feature starts')
 })
+
+test('from Done a typed skill back to the stage Done came from reopens the feature: no new feature asked for', async ($, on) => {
+  engineWithSkills(on)
+  await $.session.start(START)
+  await runStage($, 'cleanup')
+  await runStage($, 'feature login')
+  await runStage($, 'done')
+  await typeCommand($, 'superpowers:finishing-a-development-branch')
+  await expand($, 'finishing-a-development-branch')
+  expect(text(await runStage($, ''))).toContain('10/10 Cleanup · login')
+  const note = (await callTool($, 'Read', { file_path: 'x' })).context?.find(line => line.startsWith('[stage-toons]')) ?? ''
+  expect(note).toContain('Cleanup')
+  expect(note).not.toContain('A new feature starts')
+})

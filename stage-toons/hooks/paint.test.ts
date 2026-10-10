@@ -73,6 +73,38 @@ const working = (mod: Mod) => {
   mod.isBandWorking = true
 }
 
+test('waiting for a collapsed band while deep asleep, it sends a blit every RESEND_MS', async () => {
+  const mod = createMod()
+  mod.idleSince = START - DOZE_MS - DEEP_SLEEP_MS
+  const site = mounted(mod, false)
+  const { ports, blits } = fake(mod, { deny: () => true, stopAt: START + 60_000 })
+  animate(ports, mod, site)
+  await finished(site)
+  const last = blits.slice(-4)
+  expect(last.slice(1).map((b, i) => b.at - last[i]!.at)).toEqual([RESEND_MS, RESEND_MS, RESEND_MS])
+})
+
+test('a render while it waits for a collapsed band is sent at once, not at the next probe', async () => {
+  const mod = createMod()
+  working(mod)
+  const site = mounted(mod, false)
+  let wakeUp: () => void = () => undefined
+  let sleeps = 0
+  const { ports, blits } = fake(mod, { deny: () => true })
+  const sleep = ports.sleep
+  // The 24 tries run as usual; the first probe's sleep lasts until the test ends it.
+  ports.sleep = ms => (++sleeps < MAX_REFUSED_UNSEEN ? sleep(ms) : new Promise<void>(resolve => (wakeUp = resolve)))
+  animate(ports, mod, site)
+  await settled()
+  expect(blits.length).toBe(MAX_REFUSED_UNSEEN)
+  animate(ports, mod, site)
+  await settled()
+  expect(blits.length).toBe(MAX_REFUSED_UNSEEN + 1)
+  site.requestId = undefined
+  wakeUp()
+  await finished(site)
+})
+
 test('a seen site gives up after 3 refused frames', async () => {
   const mod = createMod()
   working(mod)

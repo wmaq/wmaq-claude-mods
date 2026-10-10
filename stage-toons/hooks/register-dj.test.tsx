@@ -1,7 +1,8 @@
 import type { On } from 'claude-code'
 import { expect, test } from 'claude-code/testing'
 
-import { type Blit, bandText, blitsOf, decode, engine, mountBand, runStage, START, type World } from './harness'
+import { type Blit, bandProps, bandText, blitsOf, decode, engine, mountBand, runStage, START, type World } from './harness'
+import { DEEP_SLEEP_MS, DOZE_MS } from './idle'
 import { WINDOWS_ARGV } from './readers'
 import { DEFAULT_WORKFLOW } from './workflow'
 
@@ -485,4 +486,35 @@ test('the slow poll is cut short when the area shows again: the next read comes 
   await mountBand($)
   await clock.advance(10)
   expect(s.argv).toHaveLength(2)
+})
+
+test('/stage dj off then on within the slow sleep: the new poll still wakes when the area shows', async ($, on) => {
+  const { clock } = engine(on)
+  const s = spotify(on)
+  await $.session.start(START)
+  await runStage($, 'dj on')
+  await clock.advance(10_000)
+  await runStage($, 'dj off')
+  await runStage($, 'dj on')
+  expect(s.argv).toHaveLength(2)
+  // Past the first poll's 30 s, before the second's.
+  await clock.advance(21_000)
+  expect(s.argv).toHaveLength(2)
+  await mountBand($)
+  await clock.advance(10)
+  expect(s.argv).toHaveLength(3)
+})
+
+test('paused and deep asleep the poll is slow; Claude starting work wakes it at once', async ($, on) => {
+  const { clock } = engine(on)
+  const s = spotify(on)
+  s.stdout = PAUSED
+  await $.session.start(START)
+  await mountBand($)
+  await runStage($, 'dj on')
+  await clock.advance(DOZE_MS + DEEP_SLEEP_MS + 31_000)
+  const reads = s.argv.length
+  await mountBand($, 'terminal', bandProps(100, { isWorking: true }))
+  await clock.advance(10)
+  expect(s.argv.length).toBe(reads + 1)
 })
