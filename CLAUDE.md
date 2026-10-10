@@ -6,7 +6,7 @@ the marketplace manifest `.claude-plugin/marketplace.json`.
 
 | Mod | What it is | Status |
 |---|---|---|
-| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with an area below the bar where Clawd lives: the stage's pixel-art scene while Claude works, an idle Clawd between turns, and a desk row of helpers while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.15.0 (Clawd DJ, `/stage dj`, on Windows, macOS and Linux: while Spotify plays, Clawd at the decks and the track's name, read through Windows' media session, `osascript` or `playerctl`; Linux untested until its probe; 0.14.0 brought Clawd DJ on Windows, 0.13.0 calm mode and scene polish); the frame tool in `tools/frames/`; releases in `stage-toons/CHANGELOG.md`; the plan ahead in `docs/roadmap.md`, ideas in `docs/research/`; the latest review in `docs/reviews/` |
+| `stage-toons/` | A progress bar of the workflow below (or a project's own, from `.claude/stage-toons.json`), above the prompt, with an area below the bar where Clawd lives: the stage's pixel-art scene while Claude works, an idle Clawd between turns, and a desk row of helpers while Claude waits on agents; rules move the bar by themselves, and `/stage log` and `/stage time` read its history | 0.15.0 (Clawd DJ, `/stage dj`, on Windows, macOS and Linux: while Spotify plays, Clawd at the decks and the track's name, read through Windows' media session, `osascript` or `playerctl`; Linux probed after the release; 0.14.0 brought Clawd DJ on Windows, 0.13.0 calm mode and scene polish); the frame tool in `tools/frames/`; releases in `stage-toons/CHANGELOG.md`; the plan ahead in `docs/roadmap.md`, ideas in `docs/research/`; the latest review in `docs/reviews/` |
 
 ## The workflow
 
@@ -215,6 +215,18 @@ Learned porting Clawd DJ to macOS on 2.1.295:
   in stderr; an app that isn't installed, `(-2700)`.
 - In JXA, `Application('X').running()` sends no Apple Event and launches
   nothing; anything asked of the app itself launches it.
+
+Learned probing Clawd DJ on Linux on 2.1.296:
+
+- `playerctl` from `$.process.run` answers in milliseconds. With no
+  Spotify it exits 1 with `No players found` (other players, a browser
+  say, don't count under `--player=spotify`); with Spotify open and
+  nothing loaded, `metadata` exits 1 with `No player could handle this
+  command`. Flatpak's Spotify registers as `spotify`, and gives MPRIS
+  only a track's first artist.
+- With two mods loaded, a command's answer was prefixed with both
+  names (`dj-probe-linux+stage-toons: …`), not only the one that
+  answered.
 
 ### The test kit (`claude-code/testing`)
 

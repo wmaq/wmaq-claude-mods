@@ -116,8 +116,9 @@ export function macOutcome(result: ReadResult): Outcome {
 
 // Linux: playerctl over MPRIS, Spotify's player only, as three lines:
 // status (Playing, Paused, Stopped), artist, title. Lines, not JSON:
-// playerctl's format has no escaping. Unprobed (the spec): the "No player"
-// texts are playerctl's own, to be confirmed on a Linux desktop.
+// playerctl's format has no escaping. "No player" covers both of
+// playerctl's texts the probe met (the spec): No players found, Spotify
+// not running, and No player could handle this command, nothing loaded.
 export const LINUX_ARGV: readonly string[] = ['playerctl', '--player=spotify', 'metadata', '--format', ['{{status}}', '{{artist}}', '{{title}}'].join('\n')]
 
 export function linuxOutcome(result: ReadResult): Outcome {

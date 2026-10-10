@@ -307,8 +307,9 @@ How it reads Spotify, with no Spotify account, app or token:
   when Spotify first runs. If you said no, `/stage dj` says where to
   switch it on: System Settings › Privacy & Security › Automation, under
   your terminal's name; the music shows at the next read.
-- **Linux (untested):** through `playerctl` (MPRIS), which your package
-  manager has. Under WSL, Spotify plays on the Windows side, out of
+- **Linux:** through `playerctl` (MPRIS), which your package manager
+  has; Spotify from Flatpak works too. Spotify tells it only a track's
+  first artist, as on Windows. Under WSL, Spotify plays on the Windows side, out of
   reach: run Claude Code in a Windows terminal for it.
 
 A read takes about 0.1 to 0.3 s, every 5 s while the area shows and

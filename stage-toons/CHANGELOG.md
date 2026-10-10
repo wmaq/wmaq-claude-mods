@@ -19,9 +19,11 @@ denied then allowed). Spec:
   read raises macOS's Automation prompt for the terminal; `/stage dj`
   says so while it waits, and where to switch it on if it was denied.
   Allowed later, the music comes back at the next read, with no command.
-- **`/stage dj` on Linux (untested)**, through `playerctl` over MPRIS;
+- **`/stage dj` on Linux**, through `playerctl` over MPRIS;
   without playerctl, or under WSL, `/stage dj on` says what it needs.
-  The Linux probe runs before the release (phase 9).
+  Probed and tested live after the release (2026-10-10: CachyOS,
+  Flatpak Spotify, Ghostty in herdr): the reader stood as written; the
+  results are in the spec.
 - One reader per platform (`hooks/readers.ts`), all ending in the same
   track, so the scene, the box and the poll are unchanged. The platform
   comes from `uname -sr`, once per load, shared while it runs; a check
