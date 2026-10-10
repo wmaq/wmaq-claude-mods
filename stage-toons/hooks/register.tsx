@@ -27,6 +27,7 @@ import { addCost, type Cost, costText, creditAt, currentEntry, logText, NO_COST,
 import { COMMAND_READ_MS, heard, isNewTrack, nextDelay, NO_MUSIC, type NowPlaying, READ_TIMEOUT_MS, type ReadFailure, SLOW_POLL_MS, trackText } from './nowplaying'
 import { CHECK_TIMEOUT_MS, type Platform, platformOfUname, PLAYERCTL_VERSION_ARGV, problemOf, type Reader, readerFor, UNAME_ARGV } from './readers'
 import { momentOf, phaseOf, whatOf } from './phase'
+import { composed } from './pixels'
 import { type KV, loadProgress, PRUNE_EVERY_MS, saveProgress, staleKeys, storeKey, validate } from './progress'
 import { COMMAND, SECTION_ID, TOOL, TOOL_DESCRIPTION, toolSchema, workflowText } from './prompt'
 import type { SceneId } from './scene'
@@ -476,7 +477,7 @@ async function checkPlatform($: EngineInterface): Promise<{ platform: Platform; 
   try {
     platform = platformOfUname(await $.process.run([...UNAME_ARGV], { timeoutMs: CHECK_TIMEOUT_MS }))
   } catch {
-    return { platform: 'none', isKept: false }
+    return { platform: 'unknown', isKept: false }
   }
   if (platform !== 'linux') return { platform, isKept: true }
   try {
@@ -519,11 +520,15 @@ async function readMusic($: EngineInterface, mod: Mod, reader: Reader, timeoutMs
   let detail = ''
   try {
     const result = await $.process.run([...reader.argv], { timeoutMs })
+    // DJ mode turned off while it read: what it heard is nobody's.
+    if (!mod.isDj) return null
     const outcome = reader.outcomeOf(result)
-    track = outcome.track
+    // Composed (NFC), as drawText draws it and the box measures it.
+    track = outcome.track && { ...outcome.track, artist: composed(outcome.track.artist), title: composed(outcome.track.title) }
     failure = outcome.failure
     if (failure === 'exit') detail = ` ${result.exitCode}`
   } catch {
+    if (!mod.isDj) return null
     failure = 'rejected'
   }
   mod.djProblem = problemOf(reader, failure, mod.hasDjRead)
@@ -571,12 +576,21 @@ function startPoll($: EngineInterface, mod: Mod, hasRead: boolean) {
     }
     let isFirst = !hasRead
     while (reader !== null && mod.isDj && mod.djLoop === token) {
-      if (!isFirst) await $.clock.sleep(nextDelay(djPollState(mod)))
+      if (!isFirst) {
+        // The area shown again wakes it (the band's hook); the sleep runs
+        // out unheeded.
+        mod.djSleepMs = nextDelay(djPollState(mod))
+        await Promise.race([$.clock.sleep(mod.djSleepMs), new Promise<void>(resolve => (mod.djWake = resolve))])
+        mod.djWake = null
+      }
       isFirst = false
       if (!mod.isDj || mod.djLoop !== token) break
       const id = await read($, loadAtom)
       if (id !== null && id !== LOAD_ID) break
-      await hearMusic($, mod, await readMusic($, mod, reader))
+      const track = await readMusic($, mod, reader)
+      // DJ mode turned off (or on again, with a new loop) while it read.
+      if (!mod.isDj || mod.djLoop !== token) break
+      await hearMusic($, mod, track)
     }
   })()
     .catch(() => {
@@ -1412,6 +1426,8 @@ export const register: Register = on => {
     }
     const wasShown = band.requestId !== undefined
     band.requestId = e.requestId
+    // The DJ poll sleeping its slow pace reads at once, now the area shows.
+    if (mod.djWake !== null && nextDelay(djPollState(mod)) < mod.djSleepMs) mod.djWake()
     // As wide as the band and the width setting allow, as tall as it has
     // the rows for (band.ts).
     const size = areaSize(site, mod.width, wasShown ? band.rows : null)

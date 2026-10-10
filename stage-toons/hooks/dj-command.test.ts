@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { DJ_ASKING, DJ_DENIED, DJ_NEEDS_PLAYERCTL, DJ_NEEDS_TERMINAL, DJ_NO_WSL, djBlockedText, djPartyText, djText, parseCommand, unknownText } from './command'
+import { DJ_ASKING, DJ_DENIED, DJ_NEEDS_PLAYERCTL, DJ_NEEDS_TERMINAL, DJ_NO_WSL, DJ_UNKNOWN, djBlockedText, djPartyText, djText, parseCommand, unknownText } from './command'
 import { demoFor, DJ_DEMO_CHANGE_MS, DJ_DEMO_SECONDS, DJ_DEMO_TRACKS, djDemoAt, startDemo } from './demo'
 import { createMod } from './mod'
 import { heard, NO_MUSIC, type NowPlaying } from './nowplaying'
@@ -54,13 +54,14 @@ test("/stage dj's answer while macOS's Automation permission is asked for or den
   expect(djText(true, NO_MUSIC, true, 'denied')).toContain('the DJ picture failed this session')
 })
 
-test("where DJ mode can't read: no terminal or another OS, Linux without playerctl, WSL", () => {
+test("where DJ mode can't read: no terminal or another OS, Linux without playerctl, WSL, a uname that didn't answer", () => {
   expect(DJ_NEEDS_TERMINAL).toBe('DJ mode needs Claude Code in a terminal on Windows, macOS or Linux.')
-  expect(DJ_NEEDS_PLAYERCTL).toBe('DJ mode on Linux needs playerctl (from your package manager): it reads Spotify through MPRIS.')
+  expect(DJ_NEEDS_PLAYERCTL).toBe('DJ mode on Linux needs playerctl (from your package manager): it reads Spotify through MPRIS. Once it is installed, type /stage dj on again.')
   expect(DJ_NO_WSL).toBe("DJ mode can't reach Spotify on Windows from WSL: run Claude Code in a Windows terminal for it.")
   expect(djBlockedText('none')).toBe(DJ_NEEDS_TERMINAL)
   expect(djBlockedText('linux-missing')).toBe(DJ_NEEDS_PLAYERCTL)
   expect(djBlockedText('wsl')).toBe(DJ_NO_WSL)
+  expect(djBlockedText('unknown')).toBe(DJ_UNKNOWN)
 })
 
 test('the DJ demo: a long title, the second track from 8 s, two dancers where the floor has room', () => {

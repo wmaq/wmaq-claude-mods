@@ -99,7 +99,7 @@ export function drawText(b: PixelBuffer, col: number, row: number, text: string,
 }
 
 // The text composed (NFC), or as it is where the environment can't.
-function composed(text: string): string {
+export function composed(text: string): string {
   try {
     return text.normalize('NFC')
   } catch {

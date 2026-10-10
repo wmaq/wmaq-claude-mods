@@ -316,7 +316,8 @@ How it reads Spotify, with no Spotify account, app or token:
   switch it on: System Settings › Privacy & Security › Automation, under
   your terminal's name; the music shows at the next read.
 - **Linux:** through `playerctl` (MPRIS), which your package manager
-  has; Spotify from Flatpak works too. Spotify tells it only a track's
+  has (once it is installed, type `/stage dj on` again); Spotify from
+  Flatpak works too. Spotify tells it only a track's
   first artist, as on Windows. Under WSL, Spotify plays on the Windows side, out of
   reach: run Claude Code in a Windows terminal for it.
 

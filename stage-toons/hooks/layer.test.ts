@@ -31,6 +31,14 @@ function extent(b: PixelBuffer): { from: number; to: number; bottom: number } {
   return { from, to, bottom }
 }
 
+test('a label or bubble is measured as drawText draws it: a letter and its combining accent are one cell', () => {
+  const b = createBuffer(40, AREA_H)
+  // 'Café!' with the accent apart: 6 code units, 5 cells, and the bubble's 2.
+  drawLayer(b, layer({ bubble: 'Cafe' + String.fromCharCode(0x301) + '!' }), 10)
+  const { from, to } = extent(b)
+  expect(to - from + 1).toBe(7)
+})
+
 test('every phase has a 5 x 4 icon, drawn in no colour of Clawd or Fable', () => {
   for (const phase of PHASES) {
     const rows = BADGES[phase].frames[0]!

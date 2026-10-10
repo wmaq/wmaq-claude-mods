@@ -2,6 +2,7 @@ import type { On } from 'claude-code'
 import { expect, test } from 'claude-code/testing'
 
 import { type Blit, bandText, blitsOf, decode, engine, mountBand, runStage, START, type World } from './harness'
+import { WINDOWS_ARGV } from './readers'
 import { DEFAULT_WORKFLOW } from './workflow'
 
 // /stage dj: the setting, the reads of Spotify, and the area while it plays.
@@ -13,6 +14,7 @@ const PLAYING = '{"status":"Playing","artist":"Linkin Park","title":"Figure.09"}
 const PAUSED = '{"status":"Paused","artist":"Linkin Park","title":"Figure.09"}'
 const NL = String.fromCharCode(10)
 const NEEDS_TERMINAL = 'DJ mode needs Claude Code in a terminal on Windows, macOS or Linux.'
+const UNKNOWN = "DJ mode couldn't tell which system this is (uname didn't answer in time): /stage dj on tries again."
 const ASKING = 'DJ mode on: reading Spotify timed out. If macOS is asking whether your terminal may control Spotify, allow it, and the music shows.'
 const DENIED = "DJ mode on, but macOS doesn't let your terminal control Spotify: switch it on in System Settings › Privacy & Security › Automation, under your terminal's name."
 const MAC = { ...START, cwd: '/Users/me/proj' }
@@ -23,7 +25,8 @@ const LINUX_PLAYING = ['Playing', 'Linkin Park', 'Figure.09', ''].join(NL)
 // playerctl --version), counted in checks, and the reads (powershell.exe,
 // osascript, playerctl metadata), counted in argv with their timeouts.
 // uname answers FreeBSD unless a test names another (null: it times out);
-// unameGate, when set, holds uname's answer until it resolves.
+// unameGate, when set, holds uname's answer until it resolves; readGate
+// holds a read's the same way.
 type Spotify = {
   stdout: string
   stderr: string
@@ -32,12 +35,13 @@ type Spotify = {
   uname: string | null
   hasPlayerctl: boolean
   unameGate: Promise<void> | null
+  readGate: Promise<void> | null
   argv: (readonly string[])[]
   timeouts: (number | undefined)[]
   checks: string[]
 }
 function spotify(on: On): Spotify {
-  const s: Spotify = { stdout: PLAYING, stderr: '', exitCode: 0, isFailing: false, uname: 'FreeBSD 14.1-RELEASE', hasPlayerctl: true, unameGate: null, argv: [], timeouts: [], checks: [] }
+  const s: Spotify = { stdout: PLAYING, stderr: '', exitCode: 0, isFailing: false, uname: 'FreeBSD 14.1-RELEASE', hasPlayerctl: true, unameGate: null, readGate: null, argv: [], timeouts: [], checks: [] }
   const answer = (exitCode: number, stdout: string, stderr = '') => ({ value: { exitCode, stdout, stderr, isStdoutTruncated: false, isStderrTruncated: false } })
   on('process.run', async ($, e) => {
     if (e.argv[0] === 'uname') {
@@ -55,6 +59,7 @@ function spotify(on: On): Spotify {
     }
     s.argv.push(e.argv)
     s.timeouts.push(e.init?.timeoutMs)
+    if (s.readGate !== null) await s.readGate
     if (s.isFailing) throw new Error('the reader could not start')
 
     return answer(s.exitCode, s.stdout, s.stderr)
@@ -98,7 +103,7 @@ test("DJ mode is off by default; /stage dj on reads Spotify at once, names the t
   expect(s.argv).toHaveLength(0)
   expect(text(await runStage($, 'dj on'))).toBe(FIGURE_LINE)
   expect(s.argv).toHaveLength(1)
-  expect(s.argv[0]!.slice(0, 4)).toEqual(['powershell.exe', '-NoProfile', '-NonInteractive', '-EncodedCommand'])
+  expect(s.argv[0]).toEqual(WINDOWS_ARGV)
   // Windows is known from the cwd: no check runs.
   expect(s.checks).toEqual([])
   expect(world.store.dj).toBe(true)
@@ -365,7 +370,7 @@ test('on Linux without playerctl, DJ mode says so and stays off; installed, the 
   s.stdout = LINUX_PLAYING
   s.hasPlayerctl = false
   await $.session.start(LINUX)
-  expect(text(await runStage($, 'dj on'))).toBe('DJ mode on Linux needs playerctl (from your package manager): it reads Spotify through MPRIS.')
+  expect(text(await runStage($, 'dj on'))).toBe('DJ mode on Linux needs playerctl (from your package manager): it reads Spotify through MPRIS. Once it is installed, type /stage dj on again.')
   expect(world.store.dj).toBe(undefined)
   expect(s.argv).toHaveLength(0)
   s.hasPlayerctl = true
@@ -387,7 +392,7 @@ test('a uname that times out is not kept: the next /stage dj on asks again', asy
   const s = spotify(on)
   s.uname = null
   await $.session.start(MAC)
-  expect(text(await runStage($, 'dj on'))).toBe(NEEDS_TERMINAL)
+  expect(text(await runStage($, 'dj on'))).toBe(UNKNOWN)
   s.uname = 'Darwin 27.0.0'
   expect(text(await runStage($, 'dj on'))).toBe(FIGURE_LINE)
   expect(s.checks).toEqual(['uname', 'uname'])
@@ -421,4 +426,63 @@ test("a poll whose platform check isn't kept asks again at the slow pace, and re
   expect(s.argv).toHaveLength(1)
   expect(text(await runStage($, 'dj'))).toBe(FIGURE_LINE)
   expect(s.checks).toEqual(['uname', 'uname'])
+})
+
+test('/stage dj off while a read runs: what it reads lands nowhere, and the poll ends', async ($, on) => {
+  const { world, clock } = engine(on)
+  const s = spotify(on)
+  await $.session.start(START)
+  await runStage($, 'dj on')
+  // The poll's next read (30 s away from the area) starts, and hangs.
+  let release = () => undefined as void
+  s.readGate = new Promise<void>(resolve => (release = resolve))
+  s.stdout = '{"status":"Playing","artist":"Daft Punk","title":"Veridis Quo"}'
+  await clock.advance(30_000)
+  expect(s.argv).toHaveLength(2)
+  expect(text(await runStage($, 'dj off'))).toBe(OFF)
+  const redraws = world.invalidations
+  release()
+  await clock.advance(10)
+  expect(world.invalidations).toBe(redraws)
+  s.readGate = null
+  await clock.advance(120_000)
+  expect(s.argv).toHaveLength(2)
+  // On again: its own read, not the stale one.
+  s.stdout = PLAYING
+  expect(text(await runStage($, 'dj on'))).toBe(FIGURE_LINE)
+})
+
+test("/stage dj off while the poll's platform check runs: the poll ends without a read", async ($, on) => {
+  const { clock } = engine(on, { store: { dj: true } })
+  const s = spotify(on)
+  s.uname = 'Darwin 27.0.0'
+  let release = () => undefined as void
+  s.unameGate = new Promise<void>(resolve => (release = resolve))
+  await $.session.start(MAC)
+  expect(text(await runStage($, 'dj off'))).toBe(OFF)
+  release()
+  await clock.advance(60_000)
+  expect(s.argv).toHaveLength(0)
+})
+
+test('a title written with combining accents shows composed: one character a letter', async ($, on) => {
+  engine(on)
+  const s = spotify(on)
+  s.uname = 'Linux 6.8.0-45-generic'
+  s.stdout = ['Playing', 'Beyonce' + String.fromCharCode(0x301), 'Cafe' + String.fromCharCode(0x301), ''].join(NL)
+  await $.session.start(LINUX)
+  expect(text(await runStage($, 'dj on'))).toBe('DJ mode on: ♪ Beyoncé – Café')
+})
+
+test('the slow poll is cut short when the area shows again: the next read comes at once', async ($, on) => {
+  const { clock } = engine(on)
+  const s = spotify(on)
+  await $.session.start(START)
+  await runStage($, 'dj on')
+  // No band: the poll sleeps its slow 30 s.
+  await clock.advance(1000)
+  expect(s.argv).toHaveLength(1)
+  await mountBand($)
+  await clock.advance(10)
+  expect(s.argv).toHaveLength(2)
 })

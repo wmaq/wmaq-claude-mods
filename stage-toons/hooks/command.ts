@@ -272,7 +272,8 @@ export function calmText(isOn: boolean, fileCalm?: boolean): string {
 // Where DJ mode can't read, and macOS's Automation permission (Clawd DJ
 // everywhere).
 export const DJ_NEEDS_TERMINAL = 'DJ mode needs Claude Code in a terminal on Windows, macOS or Linux.'
-export const DJ_NEEDS_PLAYERCTL = 'DJ mode on Linux needs playerctl (from your package manager): it reads Spotify through MPRIS.'
+export const DJ_NEEDS_PLAYERCTL = 'DJ mode on Linux needs playerctl (from your package manager): it reads Spotify through MPRIS. Once it is installed, type /stage dj on again.'
+export const DJ_UNKNOWN = "DJ mode couldn't tell which system this is (uname didn't answer in time): /stage dj on tries again."
 export const DJ_NO_WSL = "DJ mode can't reach Spotify on Windows from WSL: run Claude Code in a Windows terminal for it."
 export const DJ_ASKING = 'DJ mode on: reading Spotify timed out. If macOS is asking whether your terminal may control Spotify, allow it, and the music shows.'
 export const DJ_DENIED = "DJ mode on, but macOS doesn't let your terminal control Spotify: switch it on in System Settings › Privacy & Security › Automation, under your terminal's name."
@@ -281,6 +282,7 @@ export const DJ_DENIED = "DJ mode on, but macOS doesn't let your terminal contro
 export function djBlockedText(platform: Platform): string {
   if (platform === 'linux-missing') return DJ_NEEDS_PLAYERCTL
   if (platform === 'wsl') return DJ_NO_WSL
+  if (platform === 'unknown') return DJ_UNKNOWN
 
   return DJ_NEEDS_TERMINAL
 }

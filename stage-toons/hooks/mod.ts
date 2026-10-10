@@ -188,6 +188,10 @@ export type Mod = {
   dancers: SeatLog
   isDjBroken: boolean
   djLoop: string | null
+  // Ends the poll's sleep early, and how long that sleep is: the area shown
+  // again cuts a slow sleep short (register.tsx).
+  djWake: (() => void) | null
+  djSleepMs: number
   djFailures: Set<ReadFailure>
   // The platform DJ mode reads on: the check's promise while it runs (a
   // poll and a command share it), its answer once known, or null before
@@ -251,6 +255,8 @@ export const createMod = (): Mod => ({
   dancers: EMPTY_LOG,
   isDjBroken: false,
   djLoop: null,
+  djWake: null,
+  djSleepMs: 0,
   djFailures: new Set(),
   platform: null,
   djProblem: null,

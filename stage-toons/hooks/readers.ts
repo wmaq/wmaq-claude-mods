@@ -8,8 +8,9 @@ import { type Outcome, parseNowPlaying, type ReadFailure } from './nowplaying'
 import { base64 } from './pixels'
 
 // Where DJ mode reads: 'linux-missing' is Linux without playerctl, 'wsl'
-// Linux under Windows (Spotify plays on the Windows side, out of reach).
-export type Platform = 'windows' | 'macos' | 'linux' | 'linux-missing' | 'wsl' | 'none'
+// Linux under Windows (Spotify plays on the Windows side, out of reach),
+// 'unknown' a uname that didn't answer in time.
+export type Platform = 'windows' | 'macos' | 'linux' | 'linux-missing' | 'wsl' | 'unknown' | 'none'
 
 // The platform check's commands, each given CHECK_TIMEOUT_MS.
 export const UNAME_ARGV: readonly string[] = ['uname', '-sr']

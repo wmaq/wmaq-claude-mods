@@ -3,7 +3,7 @@
 // top two terminal rows), a badge for what Claude is doing, its label, and
 // a speech bubble. The whole layer is kept inside the area.
 
-import { clearCell, drawText, type PixelBuffer, setPixel } from './pixels'
+import { clearCell, composed, drawText, type PixelBuffer, setPixel, textCells } from './pixels'
 import { drawSprite, type Sprite } from './scene'
 import { C } from './scenes/kit'
 import type { Phase } from './phase'
@@ -55,8 +55,14 @@ function drawPuffs(b: PixelBuffer, x: number, t: number) {
   })
 }
 
-// Text cut to fit cells, with a ~ for what was cut.
-const fitText = (text: string, cells: number): string => (cells <= 0 ? '' : text.length <= cells ? text : `${text.slice(0, Math.max(0, cells - 1))}~`)
+// Text cut to fit cells, with a ~ for what was cut, counted as drawText
+// draws it: composed, a cell a code point.
+function fitText(text: string, cells: number): string {
+  const chars = [...composed(text)]
+  if (cells <= 0) return ''
+
+  return chars.length <= cells ? chars.join('') : `${chars.slice(0, Math.max(0, cells - 1)).join('')}~`
+}
 
 // Draws the layer over an area of b.w columns, the hero's head centred at
 // column headX (in the area's own columns). The badge's left edge is at
@@ -71,8 +77,8 @@ export function drawLayer(b: PixelBuffer, layer: Layer, headX: number, hasTail =
   const badgeCells = hasBadge ? BADGE_W + 1 : 0
   const room = b.w - badgeCells - (isBubble ? 2 : 0)
   const shown = fitText(text, room)
-  const textCells = shown === '' ? 0 : shown.length + (isBubble ? 2 : 0)
-  const total = (hasBadge ? BADGE_W : 0) + (textCells > 0 ? (hasBadge ? 1 : 0) + textCells : 0)
+  const shownCells = shown === '' ? 0 : textCells(shown) + (isBubble ? 2 : 0)
+  const total = (hasBadge ? BADGE_W : 0) + (shownCells > 0 ? (hasBadge ? 1 : 0) + shownCells : 0)
   let left = Math.round(hasBadge ? headX - 2 : headX)
   left = Math.max(0, Math.min(left, b.w - total))
   if (layer.badge === 'thinking') drawPuffs(b, left, layer.t)
@@ -80,12 +86,12 @@ export function drawLayer(b: PixelBuffer, layer: Layer, headX: number, hasTail =
   if (shown === '') return
   const at = left + badgeCells
   if (!isBubble) {
-    for (let i = 0; i < shown.length; i++) clearCell(b, at + i, LABEL_ROW)
+    for (let i = 0; i < shownCells; i++) clearCell(b, at + i, LABEL_ROW)
     drawText(b, at, LABEL_ROW, shown, C.paperShade)
 
     return
   }
-  for (let i = 0; i < textCells; i++) {
+  for (let i = 0; i < shownCells; i++) {
     clearCell(b, at + i, BUBBLE_ROW)
     setPixel(b, at + i, BUBBLE_ROW * 2, C.paper)
     setPixel(b, at + i, BUBBLE_ROW * 2 + 1, C.paper)
