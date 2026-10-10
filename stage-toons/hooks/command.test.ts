@@ -106,7 +106,7 @@ test('the workflow summary says where it came from and lists the stages with the
   const two = { track: [{ ...W.track[0]!, scenes: ['road-trip', 'gift'] }], side: [] }
   expect(workflowSummary(two, 'file').split('\n')).toEqual(['Workflow: from .claude/stage-toons.json', 'Track:', '  1 roadmap: Roadmap (road-trip, gift)', 'Past the track:', '  done: Done (fireworks, rocket, victory-lap)'])
   const done = lines.find(line => line.startsWith('  done: '))
-  expect(done?.startsWith('  done: Done (fireworks, rocket, victory-lap) · auto: bash ')).toBe(true)
+  expect(done?.startsWith('  done: Done (fireworks, rocket, victory-lap) · auto: push main from user-test, cleanup; push master from user-test, cleanup; bash ')).toBe(true)
   expect(done?.endsWith(' from user-test, cleanup')).toBe(true)
   expect(lines.indexOf('Past the track:')).toBe(lines.indexOf('Side:') - 2)
 })
@@ -163,7 +163,7 @@ test('/stage auto lists the rules into Done after the track', () => {
   const text = autoText(W, true)
   expect(text).toContain('Rules, by the stage they move the work to (only forward on the track, into Done, or into a side stage; from Done only a skill you type):')
   const lines = text.split(String.fromCharCode(10))
-  const done = lines.findIndex(line => line.startsWith('  done: bash '))
+  const done = lines.findIndex(line => line.startsWith('  done: push main from user-test, cleanup; push master from user-test, cleanup; bash '))
   expect(lines[done - 1]).toBe('  cleanup: skill superpowers:finishing-a-development-branch')
   expect(lines[done + 1]).toBe('  debugging: skill superpowers:systematic-debugging')
 })

@@ -11,14 +11,15 @@ export type { AutoRule }
 // What the main conversation did: a skill loaded (isTyped: the person
 // typed it), a file written (its path relative to the project, /
 // separators), a subagent spawned (the model it runs on, the one the call
-// asked for, the parent's), a command run.
+// asked for, the parent's), a command run (pushed: the branch core's
+// gitOperation says a push in it updated, only when one went through).
 export type Signal =
   | { kind: 'skill'; name: string; isTyped?: boolean }
   | { kind: 'write'; path: string }
   | { kind: 'agent'; model: string; asked: string | undefined; parentModel: string }
-  | { kind: 'bash'; command: string }
+  | { kind: 'bash'; command: string; pushed?: string }
 
-export const KINDS = ['skill', 'write', 'agent', 'bash'] as const
+export const KINDS = ['skill', 'write', 'agent', 'bash', 'push'] as const
 type Kind = (typeof KINDS)[number]
 const FIELDS = [...KINDS, 'from'] as const
 export const RULES_MAX = 8
@@ -29,7 +30,7 @@ export const GLOB_STARS_MAX = 8
 // The longest reason for a move the history keeps.
 export const VIA_MAX = 60
 export const FROM_MAX = 20
-const LIMITS: Record<Kind, number> = { skill: 60, agent: 60, write: 120, bash: 120 }
+const LIMITS: Record<Kind, number> = { skill: 60, agent: 60, write: 120, bash: 120, push: 60 }
 
 const kindOf = (rule: AutoRule): Kind => KINDS.find(k => k in rule)!
 const valueOf = (rule: AutoRule): string => (rule as Record<Kind, string>)[kindOf(rule)]
@@ -71,6 +72,7 @@ function ruleAt(item: unknown, path: string, errors: string[]): AutoRule | null 
   }
   if (text !== '' && kind === 'write' && (text.match(/\*/g)?.length ?? 0) > GLOB_STARS_MAX) errors.push(`${path}.write: at most ${GLOB_STARS_MAX} *`)
   if (text !== '' && kind === 'agent' && /\s/.test(text)) errors.push(`${path}.agent: one word, a model family such as fable`)
+  if (text !== '' && kind === 'push' && /\s/.test(text)) errors.push(`${path}.push: one word, a branch such as main`)
   let from: string[] | undefined
   if (raw.from !== undefined) {
     if (!Array.isArray(raw.from) || !raw.from.every(id => typeof id === 'string')) errors.push(`${path}.from: must be a list of stage ids`)
@@ -195,10 +197,11 @@ export function relativePath(file: string, cwd: string): string {
 const hasFamily = (model: string | undefined, family: string): boolean => model !== undefined && model.toLowerCase().includes(family.toLowerCase())
 
 // Whether a rule matches what was done. A spawn that only inherited the
-// family from a parent on it does not count, unless the call named it.
+// family from a parent on it does not count, unless the call named it. A
+// push rule listens to commands, and reads what core saw them push.
 export function ruleMatches(rule: AutoRule, signal: Signal, isWindows: boolean): boolean {
   const kind = kindOf(rule)
-  if (kind !== signal.kind) return false
+  if ((kind === 'push' ? 'bash' : kind) !== signal.kind) return false
   const value = valueOf(rule)
   switch (signal.kind) {
     case 'skill': {
@@ -214,6 +217,7 @@ export function ruleMatches(rule: AutoRule, signal: Signal, isWindows: boolean):
     case 'agent':
       return hasFamily(signal.model, value) && (!hasFamily(signal.parentModel, value) || hasFamily(signal.asked, value))
     case 'bash':
+      if (kind === 'push') return signal.pushed === value
       try {
         return regExpOf(`bash ${value}`, () => new RegExp(value)).test(signal.command.slice(0, COMMAND_MAX))
       } catch {
@@ -283,13 +287,16 @@ export function viaOf(signal: Signal, rule?: AutoRule): string {
     case 'agent':
       return short(`agent on ${signal.model}`, VIA_MAX)
     case 'bash':
+      if (rule && 'push' in rule) return short(`pushed to ${rule.push}`, VIA_MAX)
+
       return short(rule && 'bash' in rule ? `bash rule ${rule.bash}` : 'ran a command', VIA_MAX)
   }
 }
 
-// Whether any stage of the workflow has rules, or rules of one kind.
+// Whether any stage of the workflow has rules, or rules that listen to
+// one kind of signal (push rules to commands).
 export const hasRules = (w: Workflow, kind?: Signal['kind']): boolean =>
-  allStages(w).some(s => (s.auto ?? []).some(rule => kind === undefined || kind in rule))
+  allStages(w).some(s => (s.auto ?? []).some(rule => kind === undefined || kind in rule || (kind === 'bash' && 'push' in rule)))
 
 // A rule as /stage workflow and /stage auto list it.
 export const ruleText = (rule: AutoRule): string => `${kindOf(rule)} ${valueOf(rule)}${rule.from ? ` from ${rule.from.join(', ')}` : ''}`

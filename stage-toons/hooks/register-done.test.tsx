@@ -84,6 +84,20 @@ test('a merge from Cleanup moves to Done by itself, and Claude hears of it; the 
   expect(text(await runStage($, ''))).toContain('✓ Done by auto')
 })
 
+test('a push from Cleanup moves to Done only when core saw it go through', async ($, on) => {
+  const { world } = engine(on)
+  let gitOperation: unknown
+  world.answerTool = e => (e.tool === 'Bash' ? { result: { stdout: '', stderr: '', interrupted: false, ...(gitOperation ? { gitOperation } : {}) }, text: 'x' } : undefined)
+  await $.session.start(START)
+  await runStage($, 'cleanup')
+  // Everything up to date, or a dry run: core names no push.
+  await callTool($, 'Bash', { command: 'git push origin main' })
+  expect(text(await runStage($, ''))).toContain('10/10 Cleanup')
+  gitOperation = { push: { branch: 'main' } }
+  const pushed = await callTool($, 'Bash', { command: 'git push origin main' })
+  expect(pushed.context?.[0]).toContain('[stage-toons] The stage moved by itself to ✓ Done (pushed to main)')
+})
+
 test('after Done, Claude’s own chores move nothing; /stage back reopens the feature without confetti', async ($, on) => {
   const { world, clock } = engine(on)
   await $.session.start(START)

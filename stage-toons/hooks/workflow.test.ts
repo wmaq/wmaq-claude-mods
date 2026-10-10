@@ -220,9 +220,9 @@ test('every workflow has Done past its track; no stage may be called done', () =
   ])
 })
 
-test('the default moves to Done on a push to main or a merged pull request, from Your testing or Cleanup', () => {
-  expect(W.done?.auto?.map(r => r.from)).toEqual([['user-test', 'cleanup'], ['user-test', 'cleanup']])
-  expect(W.done?.auto?.map(r => ('bash' in r ? r.bash : '').length)).toEqual([66, 52])
+test('the default moves to Done on a push to main or master or a merged pull request, from Your testing or Cleanup', () => {
+  expect(W.done?.auto?.map(r => r.from)).toEqual([['user-test', 'cleanup'], ['user-test', 'cleanup'], ['user-test', 'cleanup']])
+  expect(W.done?.auto?.map(r => ('push' in r ? r.push : 'bash' in r ? r.bash.length : ''))).toEqual(['main', 'master', 52])
 })
 
 test("a file's done section sets Done's message, scenes and rules; each mistake with its path", () => {

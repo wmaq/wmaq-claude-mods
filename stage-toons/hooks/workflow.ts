@@ -19,14 +19,17 @@ export const UNTRACKED_SCENE: LibraryScene = 'mystery-box'
 // error. (A workflow file's stages are checked when it is read.)
 type DefaultStage = StageDef & { scenes: readonly LibraryScene[] }
 
-// The default's rules into Done: a push to main, or a pull request merged,
-// from Your testing or Cleanup only, so a stray push early in a feature
-// doesn't end it. Each matches a command at the start of a line (spaces
-// before it allowed) or after ;, &, |: a commit message or an echo that
-// mentions a push does not (a heredoc line starting with one does, an
-// accepted miss); gh pr merge --auto merges nothing yet.
+// The default's rules into Done: a push to main or master, or a pull
+// request merged, from Your testing or Cleanup only, so a stray push early
+// in a feature doesn't end it. A push counts when core saw it go through
+// (not up to date, a dry run, a rejection or a deleted branch; a quiet
+// push, -q, shows core nothing: /stage done). gh pr merge matches a
+// command at the start of a line (spaces before it allowed) or after ;,
+// &, |: a commit message or an echo that mentions one does not; --auto
+// merges nothing yet.
 const MERGE_RULES: readonly AutoRule[] = [
-  { bash: `(?:^|[;&|\\n])\\s*git\\s+push\\b[^;&|\\n]*[\\s:]["']?main["']?(?![-.\\w])`, from: ['user-test', 'cleanup'] },
+  { push: 'main', from: ['user-test', 'cleanup'] },
+  { push: 'master', from: ['user-test', 'cleanup'] },
   { bash: `(?:^|[;&|\\n])\\s*gh\\s+pr\\s+merge\\b(?![^;&|\\n]*--auto)`, from: ['user-test', 'cleanup'] },
 ]
 

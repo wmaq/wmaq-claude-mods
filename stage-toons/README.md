@@ -117,15 +117,23 @@ workflow and the [superpowers](https://github.com/obra/superpowers) skills:
 | starts a Fable subagent during Plan | Plan audit |
 | loads `superpowers:executing-plans` or `superpowers:subagent-driven-development` | Develop |
 | loads `superpowers:finishing-a-development-branch` | Cleanup |
-| runs `git push … main` or `gh pr merge` during Your testing or Cleanup | Done |
+| pushes to `main` or `master`, or runs `gh pr merge`, during Your testing or Cleanup | Done |
 | loads `superpowers:systematic-debugging` | Debugging |
 
 The bar only moves forward this way (or into Done, or a side stage):
 fixing the spec during its audit, or ticking the plan's boxes while
-developing, moves nothing. The merge rules match a command at the start of
-a line or after `;`, `&&` or `|`, so a commit message that mentions a push
-doesn't; `gh pr merge --auto` merges nothing yet and doesn't either; a
-push or merge they miss is a `/stage done` away. From Done only a skill
+developing, moves nothing. A push counts when Claude Code saw it go
+through: one that was up to date, a `--dry-run`, a rejected push or a
+deleted branch doesn't, and neither does a quiet one (`git push -q`), which
+shows nothing. `gh pr merge` matches a command at the start of a line or
+after `;`, `&&` or `|`, so a commit message that mentions one doesn't;
+`gh pr merge --auto` merges nothing yet and doesn't either. A push or
+merge the rules miss is a `/stage done` away; a default branch with
+another name, such as `trunk`, needs a `push` rule of its own (below).
+A workflow file written by `/stage workflow init` before 0.16 holds the
+older push rule, a `bash` pattern on the command, which also fires on a
+push that didn't go through: change it to `{ "push": "main", "from":
+["user-test", "cleanup"] }`. From Done only a skill
 you type moves the bar by itself (`/superpowers:brainstorming` starts the
 next feature): the chores after a merge, Claude's own, stay in Done. Only
 the main conversation counts, not subagents or teammates, and only files
@@ -349,15 +357,16 @@ Each rule has one of `skill` (a skill's name; without a `plugin:` part it
 matches any plugin's skill of that name), `write` (a glob on the file's
 path from the project directory: `**` any run, `*` within a folder, `?`
 one character), `agent` (a model family, such as `fable`, that a subagent
-runs on) or `bash` (a regular expression on a command), and may add
-`from`, the stages it fires from:
+runs on), `bash` (a regular expression on a command) or `push` (a branch
+a push went through to), and may add `from`, the stages it fires from:
 
 ```json
 "auto": [
   { "skill": "superpowers:writing-plans" },
   { "write": "docs/superpowers/plans/**" },
   { "agent": "fable", "from": ["plan"] },
-  { "bash": "git merge" }
+  { "bash": "git merge" },
+  { "push": "trunk", "from": ["cleanup"] }
 ]
 ```
 

@@ -22,14 +22,14 @@ test('a list of rules reads; each mistake is listed with its path', () => {
   const bad: string[] = []
   expect(rulesAt([{}, { skill: 'a', write: 'b' }, { skill: '' }, { bash: '(' }, { agent: 'two words' }, { skill: 'x', from: [] }, { skill: 'x', when: 'y' }, 'skill'], 'p', bad)).toBeNull()
   expect(bad).toEqual([
-    'p[0]: needs one of skill, write, agent, bash',
-    'p[1]: has more than one of skill, write, agent, bash',
+    'p[0]: needs one of skill, write, agent, bash, push',
+    'p[1]: has more than one of skill, write, agent, bash, push',
     'p[2].skill: empty',
     expect.stringContaining('p[3].bash: not a regular expression'),
     'p[4].agent: one word, a model family such as fable',
     'p[5].from: 0 stage ids; 1 to 20',
-    'p[6].when: not a field (skill, write, agent, bash, from)',
-    'p[7]: not a rule (an object with one of skill, write, agent, bash, and perhaps from)',
+    'p[6].when: not a field (skill, write, agent, bash, push, from)',
+    'p[7]: not a rule (an object with one of skill, write, agent, bash, push, and perhaps from)',
   ])
   const long: string[] = []
   rulesAt([{ skill: 'x'.repeat(61) }], 'p', long)
@@ -188,43 +188,58 @@ test('a typed command and a skill expanded within TYPED_SKILL_MS of each other n
   expect(typedSkill(heard('brainstorming', 5), null)).toBeNull()
 })
 
-const bash = (command: string): Signal => ({ kind: 'bash', command })
+const bash = (command: string, pushed?: string): Signal => ({ kind: 'bash', command, ...(pushed === undefined ? {} : { pushed }) })
 
-test("the default's rules move to Done on a push to main or a merged pull request, from Your testing or Cleanup", () => {
-  const NL = String.fromCharCode(10)
+test("the default's rules move to Done on a push to main or master that went through, or a merged pull request, from Your testing or Cleanup", () => {
+  // pushed: the branch core's gitOperation says a push updated, whatever
+  // the command looked like.
   const merges = [
-    'git push origin main',
-    'git push -u origin HEAD:main',
-    'git push origin claude/x:main',
-    'git push origin "main"',
-    'git push origin main 2>&1 | tail -3',
-    'git checkout main && git merge --ff-only claude/x && git push origin main',
-    `git status${NL}git push origin main`,
-    '  git push origin main',
-    `git fetch &&${NL}  git push origin main`,
-    'gh pr merge 12 --squash',
-    'cd repo; gh pr merge',
+    bash('git push origin main', 'main'),
+    bash('git push -u origin HEAD:main 2>&1 | tail -3', 'main'),
+    bash('git checkout main && git merge --ff-only claude/x && git push', 'main'),
+    bash('git push origin master', 'master'),
+    bash('gh pr merge 12 --squash'),
+    bash('cd repo; gh pr merge'),
   ]
-  for (const command of merges) {
-    expect(autoMatch(W, at('cleanup'), bash(command), false)?.stage).toBe('done')
-    expect(autoMatch(W, at('user-test'), bash(command), false)?.stage).toBe('done')
-    expect(autoMatch(W, at('develop'), bash(command), false)).toBeNull()
+  for (const signal of merges) {
+    expect(autoMatch(W, at('cleanup'), signal, false)?.stage).toBe('done')
+    expect(autoMatch(W, at('user-test'), signal, false)?.stage).toBe('done')
+    expect(autoMatch(W, at('develop'), signal, false)).toBeNull()
   }
   const misses = [
-    'git push origin main-fix',
-    'git push origin main.backup',
-    'git merge main',
-    'git push origin claude/x',
-    'git commit -m "then git push origin main"',
-    'echo git push origin main',
-    'gh pr merge 12 --auto --squash',
-    'gh pr view 12',
+    // Core saw no push go through: up to date, --dry-run, rejected, a
+    // deleted branch, or a failed push behind a command that succeeded.
+    bash('git push origin main'),
+    bash('git push --dry-run origin main'),
+    bash('git push origin :main'),
+    bash('git commit -m x; git push origin main; git status'),
+    bash('git push origin main-fix', 'main-fix'),
+    bash('git push origin claude/x', 'claude/x'),
+    bash('git push origin Main', 'Main'),
+    bash('gh pr merge 12 --auto --squash'),
+    bash('gh pr view 12'),
   ]
-  for (const command of misses) expect(autoMatch(W, at('cleanup'), bash(command), false)).toBeNull()
+  for (const signal of misses) expect(autoMatch(W, at('cleanup'), signal, false)).toBeNull()
   for (const rule of W.done!.auto!) expect(isRiskyPattern('bash' in rule ? rule.bash : '')).toBe(false)
   // Done's rules count: the engine listens for commands.
   expect(hasRules(W, 'bash')).toBe(true)
   expect(hasRules({ track: W.track, side: W.side }, 'bash')).toBe(false)
+})
+
+test('a push rule names one branch; it reads as pushed to that branch', () => {
+  const errors: string[] = []
+  expect(rulesAt([{ push: ' main ', from: ['cleanup'] }], 'track[0].auto', errors)).toEqual([{ push: 'main', from: ['cleanup'] }])
+  expect(errors).toEqual([])
+  rulesAt([{ push: 'main dev' }, { push: '' }, { push: 3 }], 'track[0].auto', errors)
+  expect(errors).toEqual(['track[0].auto[0].push: one word, a branch such as main', 'track[0].auto[1].push: empty', 'track[0].auto[2].push: must be text'])
+  expect(ruleText({ push: 'main', from: ['cleanup'] })).toBe('push main from cleanup')
+  expect(viaOf(bash('git push origin main', 'main'), { push: 'main' })).toBe('pushed to main')
+  // Only push rules listen to what core saw: a bash rule reads the command.
+  const w = { track: [{ ...W.track[0]!, auto: [{ push: 'release' }] }], side: [] }
+  expect(hasRules(w, 'bash')).toBe(true)
+  expect(ruleMatches({ push: 'release' }, bash('git push origin release'), false)).toBe(false)
+  expect(ruleMatches({ push: 'release' }, bash('x', 'release'), false)).toBe(true)
+  expect(ruleMatches({ bash: 'deploy' }, bash('deploy', 'release'), false)).toBe(true)
 })
 
 test('from Done only a skill the person typed moves the work: chores after a merge stay in Done', () => {

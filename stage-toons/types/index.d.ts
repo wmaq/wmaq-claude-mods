@@ -30,7 +30,7 @@ export type Progress = {
 
 // A rule that moves the work into a stage by itself (hooks/auto.ts): one
 // kind, and perhaps the stages it fires from.
-export type AutoRule = ({ skill: string } | { write: string } | { agent: string } | { bash: string }) & { from?: readonly StageId[] }
+export type AutoRule = ({ skill: string } | { write: string } | { agent: string } | { bash: string } | { push: string }) & { from?: readonly StageId[] }
 
 // One stage of a workflow (hooks/workflow.ts): what set_stage and /stage
 // take, what the bar shows, the status line on entering it, the line that

@@ -279,10 +279,15 @@ const SIGNAL_KINDS: Record<string, Signal['kind']> = { Skill: 'skill', Bash: 'ba
 
 // What a successful tool call of the main conversation did, as rules read
 // it: a skill loaded, a file written (relative to the session's directory
-// at the call), a command run; or nothing a rule reads.
-async function signalOf($: EngineInterface, mod: Mod, args: ToolArgs): Promise<Signal | null> {
+// at the call), a command run (with the branch a push in it updated, as
+// core's gitOperation has it); or nothing a rule reads.
+async function signalOf($: EngineInterface, mod: Mod, args: ToolArgs, result: unknown): Promise<Signal | null> {
   if (args.tool === 'Skill' && typeof args.skill === 'string') return { kind: 'skill', name: args.skill }
-  if (args.tool === 'Bash' && typeof args.command === 'string') return { kind: 'bash', command: args.command }
+  if (args.tool === 'Bash' && typeof args.command === 'string') {
+    const pushed = (result as { gitOperation?: { push?: { branch?: unknown } } } | null)?.gitOperation?.push?.branch
+
+    return { kind: 'bash', command: args.command, ...(typeof pushed === 'string' ? { pushed } : {}) }
+  }
   if ((args.tool === 'Write' || args.tool === 'Edit') && typeof args.file_path === 'string') {
     let cwd = ''
     try {
@@ -1083,7 +1088,7 @@ export const register: Register = on => {
     await settle($, 'hearing a tool call', heardCall($, mod, argsOf(e), result.result, result.isError === true, await $.clock.now()))
     const kind = SIGNAL_KINDS[e.tool]
     if (result.isError !== true && kind !== undefined && mod.isAuto && hasRules(mod.workflow, kind)) {
-      const signal = await signalOf($, mod, argsOf(e))
+      const signal = await signalOf($, mod, argsOf(e), result.result)
       if (signal) await settle($, 'an automatic move', queued(mod, () => autoMove($, mod, signal)))
     }
     if (mod.notes.length === 0) return result
