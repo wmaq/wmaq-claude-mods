@@ -79,7 +79,8 @@ test("the phase's scenes: at 30 columns the crop keeps Clawd in view through the
 // How many pixels differ between two pictures of a size.
 const changed = (a: PixelBuffer, b: PixelBuffer) => [...a.px].filter((c, i) => c !== b.px[i]).length
 
-test("the phase's scenes: over the whole area, the step over the loop point is no bigger than any inside it", () => {
+// About 3 s here and up to 7 s on a CI runner: more than the kit's 5 s.
+test("the phase's scenes: over the whole area, the step over the loop point is no bigger than any inside it", { timeoutMs: 20_000 }, () => {
   for (const id of PHASE) {
     const s = scene(id)
     // The background held still: it drifts on unwrapped time, so it never
