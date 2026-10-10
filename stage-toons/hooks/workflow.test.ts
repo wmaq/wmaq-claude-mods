@@ -268,3 +268,16 @@ test("a file's width sets how wide the cartoons grow: 48 to 512 or full; anythin
   expect('settings' in full && full.settings).toEqual({ width: 'full' })
   for (const bad of [47, 513, 90.5, '120', 'wide', true]) expect(errorsOf({ track: [stage('plan')], width: bad })).toEqual(['width: must be a whole number from 48 to 512, or "full"'])
 })
+
+test("control characters in the file's text are refused, with their path; values in errors are quoted with their escapes, cut to 40", () => {
+  const ESC = String.fromCharCode(27)
+  expect(errorsOf({ track: [stage('a', { label: `${ESC}]52;c;aGk=${String.fromCharCode(7)}x` })] })).toEqual(['track[0].label: control characters'])
+  expect(errorsOf({ track: [stage('a', { when: 'one\nline' })] })).toEqual(['track[0].when: control characters'])
+  expect(errorsOf({ track: [stage('a')], done: { message: `x${ESC}[2J` } })).toEqual(['done.message: control characters'])
+  expect(errorsOf({ track: [stage('a', { auto: [{ skill: `s${ESC}` }] })] })).toEqual(['track[0].auto[0].skill: control characters'])
+  expect(errorsOf({ track: [stage('a', { scene: `x${ESC}[2J${'y'.repeat(60)}` })] })[0]).toMatch(/^track\[0\]\.scene "x\\u001b\[2Jy{34}…" is not a scene/)
+})
+
+test('a list of too many stages is refused whole, not stage by stage', () => {
+  expect(errorsOf({ track: Array.from({ length: 2000 }, () => ({})) })).toEqual(['track: 2000 stages, at most 15'])
+})

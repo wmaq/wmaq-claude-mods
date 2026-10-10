@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import type { Progress, StageId } from '../types'
-import { autoMatch, autoTarget, TYPED_SKILL_MS, typedSkill, globRegExp, hasRules, isRiskyPattern, relativePath, ruleMatches, rulesAt, ruleText, type Signal, unknownFrom, viaOf } from './auto'
+import { autoMatch, autoTarget, TYPED_SKILL_MS, typedSkill, globRegExp, hasRules, patternProblem, relativePath, ruleMatches, rulesAt, ruleText, type Signal, unknownFrom, viaOf } from './auto'
 import { freshProgress } from './stages'
 import { DEFAULT_WORKFLOW as W } from './workflow'
 
@@ -146,25 +146,32 @@ test('why a move happened, cut to 60 characters', () => {
   expect(ruleText({ agent: 'fable', from: ['spec', 'plan'] })).toBe('agent fable from spec, plan')
 })
 
-test('patterns that can backtrack for ever are refused, with their path; safe ones pass', () => {
+test('patterns that can backtrack for ever, or hold more than 4 repeats, are refused with their path; safe ones pass', () => {
   const BS = String.fromCharCode(92)
   const greedy = `^(${BS}S+${BS}s*)+merge$`
-  for (const risky of ['^(a|a)*$', greedy, '(a+)+', '(x(ab)*)+', '(?:a|b){2,}']) expect(isRiskyPattern(risky)).toBe(true)
-  for (const safe of ['git merge', '^git (merge|rebase)', '(ab)+', 'a+b*', '[(+*]+', `x${BS}(a+${BS})*`, '(a|b)?']) expect(isRiskyPattern(safe)).toBe(false)
+  for (const risky of ['^(a|a)*$', greedy, '(a+)+', '(x(ab)*)+', '(?:a|b){2,}', '.*.*.*.*.*X', '.?.?.?.?.?X', 'a*a+a?a{2}a{1,}b']) expect(patternProblem(risky)).not.toBeNull()
+  // The ? of (?: and a lazy ? are no repeats; escaped and bracketed ones neither.
+  for (const safe of ['git merge', '^git (merge|rebase)', '(ab)+', 'a+b*', '[(+*?]+', `x${BS}(a+${BS})*`, '(a|b)?', '(?:a)*?b+?c??', `${BS}*${BS}+${BS}?.*.*.*.*`]) expect(patternProblem(safe)).toBeNull()
   const errors: string[] = []
-  rulesAt([{ bash: greedy }, { write: '*a*a*a*a*a*a*a*a*a*b' }], 'p', errors)
+  rulesAt([{ bash: greedy }, { write: '*a*a*a*a*a*a*a*a*a*b' }, { bash: '.*.*.*.*.*X' }], 'p', errors)
   expect(errors).toEqual([
     'p[0].bash: a repeated group holding another repeat or a choice, as in (a+)* or (a|b)+, can take too long; simplify it',
     'p[1].write: at most 8 *',
+    'p[2].bash: 5 repeats (*, +, ?, {n,m}) can take too long; at most 4; simplify it',
   ])
 })
 
-test('a rule reads at most the first 500 characters of a command, and stays fast on long ones', () => {
-  const BS = String.fromCharCode(92)
-  expect(ruleMatches({ bash: 'merge$' }, { kind: 'bash', command: `${'x'.repeat(600)} merge` }, false)).toBe(false)
-  const started = Date.now()
-  for (let i = 0; i < 200; i++) ruleMatches({ bash: `^(${BS}S+ )*end` }, { kind: 'bash', command: 'word '.repeat(2000) }, false)
-  expect(Date.now() - started).toBeLessThan(2000)
+test('a rule reads each command of a line on its own, its first 60 characters, up to 500 in all', () => {
+  const run = (bash: string, command: string) => ruleMatches({ bash }, { kind: 'bash', command }, false)
+  // ^ and $ match at each command's ends.
+  expect(run('^ls$', 'git merge && ls')).toBe(false)
+  expect(run('merge$', 'git merge && ls')).toBe(true)
+  expect(run('^git push', 'cd x && git push')).toBe(false)
+  expect(run(`[;&|]${String.fromCharCode(92)}s*git push`, 'cd x && git push')).toBe(true)
+  // A long command before it doesn't hide a later one, but a command's 61st character on is unread.
+  expect(run('gh pr merge', `git commit -m "${'word '.repeat(60)}" && gh pr merge 12`)).toBe(true)
+  expect(run('merge', `${'x'.repeat(60)} merge`)).toBe(false)
+  expect(run('merge', `${'x;'.repeat(260)} merge`)).toBe(false)
 })
 
 test('the matched rule comes with the target; three stars read as two', () => {
@@ -220,7 +227,7 @@ test("the default's rules move to Done on a push to main or master that went thr
     bash('gh pr view 12'),
   ]
   for (const signal of misses) expect(autoMatch(W, at('cleanup'), signal, false)).toBeNull()
-  for (const rule of W.done!.auto!) expect(isRiskyPattern('bash' in rule ? rule.bash : '')).toBe(false)
+  for (const rule of W.done!.auto!) expect(patternProblem('bash' in rule ? rule.bash : '')).toBeNull()
   // Done's rules count: the engine listens for commands.
   expect(hasRules(W, 'bash')).toBe(true)
   expect(hasRules({ track: W.track, side: W.side }, 'bash')).toBe(false)

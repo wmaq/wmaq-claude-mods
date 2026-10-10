@@ -23,9 +23,14 @@ export const KINDS = ['skill', 'write', 'agent', 'bash', 'push'] as const
 type Kind = (typeof KINDS)[number]
 const FIELDS = [...KINDS, 'from'] as const
 export const RULES_MAX = 8
-// How much of a command a bash rule reads, and how many * a glob may hold:
-// a rule from a project's file runs on every call, so neither may take long.
+// How much of a line a bash rule reads, how much of each command in it,
+// how many repeats a rule may hold, and how many * a glob: a rule from a
+// project's file runs on every call, so none may take long. A pattern's
+// time on a near miss grows with the text's length to the power of its
+// repeats (.*.*.*x).
 export const COMMAND_MAX = 500
+export const SEGMENT_MAX = 60
+export const REPEATS_MAX = 4
 export const GLOB_STARS_MAX = 8
 // The longest reason for a move the history keeps.
 export const VIA_MAX = 60
@@ -37,6 +42,14 @@ const valueOf = (rule: AutoRule): string => (rule as Record<Kind, string>)[kindO
 
 // A text's length in code points, as the limits count it.
 export const chars = (text: string): number => Array.from(text).length
+
+// Control characters, a terminal's escapes among them: a file's text
+// reaches the bar, the answers and the system prompt, so none may hold one.
+export const hasControl = (text: string): boolean => /[\u0000-\u001f\u007f-\u009f]/.test(text)
+
+// A file's value quoted in an error: its escapes written out, cut to 40
+// characters.
+export const quoted = (text: string): string => JSON.stringify(chars(text) > 40 ? `${Array.from(text).slice(0, 39).join('')}…` : text)
 
 // One rule: exactly one kind, and perhaps from. The ids in from are checked
 // against the workflow once all its stages are read (unknownFrom).
@@ -61,11 +74,13 @@ function ruleAt(item: unknown, path: string, errors: string[]): AutoRule | null 
   if (typeof value !== 'string') errors.push(`${path}.${kind}: must be text`)
   else if (value.trim() === '') errors.push(`${path}.${kind}: empty`)
   else if (chars(value.trim()) > LIMITS[kind]) errors.push(`${path}.${kind}: ${chars(value.trim())} characters, at most ${LIMITS[kind]}`)
+  else if (hasControl(value)) errors.push(`${path}.${kind}: control characters`)
   else text = kind === 'write' ? value.trim().replace(/^\.\//, '') : value.trim()
   if (text !== '' && kind === 'bash') {
     try {
       new RegExp(text)
-      if (isRiskyPattern(text)) errors.push(`${path}.bash: a repeated group holding another repeat or a choice, as in (a+)* or (a|b)+, can take too long; simplify it`)
+      const problem = patternProblem(text)
+      if (problem) errors.push(`${path}.bash: ${problem}; simplify it`)
     } catch (error) {
       errors.push(`${path}.bash: not a regular expression: ${error instanceof Error ? error.message : String(error)}`)
     }
@@ -107,7 +122,7 @@ export function unknownFrom(rules: readonly AutoRule[], path: string, ids: reado
   const errors: string[] = []
   rules.forEach((rule, i) =>
     rule.from?.forEach((id, j) => {
-      if (!ids.includes(id)) errors.push(`${path}[${i}].from[${j}]: "${id}" is not a stage of this workflow`)
+      if (!ids.includes(id)) errors.push(`${path}[${i}].from[${j}]: ${quoted(id)} is not a stage of this workflow`)
     }),
   )
 
@@ -116,13 +131,15 @@ export function unknownFrom(rules: readonly AutoRule[], path: string, ids: reado
 
 const BACKSLASH = String.fromCharCode(92)
 
-// Whether a pattern repeats a group that itself repeats or chooses, as in
-// (a+)* or (a|b)+: the shapes that make a regular expression backtrack
-// for ever on a near miss. Escapes and character classes are skipped.
-export function isRiskyPattern(source: string): boolean {
+// What makes a pattern slow on a near miss, or null: a repeated group
+// holding another repeat or a choice, as in (a+)* or (a|b)+, or more than
+// REPEATS_MAX repeats in all (*, +, ?, {n,m}; a lazy ? and the ? of (?:
+// are none). Escapes and character classes are skipped.
+export function patternProblem(source: string): string | null {
   type Group = { hasRepeat: boolean; hasChoice: boolean }
   const stack: Group[] = [{ hasRepeat: false, hasChoice: false }]
   const isRepeat = (c: string | undefined) => c === '*' || c === '+' || c === '{'
+  let repeats = 0
   for (let i = 0; i < source.length; i++) {
     const c = source[i]!
     const top = stack[stack.length - 1]!
@@ -131,17 +148,25 @@ export function isRiskyPattern(source: string): boolean {
       for (i += 1; i < source.length && source[i] !== ']'; i++) if (source[i] === BACKSLASH) i += 1
     } else if (c === '(') stack.push({ hasRepeat: false, hasChoice: false })
     else if (c === '|') top.hasChoice = true
-    else if (isRepeat(c)) top.hasRepeat = true
-    else if (c === ')' && stack.length > 1) {
+    else if (c === '?' && /[(*+?}]/.test(source[i - 1] ?? '(')) continue
+    else if (isRepeat(c) || c === '?') {
+      repeats += 1
+      if (c !== '?') top.hasRepeat = true
+    } else if (c === ')' && stack.length > 1) {
       const group = stack.pop()!
       const isRepeated = isRepeat(source[i + 1])
-      if (isRepeated && (group.hasRepeat || group.hasChoice)) return true
+      if (isRepeated && (group.hasRepeat || group.hasChoice)) return 'a repeated group holding another repeat or a choice, as in (a+)* or (a|b)+, can take too long'
       if (group.hasRepeat || isRepeated) stack[stack.length - 1]!.hasRepeat = true
     }
   }
 
-  return false
+  return repeats > REPEATS_MAX ? `${repeats} repeats (*, +, ?, {n,m}) can take too long; at most ${REPEATS_MAX}` : null
 }
+
+// The commands of a line a bash rule reads, each starting at its
+// separator (; & | or a line end), so ^ and (?:^|[;&|\n]) match there,
+// and ending before the next, so $ does.
+const commandsOf = (command: string): string[] => command.slice(0, COMMAND_MAX).split(/(?=[;&|\n])/).map(part => part.slice(0, SEGMENT_MAX).trimEnd())
 
 // Rules' regular expressions, compiled once each.
 const compiled = new Map<string, RegExp>()
@@ -219,7 +244,9 @@ export function ruleMatches(rule: AutoRule, signal: Signal, isWindows: boolean):
     case 'bash':
       if (kind === 'push') return signal.pushed === value
       try {
-        return regExpOf(`bash ${value}`, () => new RegExp(value)).test(signal.command.slice(0, COMMAND_MAX))
+        const pattern = regExpOf(`bash ${value}`, () => new RegExp(value))
+
+        return commandsOf(signal.command).some(part => pattern.test(part))
       } catch {
         return false
       }

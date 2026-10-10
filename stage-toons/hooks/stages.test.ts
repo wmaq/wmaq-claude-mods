@@ -26,6 +26,8 @@ test('stages parse from numbers, ids and the aliases for Other', () => {
 
 test('text is cut to fit, with whitespace and newlines collapsed', () => {
   expect(cut('  a\n\nb  ', 80)).toBe('a b')
+  // A terminal's escapes and other control characters go too.
+  expect(cut('a\u001b]52;c;aGk=\u0007b\u001b[2J\u0085c', 80)).toBe('a ]52;c;aGk= b [2J c')
   expect(cut('x'.repeat(90), 80)).toBe(`${'x'.repeat(79)}…`)
   expect(cut('x'.repeat(80), 80)).toBe('x'.repeat(80))
 })

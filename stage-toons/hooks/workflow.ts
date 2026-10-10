@@ -3,7 +3,7 @@
 // is the workflow stage-toons ships with.
 
 import type { AutoRule, DoneDef, StageDef, Workflow, WorkflowSettings } from '../types'
-import { chars, rulesAt, unknownFrom } from './auto'
+import { chars, hasControl, quoted, rulesAt, unknownFrom } from './auto'
 import { STAGE_W } from './scene'
 import type { LibraryScene } from './scenes'
 import { allStages, DONE_ID, DONE_MESSAGE, DONE_SCENES, doneOf } from './track'
@@ -100,7 +100,7 @@ const NOT_FOR_STAGES: Record<string, string> = {
 // A scene name a stage may use; otherwise its error, at `at`.
 function isStageScene(name: string, at: string, errors: string[], sceneNames: readonly string[]): boolean {
   if (NOT_FOR_STAGES[name] !== undefined) errors.push(`${at} "${name}" ${NOT_FOR_STAGES[name]}; a stage can't use it`)
-  else if (!sceneNames.includes(name)) errors.push(`${at} "${name}" is not a scene (${sceneNames.join(', ')})`)
+  else if (!sceneNames.includes(name)) errors.push(`${at} ${quoted(name)} is not a scene (${sceneNames.join(', ')})`)
   else return true
 
   return false
@@ -141,7 +141,7 @@ function scenesAt(raw: Record<string, unknown>, path: string, errors: string[], 
     const first = names.indexOf(name)
     // A name given again is reported once, where it first repeats.
     if (first !== i) {
-      if (names.indexOf(name, first + 1) === i) errors.push(`${path}.scenes: names "${name}" twice`)
+      if (names.indexOf(name, first + 1) === i) errors.push(`${path}.scenes: names ${quoted(name)} twice`)
     } else {
       isStageScene(name, `${path}.scenes[${i}]`, errors, sceneNames)
     }
@@ -166,10 +166,11 @@ function stageAt(item: unknown, path: string, errors: string[], sceneNames: read
     else if (typeof value !== 'string') errors.push(`${path}.${field}: must be text`)
     else if (value.trim() === '') errors.push(`${path}.${field}: empty`)
     else if (chars(value.trim()) > LIMITS[field]) errors.push(`${path}.${field}: ${chars(value.trim())} characters, at most ${LIMITS[field]}`)
+    else if (hasControl(value)) errors.push(`${path}.${field}: control characters`)
     else text[field] = value.trim()
   }
   const { id } = text
-  if (id !== undefined && !ID.test(id)) errors.push(`${path}.id "${id}": lowercase letters, digits and dashes, starting with a letter`)
+  if (id !== undefined && !ID.test(id)) errors.push(`${path}.id ${quoted(id)}: lowercase letters, digits and dashes, starting with a letter`)
   else if (id !== undefined && (RESERVED_IDS as readonly string[]).includes(id)) {
     errors.push(`${path}.id "${id}" is one of /stage's words (${RESERVED_IDS.join(', ')})`)
   }
@@ -187,7 +188,11 @@ function stagesAt(value: unknown, name: 'track' | 'side', min: number, max: numb
     return []
   }
   if (value.length < min) errors.push(`${name}: ${value.length} stages, at least ${min}`)
-  if (value.length > max) errors.push(`${name}: ${value.length} stages, at most ${max}`)
+  if (value.length > max) {
+    errors.push(`${name}: ${value.length} stages, at most ${max}`)
+
+    return []
+  }
   const found: { path: string; stage: StageDef }[] = []
   value.forEach((item, i) => {
     const stage = stageAt(item, `${name}[${i}]`, errors, sceneNames)
@@ -218,6 +223,7 @@ function doneAt(value: unknown, errors: string[], sceneNames: readonly string[])
     if (typeof raw.message !== 'string') errors.push('done.message: must be text')
     else if (raw.message.trim() === '') errors.push('done.message: empty')
     else if (chars(raw.message.trim()) > LIMITS.message) errors.push(`done.message: ${chars(raw.message.trim())} characters, at most ${LIMITS.message}`)
+    else if (hasControl(raw.message)) errors.push('done.message: control characters')
     else message = raw.message.trim()
   }
   const scenes = raw.scenes === undefined ? undefined : scenesAt({ scenes: raw.scenes }, 'done', errors, sceneNames)

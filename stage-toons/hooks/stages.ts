@@ -11,9 +11,10 @@ export const FEATURE_MAX = 40
 export const NOT_TRACKED = 'Not tracked yet'
 export const HISTORY_MAX = 200
 
-// One line, whitespace collapsed, cut with an ellipsis to at most max.
+// One line, whitespace and control characters (a terminal's escapes)
+// collapsed to a space, cut with an ellipsis to at most max.
 export function cut(text: string, max: number): string {
-  const clean = text.replace(/\s+/g, ' ').trim()
+  const clean = text.replace(/[\s\u0000-\u001f\u007f-\u009f]+/g, ' ').trim()
 
   return fitText(clean, max)
 }
