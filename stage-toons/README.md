@@ -1,47 +1,51 @@
 # stage-toons
 
-A stepped progress bar of your development workflow, drawn above the Claude
-Code prompt, with little pixel-art cartoons of Clawd in an area below the
-bar while Claude works. When a Fable subagent comes in to audit or to
-consult, a second, violet Clawd with a monocle walks on stage to review the
-work.
+A stepped progress bar of your development workflow above the Claude Code
+prompt, with pixel-art cartoons of Clawd below it while Claude works.
 
 ![stage-toons: the bar above the prompt, and Clawd at work below it](../docs/media/stage-toons.gif)
 
-```
- ●━●━●━●━◉─○─○─○─○─○  5/10 Plan · stage-toons
- Writing the implementation plan
-```
-
-- **A bar Claude moves** through your workflow (the default below, or
-  your own), and that moves by itself on plain steps: a skill loaded, a
-  spec written, a merge pushed.
-- **41 pixel-art scenes** play while Claude works, with what Claude is
-  doing over Clawd's head; an idle Clawd between turns; a row of helpers
-  while agents work; Clawd DJ while Spotify plays.
-- **History:** `/stage log` and `/stage time` show how long each stage
-  took and what it cost.
-- **Local and cheap:** no model requests; about 270 tokens of system
-  prompt.
-
-Inspired by [claude-toons](https://github.com/achimala/claude-toons) by
-Anshu Chimala, whose Clawd sprite it borrows (MIT; see `NOTICE`). What
-changed in each release is in the [CHANGELOG](CHANGELOG.md).
-
-## Install
-
-Needs Claude Code 2.1.288 or later with plugin hook modules (early
-access). The cartoons draw in the terminal; the desktop app shows the bar
-as text.
+## TL;DR
 
 ```sh
 claude plugin marketplace add wmaq/wmaq-claude-mods
 claude plugin install stage-toons@wmaq-claude-mods
 ```
 
-Restart Claude Code; the mod then loads in every session. `/stage help`
-is a guide to everything below. To run it from a clone, or to update, see
-[Install, in full](#install-in-full).
+Restart Claude Code. Needs 2.1.288 or later with plugin hook modules
+(early access); the cartoons draw in the terminal, and the desktop app
+shows the bar as text.
+
+```
+ ●━●━●━●━◉─○─○─○─○─○  5/10 Plan · stage-toons
+ Writing the implementation plan
+```
+
+- **Claude moves the bar** through your workflow (roadmap → brainstorm →
+  spec → plan → develop → testing → cleanup → Done, or your own), and it
+  moves by itself on plain steps: a skill loaded, a spec written, a merge
+  pushed.
+- **Clawd lives below it:** 41 scenes while Claude works, with what
+  Claude is doing over his head; an idle Clawd between turns; a row of
+  helpers while agents work; a violet Fable Clawd for audits; Clawd DJ
+  while Spotify plays.
+- **Local and cheap:** no model requests, about 270 tokens of system
+  prompt.
+
+| Command | What it does |
+|---|---|
+| `/stage help` | A guide to every feature, one topic at a time |
+| `/stage demo` | Play every scene now (`/stage demo waiting`, `/stage demo dj`, ...) |
+| `/stage next`, `/stage plan`, `/stage done` | Move the bar yourself |
+| `/stage calm on` | Hold the cartoons still |
+| `/stage dj on` | Clawd DJ while Spotify plays |
+| `/stage log`, `/stage time` | How long each stage took, and what it cost |
+
+The rest of this page is the detail. Inspired by
+[claude-toons](https://github.com/achimala/claude-toons) by Anshu
+Chimala, whose Clawd sprite it borrows (MIT; see `NOTICE`). What changed
+in each release is in the [CHANGELOG](CHANGELOG.md); updating and
+running from a clone are under [Install, in full](#install-in-full).
 
 ## The stages
 
